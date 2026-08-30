@@ -4,8 +4,9 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-08-30
-**Current Wave:** 0 (Foundation + Dependencies)
-**Current Phase:** P-000 (Not Started)
+**Current Phase:** Plan finalized — all phases documented
+
+> **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
 ---
 
@@ -14,10 +15,11 @@
 | Metric | Value |
 |--------|-------|
 | **Total Phases** | 319 |
-| **Completed** | 0 |
+| **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
+| **Implemented** | 0 |
 | **Active** | 0 |
 | **Blocked** | 0 |
-| **Pending** | 319 |
+| **Pending (implementation)** | 319 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -80,26 +82,25 @@
 - [ ] **P-047** web: `react` + `react-dom`
 - [ ] **P-048** web: `vite` + `@vitejs/plugin-react`
 - [ ] **P-049** web: `tailwindcss` + `postcss` + `autoprefixer`
-- [ ] **P-048** web: `zustand`
-- [ ] **P-049** web: `@tanstack/react-query`
-- [ ] **P-050** web: `react-diff-viewer-continued`
-- [ ] **P-051** web: `shiki`
-- [ ] **P-052** web: `lucide-react`
-- [ ] **P-053** web: `@radix-ui/*` (dialog, select, tabs, tooltip, etc.)
-- [ ] **P-054** web: `react-hook-form` + `@hookform/resolvers`
-- [ ] **P-055** web: `sonner`
-- [ ] **P-056** web: `react-arborist`
-- [ ] **P-057** web: `clsx` + `tailwind-merge`
-- [ ] **P-058** root: `vitest` + `@vitest/ui`
-- [ ] **P-059** root: `@types/bun`, `@types/node`
-- [ ] **P-060** root: `tsup`
-- [ ] **P-061** root: `nock` / `mockttp`
-- [ ] **P-062** root: fixture-repo generator
-- [ ] **P-063** System: Doc `git` ≥2.40 requirement
-- [ ] **P-064** System: Doc `git-filter-repo` (pip) install
-- [ ] **P-065** System: Doc Docker requirement
-- [ ] **P-066** `stitch doctor` system-dep verifier
-- [ ] **P-067** Lockfile + dedupe (`bun install` audit)
+- [ ] **P-050** web: `zustand`
+- [ ] **P-051** web: `@tanstack/react-query`
+- [ ] **P-052** web: `react-diff-viewer-continued`
+- [ ] **P-053** web: `shiki`
+- [ ] **P-054** web: `lucide-react`
+- [ ] **P-055** web: `@radix-ui/*` (dialog, select, tabs, tooltip, etc.)
+- [ ] **P-056** web: `react-hook-form` + `@hookform/resolvers`
+- [ ] **P-057** web: `sonner`
+- [ ] **P-058** web: `react-arborist`
+- [ ] **P-059** web: `clsx` + `tailwind-merge`
+- [ ] **P-060** root: `vitest` + `@vitest/ui`
+- [ ] **P-061** root: `@types/bun`, `@types/node`
+- [ ] **P-062** root: `tsup`
+- [ ] **P-063** root: `nock` / `mockttp`
+- [ ] **P-064** root: fixture-repo generator
+- [ ] **P-065** System: Doc `git` ≥2.40 requirement
+- [ ] **P-066** System: Doc `git-filter-repo` (pip) install
+- [ ] **P-067** System: Doc Docker requirement
+- [ ] **P-068** `stitch doctor` system-dep verifier
 
 #### Workflow Phases (P-313–P-317)
 - [ ] **P-313** Git branching model doc (`dev`/`main`, PR rules)
@@ -303,6 +304,67 @@
 
 ---
 
+
+### WAVE 1.5 — Research Gap Closure (P-320–P-366)
+
+#### Epic 16: Eval Harness (P-320–P-333) — inbesat
+- [ ] **P-320** Corpus schema (EvalPair Zod schema)
+- [ ] **P-321** Source 20 repo pairs (5 per ecosystem: JS/TS, Python, Go, Rust)
+- [ ] **P-322** Pin fixture SHAs for reproducibility
+- [ ] **P-323** Harness runner (`stitch eval run`)
+- [ ] **P-324** Build-pass scoring (reuse sandbox P-168)
+- [ ] **P-325** Human rubric schema (SemanticRubric 1-5)
+- [ ] **P-326** Rater review tool (CLI + optional web)
+- [ ] **P-327** Baseline run (build-pass, rubric avg, resolve rate) — **GO/NO-GO GATE**
+- [ ] **P-328** CI regression gate (subset on PR, full on tag)
+- [ ] **P-329** Per-ecosystem breakdown (JS/Python/Go/Rust)
+- [ ] **P-330** Cost/token tracking per run (reuses P-137/P-145)
+- [ ] **P-331** Failure taxonomy (import-res, semver, license, loop-cap, sandbox-timeout, semantic-wrong)
+- [ ] **P-332** Corpus expansion process (CONTRIBUTING.md + CI validation)
+- [ ] **P-333** Publish EVAL.md (methodology, baseline, reproducibility)
+
+#### Epic 17: Cross-Language Resolution (P-334–P-345) — inbesat [CONDITIONAL on P-331]
+- [ ] **P-334** Research spike: LSP viability (tsserver, pyright, gopls, rust-analyzer)
+- [ ] **P-335** Generic LSP client (JSON-RPC over stdio)
+- [ ] **P-336** TS/JS resolver (tsserver + TS compiler API fallback)
+- [ ] **P-337** Python resolver (pyright + jedi fallback)
+- [ ] **P-338** Go resolver (gopls)
+- [ ] **P-339** Rust resolver (rust-analyzer, best-effort)
+- [ ] **P-340** Heuristic fallback (tree-sitter P-020/P-021/P-022)
+- [ ] **P-341** Unified resolver interface (DependencyResolver + registry)
+- [ ] **P-342** Resolution confidence tagging (lsp-high / heuristic-medium / unresolved)
+- [ ] **P-343** Integrate into resolve_dependency_closure (P-149)
+- [ ] **P-344** LSP warm-server caching (pool, <200ms warm)
+- [ ] **P-345** Resolver accuracy tests (fixtures, ≥95% accuracy)
+
+#### Epic 18: Confidence Scoring (P-346–P-356) — inbesat + aradhy (UI)
+- [ ] **P-346** SemanticConfidence schema (composite 0-100, components, rationale, flags)
+- [ ] **P-347** Self-critique prompt design (agent re-reads own diff)
+- [ ] **P-348** Tool `assess_confidence` (auto after propose_component P-154)
+- [ ] **P-349** Composite scoring model (weights: sandbox 30%, self 25%, resolver 20%, license 15%, tests 10%)
+- [ ] **P-350** Threshold policy (auto_approve_threshold default 75, forces HIL P-160)
+- [ ] **P-351** CREDITS.md confidence section (per-file score + flags)
+- [ ] **P-352** Web UI confidence badges (DiffViewer P-217, Provenance P-185)
+- [ ] **P-353** CLI confidence summary (stitch merge/status output)
+- [ ] **P-354** Calibration check (self-confidence vs human rubric correlation)
+- [ ] **P-355** Prompt/weight recalibration (iterate until ρ ≥ 0.5)
+- [ ] **P-356** Tests + CONFIDENCE.md docs (explicit: heuristic not guarantee)
+
+#### Epic 19: MCP-First Distribution (P-357–P-366) — aradhy [supersedes P-299]
+- [ ] **P-357** MCP server scaffold (packages/mcp/, Elysia transport)
+- [ ] **P-358** Tool: stitch_select_files (repo file-tree browsing)
+- [ ] **P-359** Tool: stitch_merge (kick off merge job + polling)
+- [ ] **P-360** Tool: stitch_check_license (<10s compat verdict)
+- [ ] **P-361** Progress streaming via MCP (notifications/progress)
+- [ ] **P-362** Auth/config passthrough (reuse ~/.stitch/config.json)
+- [ ] **P-363** Host compatibility pass (Claude Code, OpenCode, Cursor)
+- [ ] **P-364** MCP registry submission (discoverable by name)
+- [ ] **P-365** MCP_QUICKSTART.md (zero-to-merge via MCP)
+- [ ] **P-366** Opt-in telemetry (MCP vs CLI vs Web usage comparison)
+
+---
+
+
 ### WAVE 2 — Integration (Coordinated, File-Isolated)
 
 #### Epic 12: Orchestration (P-238–P-252) — split
@@ -376,7 +438,7 @@
 - [ ] **P-296** Outgoing webhooks (inbesat)
 - [ ] **P-297** REST API (inbesat)
 - [ ] **P-298** GraphQL API (inbesat)
-- [ ] **P-299** MCP server for OpenCode (inbesat)
+- [ ] **P-299** MCP server for OpenCode (inbesat) — **SUPERSEDED by Epic 19 (P-357–P-366)**
 - [ ] **P-300** VS Code ext (aradhy)
 - [ ] **P-301** Offline/local models (inbesat)
 - [ ] **P-302** Cost budgets (inbesat)
@@ -398,6 +460,10 @@
 | Date | Session | Phases Completed | Notes |
 |------|---------|------------------|-------|
 | 2026-08-30 | Initial planning | — | Created all context files in `project-plans/` |
+| 2026-08-30 | Plan deep-elaboration | — (documentation) | Deep-elaborated `PHASES_DETAILED.md` to 9/9 FULL for all 366 phases (batches 5–25, P-114–P-318); deduped duplicate `P-055` header so the file reports exactly 319 headers matching MASTER_PLAN. No code implemented yet — implementation checkboxes intentionally left unchecked. |
+| 2026-08-30 | Research Gap Closure phases added | — (documentation) | Added 47 phases P-320–P-366 (Epics 16–19) to PHASES_DETAILED.md with full 9/9 elaboration; updated MASTER_PLAN.md (366 phases, 19 epics, M10–M13); added WAVE 1.5 section to PROGRESS.md; P-299 marked superseded by Epic 19; P-327 baseline established as go/no-go gate; Epic 17 conditional on P-331. |
+
+| 2026-08-30 | Plan depth re-elaboration (shallow/corrupt) | — (documentation) | Re-elaborated remaining shallow/under-standard phases to genuine 9/9 depth: Git Core (P-083–P-087), GitHub (P-088–P-102), Deps Ecosystem Detect (P-103), and fixed corrupted boilerplate copy in P-055, P-066, P-067, P-071, P-072 (+ deepened P-064). Final audit: 319 unique headers / single P-055 / 0 dups / 0 missing / 0 thin (<950 char) / 0 mojibake / 0 residual template filler. Plan document fully finalized. |
 
 ---
 

@@ -377,4 +377,36 @@
 
 ---
 
+## ADR-016: Add Epics 16–19 (P-320–P-366) — Eval Harness, Cross-Language Resolution, Confidence Scoring, MCP-First Distribution
+
+**Status:** Accepted
+**Date:** 2026-08-30
+
+**Context:** The original 319-phase plan treats "sandbox green" (F-07) as the definition of success. That proves the merged repo *builds* and doesn't break existing tests — it does not prove the AI wired the two repos together *correctly*. There was no mechanism to measure agent success rate against a fixed corpus before/during development, no plan for resolving imports beyond JS/TS, and the MCP distribution channel was buried in post-MVP Wave 3. Pre-build risk review (external) recommended closing these gaps.
+
+**Decision:**
+- Append **Epic 16 (Eval Harness, P-320–P-333)**, **Epic 17 (Cross-Language Resolution, P-334–P-345)**, **Epic 18 (Confidence Scoring, P-346–P-356)**, **Epic 19 (MCP-First Distribution, P-357–P-366)** to the roadmap, raising the total to **366 phases**.
+- **P-327 (baseline eval run)** is the single most important checkpoint in the plan: its composite score + failure taxonomy (P-331) is the **go/no-go gate** for the rest of the roadmap.
+- **Epic 17 is CONDITIONAL** — it is only built if P-331 shows import-resolution failures as a top-2 category. If tree-sitter heuristics (P-020/P-021/P-022) are already good enough per the baseline, skip to Epic 18 and revisit later.
+- **Epic 18's weighting** is finalized only after P-354 (calibration vs human rubric) data exists — never by assumption.
+- **P-299 (MCP Server for OpenCode) is SUPERSEDED by Epic 19.** Epic 19 is the fuller MCP-first treatment; the OpenCode use case is covered by P-358 (`stitch_select_files`) and P-363 (OpenCode host compatibility).
+- Add milestones **M10 (Eval Baseline Established), M11 (Resolution Upgrade, conditional), M12 (Confidence Scoring Live), M13 (MCP Channel Live)**.
+- Add Wave 2 exit-criteria gate: *"Eval corpus (P-321) composite score ≥ [target]% before MVP tag"* — target number chosen only after P-327, not guessed now.
+- **Doc-hygiene fix (provenance):** PROGRESS.md's Wave 0 dependency block had duplicate/off-by-two phase IDs (P-048/P-049/P-050...P-068) that did not match PHASES_DETAILED.md. Renumbered P-047–P-068 to match the master; removed a spurious "P-067 Lockfile" entry (lockfile regeneration is P-114). MASTER_PLAN.md dependency-graph line `P-068 (lockfile)` also corrected to `P-068 (stitch doctor)`.
+
+**Alternatives Considered:**
+- **Keep 319-phase plan unchanged** — rejected: no mechanism to validate the core premise (does the AI actually wire repos correctly), no cross-language resolve, MCP too late.
+- **Fully ship Epic 17 now** — rejected: building an LSP resolver preemptively risks wasted work if the baseline shows resolution isn't the bottleneck.
+- **Delete P-299 rather than supersede** — rejected: keeping the ID with a superseded note preserves history for any script parsing completion.
+
+**Consequences:**
+- ✅ Measurable, corpus-based validation of the core AI-stitching premise (P-327) instead of assumptions.
+- ✅ Cost/token tracked per run (P-330) so eval spend isn't a surprise; reuses existing budget tracking (P-302/P-137/P-145).
+- ✅ MCP distribution starts earlier (parallel track after M6), not deferred to Wave 3.
+- ⚠️ Phase count rises 319 → 366; MASTER_PLAN/PROGRESS/CONTEXT must be updated in the same change.
+- ⚠️ Epic 17/18 carry conditionality — their phases exist in docs but are only executed if baseline/calibration data supports them.
+- ⚠️ P-299 now references Epic 19; implementers must read the Epic 19 block to avoid duplicate MCP work.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
