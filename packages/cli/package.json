@@ -1,0 +1,37 @@
+{
+  "name": "@repo-stitcher/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Terminal interface (commander + ink) and HTTP/WS server (elysia) for the web UI.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "stitch": "./src/index.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "echo \"build: deferred to P-062 (tsup)\" && exit 0",
+    "dev": "echo \"dev: deferred to P-062 (tsup --watch) + P-189 (commander)\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@repo-stitcher/core": "workspace:*"
+  },
+  "devDependencies": {}
+}

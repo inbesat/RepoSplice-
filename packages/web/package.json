@@ -1,0 +1,33 @@
+{
+  "name": "@repo-stitcher/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React dashboard served by the CLI's Elysia server.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "echo \"dev: deferred to P-048 (vite) + P-208 (Vite scaffold)\" && exit 0",
+    "build": "echo \"build: deferred to P-048 (vite build)\" && exit 0",
+    "preview": "echo \"preview: deferred to P-048 (vite preview)\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

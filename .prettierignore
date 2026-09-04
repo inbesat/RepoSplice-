@@ -1,0 +1,13 @@
+dist/
+build/
+node_modules/
+*.md
+*.lockb
+bun.lock
+bun.lockb
+coverage/
+.bun/
+.git/
+.DS_Store
+project-plans/
+PRESENTATION_3D.html

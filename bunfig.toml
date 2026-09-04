@@ -1,0 +1,25 @@
+# bunfig.toml — Bun runtime configuration
+# Repo-stitcher monorepo
+
+[install]
+# Use exact versions in lockfile for reproducible builds across machines
+exact = true
+
+# Auto-install peer dependencies (prevents ERESOLVE noise in monorepo)
+auto = "auto"
+
+# Trust workspace dependencies (no install scripts in our own packages)
+trust = false
+
+[install.cache]
+# Disable global cache pollution in CI; local dev uses default
+disable = false
+
+[run]
+# Use Bun's native shell
+shell = "system"
+
+[test]
+# Use bun's built-in test runner as a fallback if vitest is not yet installed
+# (vitest is added in P-004 and will supersede this)
+preload = []
