@@ -31,3 +31,6 @@ export type {
   Config,
   ConfigLayer,
 } from './config/schema.js';
+
+export { logger, createJobLogger } from './logger/index.js';
+export { redactPaths } from './logger/redact.js';

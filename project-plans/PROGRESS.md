@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-010 — Core Logger (Pino Wrapper) (in progress)
+**Current Phase:** P-011 — Core Result Types (neverthrow) (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 10 |
+| **Implemented** | 11 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 309 |
+| **Pending (implementation)** | 308 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-010 (🔄 active):** Create `packages/core/src/log/logger.ts` wrapping Pino. Redact secrets per SECRETS.md (GITHUB_TOKEN, OPENROUTER_API_KEY, ANTHROPIC_API_KEY, GITHUB_APP_PRIVATE_KEY_PATH contents, .pem files). Honor LOG_LEVEL env. Output JSON in CI, pretty in dev. Acceptance: redact test (no secret in output), level filtering works, structured fields roundtrip.
+**P-011 (🔄 active):** Create `packages/core/src/result/index.ts` re-exporting neverthrow `Result`, `ok`, `err`, `ResultAsync` + a project-specific `CoreError` class with structured fields (code, message, cause, context). Acceptance: Result type flows through all core APIs, ESLint rule already enforces `no-throw-literal`.
 
-**Defer to P-011 (next after P-010):** neverthrow Result wrapper.
+**Defer to P-012 (next after P-011):** Path-safety utilities (realpath, traversal guard).
 
 ---
 
