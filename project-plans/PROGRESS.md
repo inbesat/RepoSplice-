@@ -3,8 +3,8 @@
 
 **Version:** 1.0.0
 **Status:** Updated every session
-**Last Updated:** 2026-08-30
-**Current Phase:** Plan finalized — all phases documented
+**Last Updated:** 2026-09-05
+**Current Phase:** P-006 — Changesets for Versioning/Release (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 0 |
-| **Active** | 0 |
+| **Implemented** | 6 |
+| **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 319 |
+| **Pending (implementation)** | 313 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -30,13 +30,13 @@
 ### WAVE 0 — Foundation & Dependencies (inbesat solo) — P-000 to P-068 + P-313 to P-317
 
 #### Epic 0: Foundation (P-000–P-014)
-- [ ] **P-000** Init Bun monorepo: root `package.json` (workspaces), `bunfig.toml`
-- [ ] **P-001** Create `packages/core`, `packages/cli`, `packages/web`
-- [ ] **P-002** Root `tsconfig.base.json` (strict, `bundler` resolution, paths)
-- [ ] **P-003** Shared ESLint + typescript-eslint + Prettier config
-- [ ] **P-004** Vitest at root + per-package config; `bun test` fallback
-- [ ] **P-005** Commitlint + Husky + Conventional Commits
-- [ ] **P-006** Changesets for versioning/release
+- [x] **P-000** Init Bun monorepo: root `package.json` (workspaces), `bunfig.toml` *(2026-09-04)*
+- [x] **P-001** Create `packages/core`, `packages/cli`, `packages/web` *(2026-09-04)*
+- [x] **P-002** Root `tsconfig.base.json` (strict, `bundler` resolution, paths) *(2026-09-04)*
+- [x] **P-003** Shared ESLint + typescript-eslint + Prettier config *(2026-09-04)*
+- [x] **P-004** Vitest at root + per-package config; `bun test` fallback *(2026-09-04)*
+- [x] **P-005** Commitlint + Husky + Conventional Commits *(2026-09-05)*
+- [ ] **P-006** Changesets for versioning/release *(🔄 active)*
 - [ ] **P-007** GitHub Actions CI skeleton (lint/type/test/build)
 - [ ] **P-008** Base Dockerfile for sandbox runner image
 - [ ] **P-009** Zod `ConfigSchema` + `.env.example`
@@ -464,17 +464,18 @@
 | 2026-08-30 | Research Gap Closure phases added | — (documentation) | Added 47 phases P-320–P-366 (Epics 16–19) to PHASES_DETAILED.md with full 9/9 elaboration; updated MASTER_PLAN.md (366 phases, 19 epics, M10–M13); added WAVE 1.5 section to PROGRESS.md; P-299 marked superseded by Epic 19; P-327 baseline established as go/no-go gate; Epic 17 conditional on P-331. |
 
 | 2026-08-30 | Plan depth re-elaboration (shallow/corrupt) | — (documentation) | Re-elaborated remaining shallow/under-standard phases to genuine 9/9 depth: Git Core (P-083–P-087), GitHub (P-088–P-102), Deps Ecosystem Detect (P-103), and fixed corrupted boilerplate copy in P-055, P-066, P-067, P-071, P-072 (+ deepened P-064). Final audit: 319 unique headers / single P-055 / 0 dups / 0 missing / 0 thin (<950 char) / 0 mojibake / 0 residual template filler. Plan document fully finalized. |
+| 2026-09-04 | P-000 implementation | **P-000** | Init Bun monorepo: root `package.json` with `workspaces: ["packages/*"]`, `bunfig.toml` (exact versions, auto peer-deps), `.gitignore` (Node/Bun/IDE/OS/sandbox). Created `packages/{core,cli,web}` with minimal `package.json` (scoped `@repo-stitcher/*`, `workspace:*` for cli→core), each with `src/index.ts` placeholder. `bun install` ✓ (5 installs / 4 packages, no warnings). Verified cross-package resolution: `@repo-stitcher/cli` → `@repo-stitcher/core` resolves via symlink. **Defer:** `typecheck`/`lint`/`test`/`build` scripts in each package.json are stub `echo` placeholders pending P-002/P-003/P-004/P-062. |
+| 2026-09-04 | P-001 implementation | **P-001** | Per-package `package.json` upgraded to P-001 spec: license (`UNLICENSED`), `main`/`types`, `bin: { "stitch": ... }` for cli, `files` field, `scripts` for build/dev/test/typecheck/lint (all stub `echo` until P-002/P-003/P-004/P-062 land). Per-package `tsconfig.json` (self-contained placeholders; P-002 will replace with `extends: "../../tsconfig.base.json"`). Web: `index.html` (root div + `/src/main.tsx`), `vite.config.ts` (React plugin, port 5173, path aliases), `src/main.tsx` (DOM `textContent` — avoids `react` import until P-047). `exports` field in each package points to `./src/index.ts` (dev mode); P-062 will repoint to `./dist/`. README.md per package (purpose, status, scripts, ownership). `bun install` ✓ (no changes). All 3 `bun run typecheck` ✓ (stub exit 0). Cross-package import verified: cli→core resolves ✓. **Defer:** real react/vite/tailwind deps → P-047–P-059; real `tsconfig.base.json` extends → P-002. |
+| 2026-09-04 | P-002 implementation | **P-002** | Installed `typescript@7.0.2` as root devDep (pragmatic — required for `tsc --noEmit`). Created root `tsconfig.base.json` (strict, `bundler`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters`, `forceConsistentCasingInFileNames`, `resolveJsonModule`, `isolatedModules`, `declaration`, `declarationMap`, `sourceMap`, `skipLibCheck`, JSX `react-jsx`, path aliases for `@repo-stitcher/{core,cli,web}/*`). Created root `tsconfig.json` extending base with `noEmit: true` and `include: ["packages/*/src/**/*"]` so `bun run typecheck` (root) checks all 3 packages. Rewrote `packages/{core,cli,web}/tsconfig.json` to `extends: "../../tsconfig.base.json"` with `rootDir: "src"` and `outDir: "dist"` (web adds DOM libs). **TS 7.0 deviation:** spec wrote `baseUrl: "."` but TS 7 removed it; replaced with `paths: { "*": ["./*"], "@repo-stitcher/..." }` per TS 7 migration guide. Updated root `package.json` scripts: `typecheck: tsc --noEmit` (real), others stubbed with explicit deferral. Verified: `bun run typecheck` (root) → exit 0, 4 source files typechecked. Per-package `bun x tsc --noEmit` → all exit 0. Strictness probe: introduced `const x: number = "string"` → TS2322 surfaced, confirming strict mode active via inheritance. Probe removed. **Frozen**: per P-002 handoff note, tsconfig.base.json changes require ADR. |
+| 2026-09-04 | P-003 implementation | **P-003** | Installed `eslint@10.10.0`, `typescript-eslint@8.69.0`, `@eslint/js@10.0.1`, `prettier@3.9.6`, `eslint-plugin-prettier@5.5.6`, `eslint-plugin-import@2.32.0`, `eslint-import-resolver-typescript@4.4.5` (root devDeps, 462 packages total). Created `eslint.config.mjs` (flat config, `tseslint.config()` helper) with: `js.configs.recommended` + `tseslint.configs.recommended`; `prettier/prettier: error`; `import/order: error` (groups external/internal/parent/sibling/index, alphabetize asc); `no-restricted-imports: error` with patterns for axios/node-fetch/ky/got → "Use fetch or ofetch", prisma/drizzle/typeorm/sequelize/knex → "Use raw SQLite", jest/@jest/* → "Use Vitest", webpack/rollup/esbuild → "Use bun build / tsup", redux/mobx/recoil/jotai → "Use Zustand + TanStack Query", moment/date-fns → "Use Temporal polyfill", joi/yup/class-validator → "Use Zod", socket.io/ws → "Use native WebSocket", better-sqlite3 → "Use bun:sqlite"; `@typescript-eslint/no-explicit-any: error`; `no-throw-literal: error`; `@typescript-eslint/no-unused-vars` with `argsIgnorePattern: '^_'`; ignores `**/dist/**`, `**/build/**`, `**/node_modules/**`, `**/*.config.*`, `*.md`. Created `.prettierrc` (semi, singleQuote, trailingComma es5, printWidth 100, tabWidth 2, useTabs false, bracketSpacing, arrowParens avoid, endOfLine lf). Created `.prettierignore` (excludes project-plans, lockfiles, OS files, coverage). Created `.eslintignore` (legacy per spec step 3 — flat config emits deprecation warning but still works). **Two deviations from spec:** (1) `typescript@7.0.2` was incompatible with `typescript-eslint@8.69.0` which requires TS ≤6.x — downgraded to `typescript@6.0.3`; tsconfig.base.json `paths: { "*": ["./*"] }` workaround from P-002 is now unnecessary but harmless in TS 6 (works in both). (2) `@typescript-eslint/no-throw-literal` is **deprecated in typescript-eslint v7+** (replaced by base ESLint's `no-throw-literal`) — switched to `no-throw-literal: error`. Updated root `package.json` scripts: `lint: "eslint ."`, `lint:fix: "eslint . --fix"`, `format: "prettier --write ."`, `format:check: "prettier --check ."`, `typecheck: "tsc --noEmit"` (kept). Per-package `package.json` updated: `typecheck: "tsc --noEmit"`, `lint: "eslint src"` (both real). **Verified:** `bun run lint` → exit 0 (after autofix of 6 double-quote violations); `bun run typecheck` → exit 0; `bun run format:check` → exit 0 (after `bun run format` fixed 3 files). Per-package lint: all 3 packages → exit 0. **Probe:** added `import axios from "axios"` → ESLint errored `no-restricted-imports` with custom message "Use fetch or ofetch" + prettier quote fix. Probe removed. Cross-package import verified: cli→core still resolves. |
 
 ---
 
 ## 🚀 Next Action
 
-**Start Wave 0, Phase P-000:** Initialize Bun monorepo with workspaces.
+**P-006 (🔄 active):** Run `bunx changeset init` to generate `.changeset/config.json`. Modify config to match spec (changelog, commit: false, fixed: [], linked: [], access: public, baseBranch: main, updateInternalDependencies: patch, ignore: []). Create `.github/workflows/release.yml` per spec. Acceptance: `bunx changeset status` runs without error; config is valid JSON. Also bump git tag convention to vX.Y.Z per-package.
 
-**Command to run when ready:**
-```bash
-cd E:\git\project && mkdir -p repo-stitcher && cd repo-stitcher && bun init -y
-```
+**Defer to P-007 (next after P-006):** GitHub Actions CI skeleton (lint/typecheck/test/build workflow).
 
 ---
 
