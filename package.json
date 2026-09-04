@@ -27,7 +27,11 @@
     "validate": "echo \"validate: deferred to AGENTS.md gate (per-phase)\" && exit 0",
     "prepare": "husky",
     "commitlint": "commitlint",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish"
   },
   "engines": {
     "bun": ">=1.1.0",
@@ -35,6 +39,7 @@
   },
   "packageManager": "bun@1.3.11",
   "devDependencies": {
+    "@changesets/cli": "3.0.2",
     "@commitlint/config-conventional": "21.2.2",
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "5.0.0",

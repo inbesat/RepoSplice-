@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-006 — Changesets for Versioning/Release (in progress)
+**Current Phase:** P-007 — GitHub Actions CI Skeleton (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 6 |
+| **Implemented** | 7 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 313 |
+| **Pending (implementation)** | 312 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -36,8 +36,8 @@
 - [x] **P-003** Shared ESLint + typescript-eslint + Prettier config *(2026-09-04)*
 - [x] **P-004** Vitest at root + per-package config; `bun test` fallback *(2026-09-04)*
 - [x] **P-005** Commitlint + Husky + Conventional Commits *(2026-09-05)*
-- [ ] **P-006** Changesets for versioning/release *(🔄 active)*
-- [ ] **P-007** GitHub Actions CI skeleton (lint/type/test/build)
+- [x] **P-006** Changesets for versioning/release *(2026-09-05)*
+- [ ] **P-007** GitHub Actions CI skeleton (lint/type/test/build) *(🔄 active)*
 - [ ] **P-008** Base Dockerfile for sandbox runner image
 - [ ] **P-009** Zod `ConfigSchema` + `.env.example`
 - [ ] **P-010** `core/log` — Pino structured logger
@@ -473,9 +473,9 @@
 
 ## 🚀 Next Action
 
-**P-006 (🔄 active):** Run `bunx changeset init` to generate `.changeset/config.json`. Modify config to match spec (changelog, commit: false, fixed: [], linked: [], access: public, baseBranch: main, updateInternalDependencies: patch, ignore: []). Create `.github/workflows/release.yml` per spec. Acceptance: `bunx changeset status` runs without error; config is valid JSON. Also bump git tag convention to vX.Y.Z per-package.
+**P-007 (🔄 active):** Create `.github/workflows/ci.yml` per spec. Triggers on push/PR to `main` and `develop`. Jobs: `lint-and-typecheck` (run `bun install --frozen-lockfile`, `bun run lint`, `bun run typecheck`), `test` (run tests on node + bun matrix), `build` (per-package build if P-062 has shipped; stub otherwise). Acceptance: workflow file is valid YAML, will trigger on push to main, will run all jobs.
 
-**Defer to P-007 (next after P-006):** GitHub Actions CI skeleton (lint/typecheck/test/build workflow).
+**Defer to P-008 (next after P-007):** Base Dockerfile for sandbox runner image.
 
 ---
 
