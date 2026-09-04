@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    groups:
+      bun-runtime:
+        patterns:
+          - 'bun*'
+      typescript:
+        patterns:
+          - 'typescript'
+          - 'typescript-eslint'
+      linting:
+        patterns:
+          - 'eslint*'
+          - 'prettier*'
+      testing:
+        patterns:
+          - 'vitest'
+          - '@vitest/*'
+      git:
+        patterns:
+          - 'commitlint'
+          - '@commitlint/*'
+          - 'husky'
+          - 'lint-staged'
+          - 'changesets/*'
+      github-actions:
+        patterns:
+          - 'actions/*'
+          - 'oven-sh/*'
+          - 'codecov/*'
+          - 'changesets/*'
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
