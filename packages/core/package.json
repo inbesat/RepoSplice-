@@ -26,6 +26,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
   "devDependencies": {}
 }
