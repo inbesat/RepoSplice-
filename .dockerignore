@@ -1,0 +1,39 @@
+# Build artifacts
+**/dist
+**/build
+**/coverage
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI / config
+.github
+.husky
+.changeset
+.lintstagedrc.json
+.prettierrc
+.prettierignore
+eslint.config.mjs
+commitlint.config.cjs
+vitest.config.ts
+bun.lock
+tsconfig.json
+tsconfig.base.json
+bunfig.toml
+
+# Docs (kept in repo, not needed for build)
+project-plans
+README.md
+*.md
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+.env.*.local

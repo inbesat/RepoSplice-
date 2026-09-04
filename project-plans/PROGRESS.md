@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-008 — Base Dockerfile for sandbox runner (in progress)
+**Current Phase:** P-009 — Zod ConfigSchema + .env.example (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 8 |
+| **Implemented** | 9 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 311 |
+| **Pending (implementation)** | 310 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -38,7 +38,7 @@
 - [x] **P-005** Commitlint + Husky + Conventional Commits *(2026-09-05)*
 - [x] **P-006** Changesets for versioning/release *(2026-09-05)*
 - [x] **P-007** GitHub Actions CI skeleton (lint/type/test/build) *(2026-09-05)*
-- [ ] **P-008** Base Dockerfile for sandbox runner image *(🔄 active)*
+- [x] **P-008** Base Dockerfile for sandbox runner + docker.yml workflow *(2026-09-05)*
 - [ ] **P-009** Zod `ConfigSchema` + `.env.example`
 - [ ] **P-010** `core/log` — Pino structured logger
 - [ ] **P-011** `core/result` — neverthrow `Result`/error types
@@ -473,9 +473,9 @@
 
 ## 🚀 Next Action
 
-**P-008 (🔄 active):** Create `Dockerfile` at root per spec — base sandbox image with Bun + git + git-filter-repo + common build tools. Multi-stage if needed. Acceptance: image builds successfully (`docker build`), ships with the tools `stitch doctor` requires.
+**P-009 (🔄 active):** Create `packages/core/src/config/schema.ts` with Zod schema covering github/openrouter/anthropic/ollama/sandbox/paths/licensePolicy/autonomy. Export `ConfigSchema`, `Config` (inferred), `loadConfig()`. Create root `.env.example` with all vars commented. Acceptance: ConfigSchema parses valid config, rejects invalid with clear errors, loadConfig merges defaults<file<env<CLI. Tests: valid parse, invalid rejection, layered merge precedence.
 
-**Defer to P-009 (next after P-008):** Zod `ConfigSchema` + `.env.example` for runtime config.
+**Defer to P-010 (next after P-009):** Pino logger wrapper with redaction.
 
 ---
 
