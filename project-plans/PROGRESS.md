@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-011 — Core Result Types (neverthrow) (in progress)
+**Current Phase:** P-012 — Core Util Helpers (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 11 |
+| **Implemented** | 12 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 308 |
+| **Pending (implementation)** | 307 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-011 (🔄 active):** Create `packages/core/src/result/index.ts` re-exporting neverthrow `Result`, `ok`, `err`, `ResultAsync` + a project-specific `CoreError` class with structured fields (code, message, cause, context). Acceptance: Result type flows through all core APIs, ESLint rule already enforces `no-throw-literal`.
+**P-012 (🔄 active):** Create `packages/core/src/util/{id,paths,ignore}.ts`. `id.ts`: nanoid + monotonic `job_<ts>_<seq>` (P-239 queue). `paths.ts`: `safeJoin`/`resolveWithin` rejecting `..` escapes (P-205). `ignore.ts`: `buildIgnoreMatcher` wrapping picomatch (P-036) for tree scans (P-103). Use Result (P-011) for `resolveWithin`. Tests: id unique/monotonic, safeJoin escape rejection, Windows path normalize, ignore matcher + negation + dir scoping.
 
-**Defer to P-012 (next after P-011):** Path-safety utilities (realpath, traversal guard).
+**Defer to P-013 (next after P-012):** ARCHITECTURE.md update.
 
 ---
 

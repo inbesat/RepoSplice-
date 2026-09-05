@@ -34,3 +34,22 @@ export type {
 
 export { logger, createJobLogger } from './logger/index.js';
 export { redactPaths } from './logger/redact.js';
+
+export {
+  Result,
+  ResultAsync,
+  ok,
+  err,
+  okAsync,
+  errAsync,
+  fromPromise,
+  fromSafePromise,
+  fromThrowable,
+  fromAsyncThrowable,
+  fromInternalPromise,
+  match,
+  stitchOk,
+  stitchErr,
+  STITCH_ERROR_CODES,
+} from './result/index.js';
+export type { Ok, Err, ResultType, StitchError, StitchErrorCode } from './result/index.js';
