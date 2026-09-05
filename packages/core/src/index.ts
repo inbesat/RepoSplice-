@@ -80,4 +80,9 @@ export {
 export type { Git, GitFactoryOptions } from './git/factory.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
-export type { OctokitPatAuth, OctokitAuth, OctokitFactoryOptions } from './github/factory.js';
+export type {
+  OctokitPatAuth,
+  OctokitAppAuth,
+  OctokitAuth,
+  OctokitFactoryOptions,
+} from './github/factory.js';
