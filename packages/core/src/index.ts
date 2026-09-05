@@ -68,3 +68,13 @@ export {
   shouldIgnore,
 } from './util/index.js';
 export type { IgnoreMatcher, BuildIgnoreMatcherOptions } from './util/index.js';
+
+export {
+  createGit,
+  checkGitAvailable,
+  isRepo,
+  getStatus,
+  getLog,
+  initRepo,
+} from './git/factory.js';
+export type { Git, GitFactoryOptions } from './git/factory.js';

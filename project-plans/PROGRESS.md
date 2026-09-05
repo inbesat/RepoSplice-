@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-016 — core: simple-git (in progress)
+**Current Phase:** P-017 — core dep: octokit (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 16 |
+| **Implemented** | 17 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 303 |
+| **Pending (implementation)** | 302 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,11 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-016 (🔄 active):** Add `simple-git@^3.x` + `@types/simple-git` to `packages/core`. Create `packages/core/src/git/factory.ts` exporting a typed, Result-returning wrapper around `simpleGit()` so all later P-069+ modules import a stable surface (not the raw lib). Verify against a throwaway temp fixture (P-062 pattern). Confirm it runs the matched system `git` (P-063) and honors `GIT_TERMINAL_PROMPT=0` (P-265, non-interactive).
+**P-017 (🔄 active):** Add `octokit` (P-101) to `packages/core`. Create `packages/core/src/github/factory.ts` wrapping `Octokit` with the same Result-returning pattern used by `git/factory.ts`. Verify both `auth: 'token'` (PAT) and `auth: { appId, privateKey, installationId }` (GitHub App) flows; the deep-merge credential validation in P-009 already enforces these fields at the config layer.
 
-**Defer to P-017 (next after P-016):** core dep `octokit` (P-101). Used by P-088+ for GitHub API.
-
-**⚠️ Blocked (P-015 carryover):** `zod-to-json-schema@3.25.2` is broken with `zod@^4.x` at runtime AND type level (returns `{"$schema": "..."}` for any input; types declare zod v3 ZodType shape). P-039 (AI tool args as JSON Schema) needs a workaround: (a) downgrade to zod 3, or (b) use zod v4's native `z.toJSONSchema()`. Decision deferred to P-039.
+**Defer to P-018 (next after P-017):** core dep `tar` (for archive extraction in P-069).
 
 ---
 
