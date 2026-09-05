@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-025 — core dep: spdx-correct (awaiting go-ahead)
+**Current Phase:** P-026 — core dep: spdx-license-list (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 25 |
+| **Implemented** | 26 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 294 |
+| **Pending (implementation)** | 293 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-025 (⏳ next, awaiting go-ahead):** Add `spdx-correct@3.2.0` to `packages/core`. Create `packages/core/src/license/normalize.ts` exposing `normalizeLicense(raw)` returning a `Result<string>` (per P-011): fuzzy-correct aliases (`Apache 2` → `Apache-2.0`) via `spdxCorrect`, then strict-parse via P-024's `parseExpr`; unresolvable input takes the P-123 unknown path. Feeds the P-119 normalization pipeline (P-120 compatibility, P-128 report).
+**P-026 (⏳ next, awaiting go-ahead):** Add `spdx-license-list` to `packages/core` (offline SPDX registry: id → name/url/osiApproved/fsfLibre). Create `packages/core/src/license/spdxIndex.ts` exposing `lookupLicense(id)` → `Result<LicenseInfo>` and `isKnown(id)` (per P-011) — the reference source for validating P-025 corrected ids, the P-120 compatibility matrix, NOTICE generation (P-126), and SBOM (P-183). Offline data keeps licensing usable in privacy/offline mode (P-301).
 
-**Defer to P-026 (next after P-025):** core dep `spdx-license-list` (canonical id set for allow/deny evaluation).
+**Defer to P-027 (next after P-026):** core dep `openai` (OpenRouter/Ollama universal client).
 
 ---
 

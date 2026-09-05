@@ -101,3 +101,5 @@ export type { DeclaredLicense, ScanDeclaredOptions } from './license/scan.js';
 
 export { parseExpr, collectLicenses } from './license/expr.js';
 export type { LicenseExpr } from './license/expr.js';
+
+export { normalizeLicense, UNKNOWN_LICENSE } from './license/normalize.js';
