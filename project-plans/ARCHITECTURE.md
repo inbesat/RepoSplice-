@@ -1,9 +1,9 @@
 # ARCHITECTURE.md — System Architecture Blueprint
 ## repo-stitcher: Complete Technical Architecture
 
-**Version:** 1.0.0
-**Status:** Frozen for MVP
-**Last Updated:** 2026-08-30
+**Version:** 1.1.0
+**Status:** Frozen for MVP (Wave 0 foundation ships P-000…P-012; see §12)
+**Last Updated:** 2026-09-05
 
 ---
 
@@ -548,6 +548,135 @@ Built via GitHub Actions on tag push; pushed to `ghcr.io/<owner>/repo-stitcher-s
 | **New License Scanner** | `core/src/license/deepScan.ts` | Implement `DeepScanner` interface |
 | **Custom Tool** | `core/src/ai/tools/` | Add tool def + handler; register in `loop.ts` |
 | **Web UI Plugin** | `packages/web/src/components/extensions/` | React component + `registerExtension()` |
+
+---
+
+## 12. Implementation Status (Wave 0 — Foundation)
+
+The plan document (`project-plans/PHASES_DETAILED.md`) describes the full 319-phase roadmap. This section tracks what is **actually implemented in code** as of the last update. Each row links to a session log entry in `PROGRESS.md` and confirms coverage + test status.
+
+| Phase | Module | Status | Tests | Coverage | Notes |
+|-------|--------|--------|-------|----------|-------|
+| P-000 | (monorepo init) | ✅ shipped | 1 smoke / package | n/a | 3-package Bun workspace |
+| P-001 | (package manifests) | ✅ shipped | 1 smoke / package | n/a | `private: true` (publishable at P-278) |
+| P-002 | `tsconfig.base.json` | ✅ shipped | 4 files typechecked | n/a | strict + noUncheckedIndexedAccess; frozen |
+| P-003 | `eslint.config.mjs` + prettier | ✅ shipped | lint clean | n/a | flat config, no-throw-literal rule |
+| P-004 | vitest 5 (projects) | ✅ shipped | 3 smoke tests | n/a | core 80/70/80/80 thresholds |
+| P-005 | commitlint + husky | ✅ shipped | conventional commits | n/a | 6 commits on main |
+| P-006 | changesets | ✅ shipped | status/version | n/a | `access: public`; bumps deferred to P-278 |
+| P-007 | `.github/workflows/ci.yml` | ✅ shipped | yaml valid | n/a | 3 jobs; dependabot added |
+| P-008 | `docker/sandbox-base.Dockerfile` | ✅ shipped | hadolint pass | n/a | 5 spec warnings kept verbatim |
+| P-009 | `core/src/config/schema.ts` | ✅ shipped | 21 tests | 95.34% stmts | Zod, loadConfig with layered merge |
+| P-010 | `core/src/logger/` | ✅ shipped | 13 tests | 100% stmts | Pino + auto-redact, 69 paths |
+| P-011 | `core/src/result/` | ✅ shipped | 21 tests | 100% stmts | neverthrow + 13-code StitchError |
+| P-012 | `core/src/util/` | ✅ shipped | 27 tests | 91.86% stmts | id/paths/ignore helpers |
+| P-013 | (this section) | ✅ shipped | docs | n/a | this file |
+| P-014+ | (later phases) | ⏳ pending | — | — | see `PROGRESS.md` active phase |
+
+### 12.1 Tooling Stack (root)
+
+```
+Bun 1.3.11
+├── TypeScript 6.0.3 (downgraded from 7 — typescript-eslint 8.69 requires ≤6)
+├── ESLint 10.10.0 + typescript-eslint 8.69.0 (flat config)
+├── Prettier 3.9.6
+├── Vitest 5.0.0 (root projects: ['packages/*'])
+├── commitlint 21.2.2 + husky 9.1.7 + lint-staged 17.4.1
+├── @changesets/cli 3.0.2
+├── yaml 2.9.0 (for workflow validation)
+└── hadolint 2.15.1 (for Dockerfile validation, via bunx)
+```
+
+### 12.2 Frozen Files
+
+Per AGENTS.md and DECISIONS.md, these files require an ADR to change:
+
+- `tsconfig.base.json` (P-002) — strict baseline shared by all 3 packages
+- `eslint.config.mjs` (P-003) — enforced rules across the monorepo
+- `commitlint.config.cjs` (P-005) — type-enum restricted to 11 conventional types
+- `vitest.config.ts` (P-004) — per-glob coverage thresholds
+
+### 12.3 What's NOT YET implemented (deferred to later phases)
+
+- **TypeScript build (`tsup`)** — P-062; current `build` script is a stub
+- **`packages/cli/src/commands/*`** — P-189+; CLI is currently a 1-line placeholder
+- **`packages/web/src/pages/*`** — P-208+; web is currently a 1-line placeholder
+- **Real git/GitHub/sandbox/etc modules** — P-069+; only `config/`, `logger/`, `result/`, `util/` exist in `core/src/` today
+- **`core/src/storage/` (SQLite)** — P-026; no DB yet
+
+---
+
+## 13. Wave 0 Conventions (Foundation Contracts)
+
+The four modules shipped in P-009..P-012 define the **error and configuration contracts** every later core module must follow. These are enforced by ESLint rules + TypeScript types; deviating requires an ADR.
+
+### 13.1 Result Contract (P-011)
+
+**Rule:** No public core function throws. Every public function returns `Result<T, StitchError>` from neverthrow.
+
+- **Helper:** `match(result, { onOk, onErr })` forces both branches at the type level.
+- **Error type:** `StitchError` — 13-code discriminated union (GIT_ERROR, GITHUB_API_ERROR, DOCKER_ERROR, AI_PROVIDER_ERROR, LICENSE_VIOLATION, DEPENDENCY_CONFLICT, SANDBOX_FAILED, CONFIG_ERROR, USER_CANCELLED, INTERNAL, AUTH_ERROR, COST_LIMIT, COMPLIANCE_VIOLATION). Each code carries different required fields.
+- **Async:** Use `ResultAsync<T, E>` (neverthrow) for any function that does I/O. Wrap unsafe promises with `fromInternalPromise(promise, msgPrefix)` to auto-map rejections to `INTERNAL` StitchError.
+- **Enforcement:** ESLint `no-throw-literal` (base) + `no-restricted-syntax` for `throw new Error()` (caller's responsibility; new ESLint rule can be added in P-011 follow-up).
+
+**Anti-patterns (will be caught by review):**
+```ts
+// ❌ throws
+function loadFoo(): Foo { throw new Error('nope'); }
+
+// ✅ Result
+function loadFoo(): Result<Foo, StitchError> {
+  return ok(myFoo);
+}
+
+// ❌ returns null on failure
+function loadBar(): Bar | null { return null; }
+
+// ✅ Result
+function loadBar(): Result<Bar, StitchError> {
+  return err({ code: 'GIT_ERROR', message: 'no bar found' });
+}
+```
+
+### 13.2 Config Contract (P-009)
+
+**Rule:** No hardcoded config. Anything user-tunable goes through `loadConfig({ defaults, file, env, cli })`.
+
+- **Schema:** `ConfigSchema` (Zod, in `core/src/config/schema.ts`) — github/openrouter/anthropic/ollama/sandbox/paths/licensePolicy/autonomy sections.
+- **Merging:** 4 layers merge in spec precedence: `defaults < file < env < cli`. Deep-merge keeps siblings intact (e.g. overriding `paths.cacheDir` doesn't drop `paths.worktreeDir`).
+- **Validation:** `loadConfig` runs Zod parse + a post-parse credential check (pat requires `token`; app requires `appId`+`privateKeyPath`+`installationId`).
+- **Env:** `.env.example` is the canonical list; `~/.stitch/config.json` (P-200) overrides; secrets come from `config-secret` (P-206), not env dumps.
+
+### 13.3 Logger Contract (P-010)
+
+**Rule:** Every core module uses the singleton `logger` from `core/src/logger/`. Never `console.log` in core code.
+
+- **Structure:** JSON in CI / prod, pretty in dev (`pino-pretty` worker when `NODE_ENV !== 'production'` and `LOG_PRETTY !== 'false'` and `VITEST !== 'true'`).
+- **Levels:** Honored via `LOG_LEVEL` env (trace/debug/info/warn/error/fatal).
+- **Redaction:** Auto-applied to 9 sensitive field names at depths 0..8 (apiKey, token, secret, password, privateKey, accessToken, refreshToken, webhookSecret, signingKey) + 6 literal paths (github.auth.token, openrouter.apiKey, anthropic.apiKey, ollama.apiKey, docker.authConfig, sandbox.env.*). 69 total paths. Pino's redact uses fast-redact which only supports `*` (single-segment) — hence the enumeration.
+- **Job-scoped logs:** `createJobLogger(jobId)` returns a child logger that adds `jobId` to every line.
+- **Test mode:** When `VITEST=true` or `NODE_ENV=test`, the worker-thread transport is suppressed (it can't run in vitest's process); logger writes JSON to stdout.
+
+### 13.4 Util Contract (P-012)
+
+**Rule:** Cross-cutting helpers (id, paths, ignore) live in `core/src/util/`. Do not re-implement them in feature modules.
+
+- **`monotonicId(prefix)`** — `<prefix>_<base36-ts>_<base36-seq>_<12-char-nanoid>`. Sortable, concurrent-safe within a process. Use for `jobId`, `runId`, `stepId`. For cross-process uniqueness, prepend a process-id component.
+- **`resolveWithin(root, p)`** — Result-returning; rejects `..` escapes; preferred over the throwing `safeJoin`.
+- **`buildIgnoreMatcher(patterns, { baseDir, gitignore, negated })`** — .gitignore-style with auto-expansion of bare names: directory patterns (`node_modules` → `**/node_modules/**`) and file-extension patterns (`*.log` → `**/*.log`).
+
+---
+
+## 14. Open Architectural Questions (parking lot)
+
+These need an ADR before code lands. Most are tracked in `DECISIONS.md` once decided.
+
+| Question | Why pending | Likely decision point |
+|----------|-------------|------------------------|
+| Should `web` import `@repo-stitcher/core` types directly (via build-time codegen) or only via `/api/schema`? | Spec §2 says HTTP/WS only; spec §3.1 says public API exports types. | P-208+ (web) |
+| Where do `core/src/types/` shared types live vs. `core/src/index.ts` re-exports? | Spec has both; conflict on `StitchInput`/`StitchOutput` definitions. | P-014+ |
+| How does the `cli serve` Elysia server package the static web assets? | Single binary vs. external? | P-208 (vite build) → P-189+ (cli) |
+| Does `core` own the SQLite DB or does `cli`? | Affects test isolation + cleanup. | P-026 / P-193 |
 
 ---
 

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-013 — ARCHITECTURE.md update (in progress)
+**Current Phase:** P-014 — CONTRIBUTING.md + Code Style Guide (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 13 |
+| **Implemented** | 14 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 306 |
+| **Pending (implementation)** | 305 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-013 (🔄 active):** Update `project-plans/ARCHITECTURE.md` to reflect modules already implemented: `config/`, `logger/`, `result/`, `util/` (id, paths, ignore). Document Result (P-011) + config (P-009) conventions and SECURITY placement. Mark waves/phases that have shipped.
+**P-014 (🔄 active):** Create root `CONTRIBUTING.md` covering: branch naming (`feat/`, `fix/`, `chore/`, `docs/`), conventional commits with scope (P-005), PR template (description, testing, screenshots, changeset), code style (TECH_STACK + AGENTS no-throw + Result contract from P-011), coverage thresholds (80/70/80/80 core), `validate()` helper (typecheck+lint+test+build), release process (changesets P-006). Mirror AGENTS.md enforced rules.
 
-**Defer to P-014 (next after P-013):** CONTRIBUTING.md (or equivalent contributor guide; check spec for exact file).
+**Defer to P-015 (next after P-014):** core dep `zod` is already installed in P-009; this phase becomes a smoke test verification.
 
 ---
 
