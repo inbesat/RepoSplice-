@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-024 — core dep: spdx-expression-parse (in progress)
+**Current Phase:** P-025 — core dep: spdx-correct (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 24 |
+| **Implemented** | 25 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 295 |
+| **Pending (implementation)** | 294 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-024 (🔄 active):** Add `spdx-expression-parse` to `packages/core`. Create `packages/core/src/license/parse.ts` exposing `parseSpdxExpression(input)` returning a `Result<SpdxExpression>` (per P-011). Normalizes raw license strings from P-023's `scanDeclared` into structured SPDX expressions for the policy evaluation in P-009 (`config.licensePolicy.allow|warn|deny`) and the report in P-128.
+**P-025 (⏳ next, awaiting go-ahead):** Add `spdx-correct@3.2.0` to `packages/core`. Create `packages/core/src/license/normalize.ts` exposing `normalizeLicense(raw)` returning a `Result<string>` (per P-011): fuzzy-correct aliases (`Apache 2` → `Apache-2.0`) via `spdxCorrect`, then strict-parse via P-024's `parseExpr`; unresolvable input takes the P-123 unknown path. Feeds the P-119 normalization pipeline (P-120 compatibility, P-128 report).
 
-**Defer to P-025 (next after P-024):** core dep `ignore` (P-104 file walker) OR `globby` (alternative for tree-walking).
+**Defer to P-026 (next after P-025):** core dep `spdx-license-list` (canonical id set for allow/deny evaluation).
 
 ---
 

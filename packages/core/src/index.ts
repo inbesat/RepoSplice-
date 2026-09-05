@@ -92,3 +92,12 @@ export type { SemVer, SemverOptions } from './deps/semver.js';
 
 export { initTreeSitter, loadLanguage, parse, isSupportedLanguage } from './analysis/treeSitter.js';
 export type { SupportedLanguage, Language, Tree } from './analysis/treeSitter.js';
+
+export { findCycles, hasCycles, filesInCycles } from './analysis/circular.js';
+export type { FindCyclesOptions } from './analysis/circular.js';
+
+export { scanDeclared, writeFixturePkg } from './license/scan.js';
+export type { DeclaredLicense, ScanDeclaredOptions } from './license/scan.js';
+
+export { parseExpr, collectLicenses } from './license/expr.js';
+export type { LicenseExpr } from './license/expr.js';
