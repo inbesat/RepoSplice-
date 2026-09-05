@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-020 — core: tree-sitter + grammars (in progress)
+**Current Phase:** P-021 — core dep: dependency-cruiser (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 20 |
+| **Implemented** | 21 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 299 |
+| **Pending (implementation)** | 298 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-020 (🔄 active):** Add `web-tree-sitter` + tree-sitter WASM grammars (TypeScript, JavaScript, Python, Go, Rust) to `packages/core`. Create `packages/core/src/analysis/treeSitter.ts` with loader + parse helpers. Used by P-148/P-152 for syntax-aware file selection and by P-104/105/106/107 for import/usage scanning.
+**P-021 (🔄 active):** Add `dependency-cruiser` to `packages/core` (devDep) + `dependency-cruiser.config.cjs` + a `lint:deps` npm script. Used by P-103/P-149 for ecosystem detection and AGENTS no-restricted-imports enforcement. Static JS/TS dependency graph analysis.
 
-**Defer to P-021 (next after P-020):** core dep `ignore` (P-104 file walker).
+**Defer to P-022 (next after P-021):** core dep `license-checker` (P-115 license compliance scan).
 
 ---
 

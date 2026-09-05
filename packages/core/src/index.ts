@@ -89,3 +89,6 @@ export type {
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
+
+export { initTreeSitter, loadLanguage, parse, isSupportedLanguage } from './analysis/treeSitter.js';
+export type { SupportedLanguage, Language, Tree } from './analysis/treeSitter.js';
