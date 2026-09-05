@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-014 — CONTRIBUTING.md + Code Style Guide (in progress)
+**Current Phase:** P-015 — core dep: zod verification (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 14 |
+| **Implemented** | 15 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 305 |
+| **Pending (implementation)** | 304 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-014 (🔄 active):** Create root `CONTRIBUTING.md` covering: branch naming (`feat/`, `fix/`, `chore/`, `docs/`), conventional commits with scope (P-005), PR template (description, testing, screenshots, changeset), code style (TECH_STACK + AGENTS no-throw + Result contract from P-011), coverage thresholds (80/70/80/80 core), `validate()` helper (typecheck+lint+test+build), release process (changesets P-006). Mirror AGENTS.md enforced rules.
+**P-015 (🔄 active):** Verify `zod@^4.5.4` is in `packages/core` (already installed in P-009). Add a smoke test that `ConfigSchema` (P-009) parses valid input and rejects invalid input. Confirm zod 4.x compatibility with zod-to-json-schema (P-039) + `@hookform/resolvers/zod` (P-054) — both will be verified when those packages land.
 
-**Defer to P-015 (next after P-014):** core dep `zod` is already installed in P-009; this phase becomes a smoke test verification.
+**Defer to P-016 (next after P-015):** core dep `chalk` (terminal color) — for CLI use; P-202.
 
 ---
 
