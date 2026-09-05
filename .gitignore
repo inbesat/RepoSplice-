@@ -55,6 +55,7 @@ sandbox-tmp/
 # Bun runtime
 .bun/
 
-# Test fixture directories (P-021 depcruise, P-022 circular)
+# Test fixture directories (P-021 depcruise, P-022 circular, P-023 license)
 **/.depcruise-fixture/
 **/.circular-fixture/
+**/.license-fixture/
