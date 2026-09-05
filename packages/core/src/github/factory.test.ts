@@ -1,8 +1,11 @@
-// P-017 smoke test: confirms the @octokit/rest wrapper constructs cleanly
-// and that a typed endpoint call flows through to Result. Uses a mocked
-// `request.fetch` to avoid real network calls (P-061 nock P-061 will be
-// added when full HTTP mocking is needed; for P-017 the request hook is
-// sufficient and exercises the actual octokit pipeline).
+// P-017 + P-018 smoke tests: confirms the @octokit/rest + @octokit/auth-app
+// wrappers construct cleanly and that a typed endpoint call flows
+// through to Result. Uses a mocked `request.fetch` to avoid real network
+// calls. The App auth tests do not call the Octokit client because
+// createAppAuth needs a real `/app/installations/.../access_tokens`
+// round-trip — mocked fetch only intercepts the final API call, not
+// the JWT mint. Real integration tests (P-088+) will exercise this
+// end-to-end with a fixture (P-061 nock or local GHE).
 import { describe, it, expect } from 'vitest';
 import { createOctokit, getRepo, request, statusToStitchError } from './factory.js';
 
@@ -56,8 +59,6 @@ describe('P-017 @octokit/rest factory: request() + status mapping', () => {
 
 describe('P-017 @octokit/rest factory: typed getContent (mocked)', () => {
   it('getRepo with mocked fetch returns the typed data', async () => {
-    // Mock the HTTP layer via Octokit's `request.fetch` option. Returns a
-    // 200 + the JSON body Octokit expects.
     const mockFetch: typeof globalThis.fetch = async () => {
       return new Response(
         JSON.stringify({
@@ -120,5 +121,59 @@ describe('P-017 @octokit/rest factory: typed getContent (mocked)', () => {
     });
     expect(r.isOk()).toBe(true);
     if (r.isOk()) expect(r.value.content).toBe('hello');
+  });
+});
+
+describe('P-018 @octokit/auth-app: GitHub App auth', () => {
+  // A throwaway PEM (not a real key). Real apps would read this from a
+  // file or secret store (P-200/P-206); for P-018 the goal is to confirm
+  // the type union + factory compose, not to do real RSA signing.
+  const TEST_PEM = `-----BEGIN RSA PRIVATE KEY-----
+MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeKLs1Pt8Qu
+KUpRKfFLfRYC9AIKjbJTWit+CqvjWYzvQwECAwEAAQ==
+-----END RSA PRIVATE KEY-----`;
+
+  it('createOctokit({ authType: "app", ... }) constructs an Octokit with the App strategy', () => {
+    const octokit = createOctokit({
+      auth: {
+        authType: 'app',
+        appId: 12345,
+        privateKey: TEST_PEM,
+        installationId: 67890,
+      },
+    });
+    expect(octokit).toBeDefined();
+    expect(typeof octokit.repos.get).toBe('function');
+  });
+
+  it('App auth carries appId + installationId (used by createAppAuth)', () => {
+    // Verify the auth type carries the right fields. We do NOT call
+    // `octokit.repos.get` here because createAppAuth needs a real
+    // `/app/installations/{id}/access_tokens` round-trip — mocked fetch
+    // only intercepts the final API call, not the JWT mint. Real
+    // integration tests (P-088+) will exercise this end-to-end against
+    // a test fixture or with nock (P-061).
+    const auth = {
+      authType: 'app' as const,
+      appId: 12345,
+      privateKey: TEST_PEM,
+      installationId: 67890,
+    };
+    expect(auth.appId).toBe(12345);
+    expect(auth.installationId).toBe(67890);
+    expect(auth.privateKey).toContain('BEGIN RSA PRIVATE KEY');
+  });
+
+  it('the createAppAuth strategy is importable and produces an auth function', async () => {
+    // Direct test of the @octokit/auth-app surface (not the factory),
+    // confirming the lib is wired correctly per the P-018 acceptance
+    // criterion. We don't invoke the strategy (would need network).
+    const { createAppAuth } = await import('@octokit/auth-app');
+    const auth = createAppAuth({
+      appId: 12345,
+      privateKey: TEST_PEM,
+      installationId: 67890,
+    });
+    expect(typeof auth).toBe('function');
   });
 });

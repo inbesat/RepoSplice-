@@ -12,6 +12,7 @@
 //   - P-018 (next): adds `authType: 'app'` with createAppAuth
 
 import { Octokit } from '@octokit/rest';
+import { createAppAuth } from '@octokit/auth-app';
 import { ok, err, ResultAsync } from 'neverthrow';
 import { fromInternalPromise, type StitchError } from '../result/index.js';
 
@@ -20,7 +21,17 @@ export interface OctokitPatAuth {
   token: string;
 }
 
-export type OctokitAuth = OctokitPatAuth;
+export interface OctokitAppAuth {
+  authType: 'app';
+  /** GitHub App ID (P-009 already validates this is set when authType='app'). */
+  appId: number;
+  /** PEM-encoded RSA private key for the App. */
+  privateKey: string;
+  /** Installation ID whose token we want. */
+  installationId: number;
+}
+
+export type OctokitAuth = OctokitPatAuth | OctokitAppAuth;
 
 export interface OctokitFactoryOptions {
   auth: OctokitAuth;
@@ -54,6 +65,15 @@ export function createOctokit(opts: OctokitFactoryOptions): Octokit {
   };
   if (auth.authType === 'pat') {
     octokitOptions.auth = auth.token;
+  } else {
+    // GitHub App flow: @octokit/auth-app mints installation tokens
+    // automatically. The private key never leaves this process.
+    octokitOptions.authStrategy = createAppAuth;
+    octokitOptions.auth = {
+      appId: auth.appId,
+      privateKey: auth.privateKey,
+      installationId: auth.installationId,
+    };
   }
   return new Octokit(octokitOptions as ConstructorParameters<typeof Octokit>[0]);
 }
