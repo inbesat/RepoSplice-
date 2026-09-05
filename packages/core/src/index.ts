@@ -53,3 +53,18 @@ export {
   STITCH_ERROR_CODES,
 } from './result/index.js';
 export type { Ok, Err, ResultType, StitchError, StitchErrorCode } from './result/index.js';
+
+export {
+  monotonicId,
+  shortId,
+  longId,
+  _resetIdCountersForTests,
+  toPosix,
+  normalizePath,
+  trimTrailingSep,
+  resolveWithin,
+  safeJoin,
+  buildIgnoreMatcher,
+  shouldIgnore,
+} from './util/index.js';
+export type { IgnoreMatcher, BuildIgnoreMatcherOptions } from './util/index.js';

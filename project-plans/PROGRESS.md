@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-012 — Core Util Helpers (in progress)
+**Current Phase:** P-013 — ARCHITECTURE.md update (in progress)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 12 |
+| **Implemented** | 13 |
 | **Active** | 1 |
 | **Blocked** | 0 |
-| **Pending (implementation)** | 307 |
+| **Pending (implementation)** | 306 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-012 (🔄 active):** Create `packages/core/src/util/{id,paths,ignore}.ts`. `id.ts`: nanoid + monotonic `job_<ts>_<seq>` (P-239 queue). `paths.ts`: `safeJoin`/`resolveWithin` rejecting `..` escapes (P-205). `ignore.ts`: `buildIgnoreMatcher` wrapping picomatch (P-036) for tree scans (P-103). Use Result (P-011) for `resolveWithin`. Tests: id unique/monotonic, safeJoin escape rejection, Windows path normalize, ignore matcher + negation + dir scoping.
+**P-013 (🔄 active):** Update `project-plans/ARCHITECTURE.md` to reflect modules already implemented: `config/`, `logger/`, `result/`, `util/` (id, paths, ignore). Document Result (P-011) + config (P-009) conventions and SECURITY placement. Mark waves/phases that have shipped.
 
-**Defer to P-013 (next after P-012):** ARCHITECTURE.md update.
+**Defer to P-014 (next after P-013):** CONTRIBUTING.md (or equivalent contributor guide; check spec for exact file).
 
 ---
 
