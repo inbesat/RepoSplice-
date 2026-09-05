@@ -27,6 +27,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "nanoid": "^6.0.1",
     "neverthrow": "^8.2.0",
     "picomatch": "^4.0.7",
