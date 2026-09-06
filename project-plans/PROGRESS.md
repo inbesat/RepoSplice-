@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-028 — core dep: @anthropic-ai/sdk (awaiting go-ahead)
+**Current Phase:** P-029 — core dep: dockerode (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 28 |
+| **Implemented** | 29 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 291 |
+| **Pending (implementation)** | 290 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -60,7 +60,7 @@
 - [x] **P-025** core: `spdx-correct`
 - [x] **P-026** core: `spdx-license-list`
 - [x] **P-027** core: `openai`
-- [ ] **P-028** core: `@anthropic-ai/sdk`
+- [x] **P-028** core: `@anthropic-ai/sdk`
 - [ ] **P-029** core: `dockerode`
 - [ ] **P-030** core: `bun:sqlite` (native)
 - [ ] **P-031** core: `p-limit`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-028 (⏳ next, awaiting go-ahead):** Add `@anthropic-ai/sdk` to `packages/core` for native Claude access (tool-use blocks, streaming). Wraps the `Anthropic` constructor and re-exports the SDK errors for the P-133 `AnthropicProvider` to compose. Mirror of P-027's wrapper pattern but for Anthropic's non-OpenAI-compatible protocol.
+**P-029 (⏳ next, awaiting go-ahead):** Add `dockerode` + `@types/dockerode` to `packages/core` — programmatic Docker management for the sandbox (P-168–P-180): build/run ephemeral per-ecosystem images, install deps, run build/tests, capture logs, apply limits/timeout, clean up. Typed client with graceful degradation when Docker is unavailable (P-168 fallback to GH Actions P-178). Mocked `docker.ping()` smoke test (no real daemon needed).
 
-**Defer to P-029 (next after P-028):** core dep `dockerode` (sandbox runner for P-177/P-198).
+**Defer to P-030 (next after P-029):** `bun:sqlite` native storage (no install — Bun built-in).
 
 ---
 

@@ -106,27 +106,24 @@ export { normalizeLicense, UNKNOWN_LICENSE } from './license/normalize.js';
 export { lookupLicense, isKnown, size as spdxRegistrySize } from './license/spdxIndex.js';
 export type { LicenseInfo } from './license/spdxIndex.js';
 
-export {
-  createOpenAICompatible,
-  resolveBaseURL,
-  DEFAULT_BASE_URLS,
-  OpenAI,
-  APIError,
-  APIConnectionError,
-  APIConnectionTimeoutError,
-  AuthenticationError,
-  BadRequestError,
-  ConflictError,
-  InternalServerError,
-  NotFoundError,
-  PermissionDeniedError,
-  RateLimitError,
-  UnprocessableEntityError,
-  APIPromise,
-} from './ai/openai.js';
+export { createOpenAICompatible, resolveBaseURL, DEFAULT_BASE_URLS, OpenAI } from './ai/openai.js';
 export type {
   OpenAICompatibleProvider,
   OpenAICompatibleOptions,
   OpenAICompatibleClient,
   ClientOptions,
 } from './ai/openai.js';
+
+export {
+  createAnthropicClient,
+  resolveAnthropicBaseURL,
+  ANTHROPIC_DEFAULT_BASE_URL,
+  ANTHROPIC_DEFAULT_BASE_URLS,
+  Anthropic,
+  AnthropicError,
+} from './ai/anthropic.js';
+export type {
+  AnthropicProviderId,
+  AnthropicClientOptions,
+  AnthropicClient,
+} from './ai/anthropic.js';
