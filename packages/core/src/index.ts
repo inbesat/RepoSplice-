@@ -66,8 +66,16 @@ export {
   safeJoin,
   buildIgnoreMatcher,
   shouldIgnore,
+  createLimiter,
+  withLimit,
+  mapLimit,
 } from './util/index.js';
-export type { IgnoreMatcher, BuildIgnoreMatcherOptions } from './util/index.js';
+export type {
+  IgnoreMatcher,
+  BuildIgnoreMatcherOptions,
+  Limiter,
+  LimitedTask,
+} from './util/index.js';
 
 export {
   createGit,

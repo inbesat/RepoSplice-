@@ -6,3 +6,5 @@ export {
   type IgnoreMatcher,
   type BuildIgnoreMatcherOptions,
 } from './ignore.js';
+export { createLimiter, withLimit, mapLimit } from './limit.js';
+export type { Limiter, LimitedTask } from './limit.js';

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-031 — core dep: p-limit (awaiting go-ahead)
+**Current Phase:** P-032 — core dep: yaml (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 31 |
+| **Implemented** | 32 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 288 |
+| **Pending (implementation)** | 287 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -63,7 +63,7 @@
 - [x] **P-028** core: `@anthropic-ai/sdk`
 - [x] **P-029** core: `dockerode`
 - [x] **P-030** core: `bun:sqlite` (native)
-- [ ] **P-031** core: `p-limit`
+- [x] **P-031** core: `p-limit`
 - [ ] **P-032** core: `yaml`
 - [ ] **P-033** core: `ini`
 - [ ] **P-034** core: `glob`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-031 (⏳ next, awaiting go-ahead):** `p-limit` concurrency limiter for parallel sandbox/AI calls (P-168 fan-out, P-140 tool-loop). Wrap as `createLimiter(n)` with Result-typed throttle plus queue-depth introspection for the P-138 retry/backoff layer. Mocked smoke test (no real concurrency needed).
+**P-032 (⏳ next, awaiting go-ahead):** `yaml` parsing/serialization for manifests (docker-compose.yml, workflows, stitch manifests). Wrap in `util/yaml.ts`: `parseYaml<T>(text)` / `stringifyYaml` with `Result` on syntax errors; verify comment-preserving `Document` API typechecks. Smoke: parse workflows fixture, round-trip preserves keys, malformed input errors.
 
-**Defer to P-032 (next after P-031):** core dep `yaml` (config file parsing).
+**Defer to P-033 (next after P-032):** core dep `ini` (INI parsing for legacy configs).
 
 ---
 
