@@ -127,3 +127,11 @@ export type {
   AnthropicClientOptions,
   AnthropicClient,
 } from './ai/anthropic.js';
+
+export { createDockerClient, pingDocker, defaultDockerSocket } from './sandbox/docker.js';
+export type {
+  DockerPingable,
+  DockerClientOptions,
+  DockerSandboxClient,
+  DockerReachability,
+} from './sandbox/docker.js';
