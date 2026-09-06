@@ -14,3 +14,5 @@ export { parseIni, stringifyIni } from './ini.js';
 export type { IniValue } from './ini.js';
 export { listFiles } from './glob.js';
 export type { ListFilesOptions } from './glob.js';
+export { ensureDir, emptyDir, removePath, pathExists, copyTree, movePath } from './fs.js';
+export type { CopyMoveOptions } from './fs.js';

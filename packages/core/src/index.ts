@@ -77,6 +77,12 @@ export {
   parseIni,
   stringifyIni,
   listFiles,
+  ensureDir,
+  emptyDir,
+  removePath,
+  pathExists,
+  copyTree,
+  movePath,
 } from './util/index.js';
 export type {
   IgnoreMatcher,
@@ -88,6 +94,7 @@ export type {
   ToStringOptions,
   IniValue,
   ListFilesOptions,
+  CopyMoveOptions,
 } from './util/index.js';
 
 export {
