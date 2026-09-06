@@ -74,6 +74,8 @@ export {
   stringifyYaml,
   Document,
   YAMLError,
+  parseIni,
+  stringifyIni,
 } from './util/index.js';
 export type {
   IgnoreMatcher,
@@ -83,6 +85,7 @@ export type {
   ParseOptions,
   DocumentOptions,
   ToStringOptions,
+  IniValue,
 } from './util/index.js';
 
 export {
