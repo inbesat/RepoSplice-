@@ -6,6 +6,13 @@
 // accept the risk: the codebase never produces structures deeper than ~4 in
 // practice (e.g. `config.github.auth.token`), but we cap at 8 for defense in
 // depth.
+//
+// Header names need two spellings: plain identifiers (`authorization`) expand
+// with dots, while dashed names (`x-api-key`, the Anthropic header) need
+// fast-redact bracket segments (`*["x-api-key"]`, verified empirically).
+// Both cases of `authorization` are covered (fetch Headers are
+// case-insensitive; logged plain objects are not). Non-sensitive siblings
+// (e.g. `content-type`) are deliberately NOT matched.
 const MAX_DEPTH = 8;
 
 const SENSITIVE_FIELDS = [
@@ -18,7 +25,13 @@ const SENSITIVE_FIELDS = [
   'refreshToken',
   'webhookSecret',
   'signingKey',
+  'authorization',
+  'Authorization',
+  'cookie',
 ] as const;
+
+// Dashed names cannot use dot segments; they need ["..."] leaves.
+const SENSITIVE_BRACKETED = ['x-api-key'] as const;
 
 const LITERAL_PATHS = [
   'github.auth.token',
@@ -36,6 +49,12 @@ function buildPaths(): string[] {
       const segs = Array<string>(depth).fill('*');
       segs.push(field);
       out.push(segs.join('.'));
+    }
+  }
+  for (const field of SENSITIVE_BRACKETED) {
+    out.push(`["${field}"]`);
+    for (let depth = 1; depth <= MAX_DEPTH; depth++) {
+      out.push(`${Array<string>(depth).fill('*').join('.')}["${field}"]`);
     }
   }
   out.push(...LITERAL_PATHS);

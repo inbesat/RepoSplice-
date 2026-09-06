@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { Writable } from 'node:stream';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { pino, type Logger } from 'pino';
 import { redactPaths } from './redact.js';
 import { createJobLogger } from './index.js';
@@ -112,6 +116,46 @@ describe('logger redaction (P-010)', () => {
   });
 });
 
+describe('logger header redaction (P-037)', () => {
+  it('redacts headers.authorization (either case)', () => {
+    const { logger, sink } = buildTestLogger();
+    logger.info({
+      headers: { authorization: 'Bearer SECRET-A', Authorization: 'Bearer SECRET-B' },
+    });
+    const out = sink.text();
+    expect(out).not.toContain('SECRET-A');
+    expect(out).not.toContain('SECRET-B');
+    expect(out).toContain('[REDACTED]');
+  });
+
+  it('redacts nested authorization at depth', () => {
+    const { logger, sink } = buildTestLogger();
+    logger.info({ req: { headers: { authorization: 'Bearer DEEP' } } });
+    const out = sink.text();
+    expect(out).not.toContain('DEEP');
+  });
+
+  it('redacts headers.cookie (session material)', () => {
+    const { logger, sink } = buildTestLogger();
+    logger.info({ headers: { cookie: 'sess=SECRET-C' } });
+    const out = sink.text();
+    expect(out).not.toContain('SECRET-C');
+  });
+
+  it('redacts the Anthropic x-api-key header (dashed name)', () => {
+    const { logger, sink } = buildTestLogger();
+    logger.info({ headers: { 'x-api-key': 'sk-ant-SECRET-D' } });
+    const out = sink.text();
+    expect(out).not.toContain('SECRET-D');
+  });
+
+  it('does not redact non-sensitive headers (no over-redaction)', () => {
+    const { logger, sink } = buildTestLogger();
+    logger.info({ headers: { 'content-type': 'application/json' } });
+    const out = sink.text();
+    expect(out).toContain('application/json');
+  });
+});
 describe('logger output format (P-010)', () => {
   it('emits JSON lines (one log per line, parseable)', () => {
     const { logger, sink } = buildTestLogger();
@@ -146,6 +190,44 @@ describe('logger output format (P-010)', () => {
   });
 });
 
+describe('pino-roll transport smoke (P-037)', () => {
+  it('rolling-file transport loads, writes JSON, and redacts secrets', async () => {
+    // pino-roll is a worker-thread transport (P-187 audit log); this
+    // smoke proves it resolves and honors our redact config end to end.
+    const dir = mkdtempSync(join(tmpdir(), 'stitch-pino-roll-'));
+    try {
+      const require = createRequire(import.meta.url);
+      const target = require.resolve('pino-roll');
+      const fileLogger = pino({
+        level: 'info',
+        redact: { paths: redactPaths, censor: '[REDACTED]' },
+        formatters: { level: (label: string) => ({ level: label }) },
+        // NOTE: pino-roll only creates the file once a rotation trigger
+        // exists — `frequency` (or `size`) is required, not optional.
+        transport: {
+          target,
+          options: { file: join(dir, 'app.log'), frequency: 'daily', mkdir: true },
+        },
+      });
+      fileLogger.info({ apiKey: 'ROLL-SECRET', msg: 'rolled' });
+      await fileLogger.flush();
+      // The transport runs in a worker thread: flush() drains pino's
+      // side, but the file may land a beat later. Poll briefly.
+      let files: string[] = [];
+      for (let i = 0; i < 50 && files.length === 0; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        files = readdirSync(dir);
+      }
+      expect(files.length).toBeGreaterThan(0);
+      const out = files.map(f => readFileSync(join(dir, f), 'utf8')).join('\n');
+      expect(out).toContain('rolled');
+      expect(out).not.toContain('ROLL-SECRET');
+      expect(out).toContain('[REDACTED]');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
 describe('createJobLogger (P-010)', () => {
   it('child logger adds jobId to all log lines', () => {
     // Build a parent logger with our redact paths and capture its output to a custom sink.

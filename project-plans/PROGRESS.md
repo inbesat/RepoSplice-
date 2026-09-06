@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-037 — core dep: pino formalize (awaiting go-ahead)
+**Current Phase:** P-038 — core dep: neverthrow formalize (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 37 |
+| **Implemented** | 38 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 282 |
+| **Pending (implementation)** | 281 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -69,7 +69,7 @@
 - [x] **P-034** core: `glob`
 - [x] **P-035** core: `fs-extra`
 - [x] **P-036** core: `picomatch`
-- [ ] **P-037** core: `pino`
+- [x] **P-037** core: `pino`
 - [ ] **P-038** core: `neverthrow`
 - [ ] **P-039** core: `zod-to-json-schema`
 - [ ] **P-040** core: `@types/node`, `vitest` dev deps
@@ -475,11 +475,13 @@
 
 ---
 
+> KNOWN FLAKE (P-037): `dependency-cruiser.smoke.test.ts` beforeAll hook (in-process `cruise()`) exceeds its 60s hookTimeout under full `test:coverage` parallel load (passes standalone ~26s and via `lint:deps`). Not caused by P-037 (no new modules in cruise surface). Future infra pass should raise the hook timeout or memoize the cruise; do NOT silence by deleting the test.
+
 ## 🚀 Next Action
 
-**P-037 (⏳ next, awaiting go-ahead):** `pino` formalize (already installed P-010 with redact paths + job logger): verify structured JSON logging, secret redaction coverage, and `createJobLogger` child bindings for the CLI progress render (P-199) and audit log (P-187). Smoke: redact paths hold, child logger carries job id.
+**P-038 (⏳ next, awaiting go-ahead):** `neverthrow` formalize (already installed P-011 with StitchError + helpers): verify ok/err chains, `fromInternalPromise` mapping, `match` exhaustiveness, and the 14-code union (incl. P-026 UNKNOWN_LICENSE). Smoke: pipeline-style andThen chain propagates typed errors without throws.
 
-**Defer to P-038 (next after P-037):** per plan sequence (check PHASES_DETAILED.md P-038).
+**Defer to P-039 (next after P-038):** per plan sequence (check PHASES_DETAILED.md P-039).
 
 ---
 
