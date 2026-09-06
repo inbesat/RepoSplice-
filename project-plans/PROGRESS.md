@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-039 — core dep: zod-to-json-schema (awaiting go-ahead)
+**Current Phase:** P-040 — core dev deps: @types/node + vitest (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 39 |
+| **Implemented** | 40 |
 | **Active** | 1 |
-| **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 280 |
+| **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
+| **Pending (implementation)** | 279 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -71,7 +71,7 @@
 - [x] **P-036** core: `picomatch`
 - [x] **P-037** core: `pino`
 - [x] **P-038** core: `neverthrow`
-- [ ] **P-039** core: `zod-to-json-schema`
+- [x] **P-039** core: `zod-to-json-schema` (resolved via native `toJSONSchema`, ADR-017)
 - [ ] **P-040** core: `@types/node`, `vitest` dev deps
 - [ ] **P-041** cli: `commander`
 - [ ] **P-042** cli: `ink` + `@inkjs/ui`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-039 (⏳ next, awaiting go-ahead):** `zod-to-json-schema` formalize (already installed P-015 with a v4-compat smoke): verify `zodToJsonSchema(schema)` typechecks on the config schema (P-009), wire into `config/jsonSchema.ts` to emit the config JSON Schema for docs/tooling. Smoke: generated schema from a small zod object yields the expected `properties`/`required`. NOTE: v4-compat blocker still open (runtime returns only `$schema`, types expect v3) — may need a version pin or adapter.
+**P-040 (⏳ next, awaiting go-ahead):** `@types/node` + `vitest` core dev deps (already at root P-004: @types/node@26.4.1, vitest@5.0.0): verify `import { describe, it, expect } from 'vitest'` typechecks in core, add a core `vitest.config.ts` with `bun:sqlite`-safe environment and coverage thresholds (P-259). Smoke: a trivial test file runs under the core project.
 
-**Defer to P-040 (next after P-039):** per plan sequence (check PHASES_DETAILED.md P-040).
+**Defer to P-041 (next after P-040):** per plan sequence (check PHASES_DETAILED.md P-041, first CLI phase — hand off to aradhy).
 
 ---
 

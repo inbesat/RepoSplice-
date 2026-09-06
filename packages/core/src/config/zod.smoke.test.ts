@@ -7,8 +7,7 @@
 // layered-merge + credential validation) with a tiny, spec-shaped
 // assertion for the dep itself.
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z, toJSONSchema } from 'zod';
 import { ConfigSchema, type Config } from './schema.js';
 
 describe('P-015 zod smoke (ConfigSchema)', () => {
@@ -75,30 +74,19 @@ describe('P-015 zod smoke (ConfigSchema)', () => {
   });
 });
 
-describe('P-015 zod v4 compatibility (zod-to-json-schema)', () => {
-  // KNOWN ISSUE (P-015): zod-to-json-schema@3.25.2 (latest as of 2026-09) is
-  // broken with zod v4. The peer-dep accepts `^3.25.28 || ^4` but the
-  // converter returns just `{"$schema": "..."}` for any v4 schema. The
-  // same test against zod v3 works correctly. Until upstream fixes this,
-  // P-039 (AI tool args as JSON Schema) has two options:
-  //   (a) downgrade zod to ^3.25.x, or
-  //   (b) use the `toJSONSchema()` method native to zod v4 (P-039 follow-up).
-  //
-  // The P-015 acceptance criterion is satisfied: zod v4 is installed, the
-  // public API works, ConfigSchema parses + rejects. Compatibility with
-  // zod-to-json-schema is documented here as a known issue, not a
-  // blocker for P-015 itself.
+describe('P-015 zod v4 compatibility (resolved P-039 via native toJSONSchema)', () => {
+  // RESOLVED P-039 (ADR-017): zod-to-json-schema@3.25.2 never supported zod
+  // v4 (returned just `{"$schema": "..."}` for any v4 schema), so the package
+  // was removed and conversion uses zod v4's native `toJSONSchema` instead.
+  // Downgrading zod to v3 was rejected: schema.ts relies on the v4 API
+  // (`z.url()`), and every config consumer already targets v4.
 
-  it('KNOWN ISSUE: zod-to-json-schema@3.25.2 does not yet support zod v4 (P-039 follow-up)', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const inner: any = z.string();
-    const json = zodToJsonSchema(inner);
-    // The output should be a JSON Schema fragment; on zod v4 it is just
-    // the $schema marker, indicating the converter sees the schema as empty.
+  it('native toJSONSchema converts a zod v4 string schema', () => {
+    const json = toJSONSchema(z.string());
     const str = JSON.stringify(json);
     expect(str).toContain('$schema');
-    // Document that this is the broken state — once upstream fixes, this
-    // assertion will need to assert `type: "string"` instead.
-    expect(str).not.toContain('"type"');
+    // The assertion the old KNOWN-ISSUE comment anticipated: the converter
+    // now sees the schema instead of an empty object.
+    expect(str).toContain('"type":"string"');
   });
 });

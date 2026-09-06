@@ -409,4 +409,30 @@
 
 ---
 
+## ADR-017: JSON Schema via Zod v4 Native `toJSONSchema`, Drop `zod-to-json-schema`
+
+**Status:** Accepted
+**Date:** 2026-09-06
+
+**Context:** P-039 needs JSON Schema emission from Zod schemas (config schema for tooling/docs, AI tool args in P-139, I/O validation in P-297/298). `zod-to-json-schema@3.25.2` was installed at root in P-015, but P-015 proved empirically it does not support zod v4 schemas (returns just `{"$schema"}`); its peer range claims `^4` compat but conversion is empty. P-015 named P-039 as the follow-up with two options: (a) downgrade zod to v3, or (b) use zod v4's native converter.
+
+**Decision:**
+- Use zod v4's native `toJSONSchema()` (verified: preserves enums, `format: uri` for `z.url()`, full required lists on ConfigSchema).
+- Add `configJsonSchema()` in `packages/core/src/config/jsonSchema.ts`, exported via the core barrel.
+- Remove the broken `zod-to-json-schema` root devDependency (dead weight); do NOT add it to core.
+- Update the P-015 KNOWN-ISSUE test to assert the resolved state.
+
+**Alternatives Considered:**
+- **Downgrade zod to ^3.25.x** — rejected: `schema.ts` uses the v4 API (`z.url()`), all config tests assert v4 behavior; ripple across every current and future zod consumer for the sake of one adapter package.
+- **Keep the package installed but unused** — rejected: dead dependency that will confuse P-139/P-297 implementers into importing a silently-broken converter.
+- **Vendor a fork/patch of zod-to-json-schema** — rejected: upstream may fix v4 support later; until then native covers all needs with zero extra deps.
+
+**Consequences:**
+- ✅ Working JSON Schema path with no new dependency.
+- ✅ P-139/P-297/P-298 have a proven pattern (`toJSONSchema` on any schema).
+- ⚠️ If a future consumer needs a JSON Schema draft older than 2020-12, native output targets 2020-12 only — revisit then.
+- ⚠️ P-015's smoke file now asserts the fixed behavior; the old broken-state assertions are gone (history preserved in git).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
