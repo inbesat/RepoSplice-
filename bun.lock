@@ -29,8 +29,12 @@
     "packages/cli": {
       "name": "@repo-stitcher/cli",
       "version": "0.0.0",
+      "bin": {
+        "stitch": "./src/index.ts",
+      },
       "dependencies": {
         "@repo-stitcher/core": "workspace:*",
+        "commander": "15.0.0",
       },
     },
     "packages/core": {

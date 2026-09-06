@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-041 — CLI dep: commander (awaiting go-ahead)
+**Current Phase:** P-042 — CLI dep: ink + @inkjs/ui (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 41 |
+| **Implemented** | 42 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 278 |
+| **Pending (implementation)** | 277 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -73,7 +73,7 @@
 - [x] **P-038** core: `neverthrow`
 - [x] **P-039** core: `zod-to-json-schema` (resolved via native `toJSONSchema`, ADR-017)
 - [x] **P-040** core: `@types/node`, `vitest` dev deps (verify root-hoisted, no dup)
-- [ ] **P-041** cli: `commander`
+- [x] **P-041** cli: `commander` (root program + status scaffold, 4 tests)
 - [ ] **P-042** cli: `ink` + `@inkjs/ui`
 - [ ] **P-043** cli: `elysia`
 - [ ] **P-044** cli: `picocolors`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-041 (⏳ next, awaiting go-ahead):** `commander` in `packages/cli` (first CLI phase — owner aradhy): typed Command/program, root `stitch` program (P-189), `--help` + options parse. Smoke: parses subcommand options. NOTE: use `bun add commander --cwd packages/cli` (the `--filter` flag matches nothing on Bun 1.3.11 — see P-040).
+**P-042 (⏳ next, awaiting go-ahead):** `ink` + `@inkjs/ui` in `packages/cli` (+ `react`/`react-dom` peers per ink docs): `render`/`Text`/`useInput`/`useApp` typecheck. Smoke: renders a static element. NOTE: `bun add --cwd packages/cli` (never `--filter`); React 19 vs ink compat must be checked at install time.
 
-**Defer to P-042 (next after P-041):** per plan sequence (check PHASES_DETAILED.md P-042, ink + @inkjs/ui).
+**Defer to P-043 (next after P-042):** per plan sequence (check PHASES_DETAILED.md P-043).
 
 ---
 

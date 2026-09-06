@@ -31,7 +31,8 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@repo-stitcher/core": "workspace:*"
+    "@repo-stitcher/core": "workspace:*",
+    "commander": "15.0.0"
   },
   "devDependencies": {}
 }
