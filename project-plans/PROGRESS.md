@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-027 — core dep: openai (awaiting go-ahead)
+**Current Phase:** P-028 — core dep: @anthropic-ai/sdk (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 27 |
+| **Implemented** | 28 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 292 |
+| **Pending (implementation)** | 291 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -59,7 +59,7 @@
 - [ ] **P-024** core: `spdx-expression-parse`
 - [x] **P-025** core: `spdx-correct`
 - [x] **P-026** core: `spdx-license-list`
-- [ ] **P-027** core: `openai` (OpenRouter/OpenAI/Ollama client)
+- [x] **P-027** core: `openai`
 - [ ] **P-028** core: `@anthropic-ai/sdk`
 - [ ] **P-029** core: `dockerode`
 - [ ] **P-030** core: `bun:sqlite` (native)
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-027 (⏳ next, awaiting go-ahead):** Add `openai` to `packages/core` as the universal AI client (OpenRouter + OpenAI + Ollama all use the OpenAI-compatible protocol). Create `packages/core/src/ai/openai.ts` exposing `createOpenAICompatible(opts) → Result<ChatProvider, StitchError>` plus the shared `ChatMessage`/`ToolSchema`/`ChatResponse`/`TokenUsage` types (P-131 contract). Used by agent loop P-140, streaming P-136.
+**P-028 (⏳ next, awaiting go-ahead):** Add `@anthropic-ai/sdk` to `packages/core` for native Claude access (tool-use blocks, streaming). Wraps the `Anthropic` constructor and re-exports the SDK errors for the P-133 `AnthropicProvider` to compose. Mirror of P-027's wrapper pattern but for Anthropic's non-OpenAI-compatible protocol.
 
-**Defer to P-028 (next after P-027):** core dep `@anthropic-ai/sdk` (Anthropic provider — separate SDK, not OpenAI-compatible).
+**Defer to P-029 (next after P-028):** core dep `dockerode` (sandbox runner for P-177/P-198).
 
 ---
 
