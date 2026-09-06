@@ -11,10 +11,15 @@ import {
 } from 'neverthrow';
 import {
   match,
+  ok as bok,
+  err as berr,
+  okAsync as bokAsync,
+  fromPromise as bfromPromise,
   stitchOk,
   stitchErr,
   fromInternalPromise,
   STITCH_ERROR_CODES,
+  type ResultType,
   type StitchError,
   type StitchErrorCode,
 } from '../index.js';
@@ -188,6 +193,52 @@ describe('match: exhaustive handling', () => {
     const f2: string = match(r2, { onOk: n => n.toString(), onErr: () => 'e' });
     expect(typeof f1).toBe('string');
     expect(typeof f2).toBe('string');
+  });
+});
+
+describe('P-038 neverthrow formalize: barrel is the single source of truth', () => {
+  it('chain', () => {
+    // Pipeline-style andThen chain propagates typed errors as values — no throws.
+    // Primitives come from the P-011 barrel, not 'neverthrow' directly.
+    const parse = (s: string): ResultType<string, StitchError> =>
+      s.length > 0
+        ? bok<string, StitchError>(s)
+        : berr({ code: 'CONFIG_ERROR' as const, field: 'input', message: 'empty' });
+    const exclaim = (s: string) => bok<string, StitchError>(`${s}!`);
+
+    const good = parse('hi')
+      .andThen(exclaim)
+      .map(s => s.length);
+    expect(good.isOk()).toBe(true);
+    if (good.isOk()) expect(good.value).toBe(3);
+
+    const bad = parse('')
+      .andThen(exclaim)
+      .map(s => s.length);
+    expect(bad.isErr()).toBe(true);
+    if (bad.isErr()) expect(bad.error.code).toBe('CONFIG_ERROR');
+    // Downstream steps never ran (short-circuit), match handles both branches.
+    const rendered = match(bad, { onOk: () => 'ok', onErr: e => e.code });
+    expect(rendered).toBe('CONFIG_ERROR');
+  });
+
+  it('async frompromise', async () => {
+    const doubled = await bfromPromise(Promise.resolve(21), () => ({
+      code: 'INTERNAL' as const,
+      message: 'unreached',
+    })).andThen(n => bokAsync<number, StitchError>(n * 2));
+    expect(doubled.isOk()).toBe(true);
+    if (doubled.isOk()) expect(doubled.value).toBe(42);
+
+    const failing = new Promise<number>((_, reject) => {
+      setTimeout(() => reject(new Error('down')), 0);
+    });
+    const mapped = await bfromPromise(failing, e => ({
+      code: 'INTERNAL' as const,
+      message: `async: ${(e as Error).message}`,
+    }));
+    expect(mapped.isErr()).toBe(true);
+    if (mapped.isErr()) expect(mapped.error.message).toBe('async: down');
   });
 });
 

@@ -191,6 +191,9 @@ describe('logger output format (P-010)', () => {
 });
 
 describe('pino-roll transport smoke (P-037)', () => {
+  // Explicit 15s budget: the transport spawns a worker thread, and under
+  // full-suite parallel load worker startup alone can exceed vitest's 5s
+  // default (P-038 gate flake). The poll loop below is still capped at 5s.
   it('rolling-file transport loads, writes JSON, and redacts secrets', async () => {
     // pino-roll is a worker-thread transport (P-187 audit log); this
     // smoke proves it resolves and honors our redact config end to end.
@@ -226,7 +229,7 @@ describe('pino-roll transport smoke (P-037)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }, 15000);
 });
 describe('createJobLogger (P-010)', () => {
   it('child logger adds jobId to all log lines', () => {

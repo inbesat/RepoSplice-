@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-038 — core dep: neverthrow formalize (awaiting go-ahead)
+**Current Phase:** P-039 — core dep: zod-to-json-schema (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 38 |
+| **Implemented** | 39 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 281 |
+| **Pending (implementation)** | 280 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -70,7 +70,7 @@
 - [x] **P-035** core: `fs-extra`
 - [x] **P-036** core: `picomatch`
 - [x] **P-037** core: `pino`
-- [ ] **P-038** core: `neverthrow`
+- [x] **P-038** core: `neverthrow`
 - [ ] **P-039** core: `zod-to-json-schema`
 - [ ] **P-040** core: `@types/node`, `vitest` dev deps
 - [ ] **P-041** cli: `commander`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-038 (⏳ next, awaiting go-ahead):** `neverthrow` formalize (already installed P-011 with StitchError + helpers): verify ok/err chains, `fromInternalPromise` mapping, `match` exhaustiveness, and the 14-code union (incl. P-026 UNKNOWN_LICENSE). Smoke: pipeline-style andThen chain propagates typed errors without throws.
+**P-039 (⏳ next, awaiting go-ahead):** `zod-to-json-schema` formalize (already installed P-015 with a v4-compat smoke): verify `zodToJsonSchema(schema)` typechecks on the config schema (P-009), wire into `config/jsonSchema.ts` to emit the config JSON Schema for docs/tooling. Smoke: generated schema from a small zod object yields the expected `properties`/`required`. NOTE: v4-compat blocker still open (runtime returns only `$schema`, types expect v3) — may need a version pin or adapter.
 
-**Defer to P-039 (next after P-038):** per plan sequence (check PHASES_DETAILED.md P-039).
+**Defer to P-040 (next after P-039):** per plan sequence (check PHASES_DETAILED.md P-040).
 
 ---
 
