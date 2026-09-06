@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-026 — core dep: spdx-license-list (awaiting go-ahead)
+**Current Phase:** P-027 — core dep: openai (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 26 |
+| **Implemented** | 27 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 293 |
+| **Pending (implementation)** | 292 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -57,8 +57,8 @@
 - [ ] **P-022** core: `madge`
 - [ ] **P-023** core: `license-checker`
 - [ ] **P-024** core: `spdx-expression-parse`
-- [ ] **P-025** core: `spdx-correct`
-- [ ] **P-026** core: `spdx-license-list`
+- [x] **P-025** core: `spdx-correct`
+- [x] **P-026** core: `spdx-license-list`
 - [ ] **P-027** core: `openai` (OpenRouter/OpenAI/Ollama client)
 - [ ] **P-028** core: `@anthropic-ai/sdk`
 - [ ] **P-029** core: `dockerode`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-026 (⏳ next, awaiting go-ahead):** Add `spdx-license-list` to `packages/core` (offline SPDX registry: id → name/url/osiApproved/fsfLibre). Create `packages/core/src/license/spdxIndex.ts` exposing `lookupLicense(id)` → `Result<LicenseInfo>` and `isKnown(id)` (per P-011) — the reference source for validating P-025 corrected ids, the P-120 compatibility matrix, NOTICE generation (P-126), and SBOM (P-183). Offline data keeps licensing usable in privacy/offline mode (P-301).
+**P-027 (⏳ next, awaiting go-ahead):** Add `openai` to `packages/core` as the universal AI client (OpenRouter + OpenAI + Ollama all use the OpenAI-compatible protocol). Create `packages/core/src/ai/openai.ts` exposing `createOpenAICompatible(opts) → Result<ChatProvider, StitchError>` plus the shared `ChatMessage`/`ToolSchema`/`ChatResponse`/`TokenUsage` types (P-131 contract). Used by agent loop P-140, streaming P-136.
 
-**Defer to P-027 (next after P-026):** core dep `openai` (OpenRouter/Ollama universal client).
+**Defer to P-028 (next after P-027):** core dep `@anthropic-ai/sdk` (Anthropic provider — separate SDK, not OpenAI-compatible).
 
 ---
 

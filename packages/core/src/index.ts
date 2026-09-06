@@ -103,3 +103,5 @@ export { parseExpr, collectLicenses } from './license/expr.js';
 export type { LicenseExpr } from './license/expr.js';
 
 export { normalizeLicense, UNKNOWN_LICENSE } from './license/normalize.js';
+export { lookupLicense, isKnown, size as spdxRegistrySize } from './license/spdxIndex.js';
+export type { LicenseInfo } from './license/spdxIndex.js';

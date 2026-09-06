@@ -58,7 +58,8 @@ export type StitchError =
   | { code: 'INTERNAL'; message: string; cause?: Error }
   | { code: 'AUTH_ERROR'; provider: string; message: string }
   | { code: 'COST_LIMIT'; provider: string; spentUsd: number; limitUsd: number }
-  | { code: 'COMPLIANCE_VIOLATION'; rule: string; message: string };
+  | { code: 'COMPLIANCE_VIOLATION'; rule: string; message: string }
+  | { code: 'UNKNOWN_LICENSE'; id: string };
 
 export type StitchErrorCode = StitchError['code'];
 
@@ -77,6 +78,7 @@ export const STITCH_ERROR_CODES = [
   'AUTH_ERROR',
   'COST_LIMIT',
   'COMPLIANCE_VIOLATION',
+  'UNKNOWN_LICENSE',
 ] as const satisfies readonly StitchErrorCode[];
 
 /** Factory: ok with a known stitch error type. */
