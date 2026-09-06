@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-036 — core dep: picomatch formalize (awaiting go-ahead)
+**Current Phase:** P-037 — core dep: pino formalize (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 36 |
+| **Implemented** | 37 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 283 |
+| **Pending (implementation)** | 282 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -68,7 +68,7 @@
 - [x] **P-033** core: `ini`
 - [x] **P-034** core: `glob`
 - [x] **P-035** core: `fs-extra`
-- [ ] **P-036** core: `picomatch`
+- [x] **P-036** core: `picomatch`
 - [ ] **P-037** core: `pino`
 - [ ] **P-038** core: `neverthrow`
 - [ ] **P-039** core: `zod-to-json-schema`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-036 (⏳ next, awaiting go-ahead):** `picomatch` formalize (already installed P-012 for the ignore matcher): verify `picomatch(patterns, { dot, ignore })` typechecks via the existing `src/types/picomatch.d.ts` shim, extend `util/ignore.ts` coverage for `.gitignore` parsing (P-083) and scan filtering (P-103/P-163). Smoke: gitignore-style patterns match, negations work.
+**P-037 (⏳ next, awaiting go-ahead):** `pino` formalize (already installed P-010 with redact paths + job logger): verify structured JSON logging, secret redaction coverage, and `createJobLogger` child bindings for the CLI progress render (P-199) and audit log (P-187). Smoke: redact paths hold, child logger carries job id.
 
-**Defer to P-037 (next after P-036):** per plan sequence (check PHASES_DETAILED.md P-037).
+**Defer to P-038 (next after P-037):** per plan sequence (check PHASES_DETAILED.md P-038).
 
 ---
 

@@ -26,10 +26,19 @@ export interface BuildIgnoreMatcherOptions {
 /**
  * Build a `.gitignore`-style matcher from a list of patterns. Wraps
  * `picomatch` (the same engine npm/yarn use for their ignore logic)
- * and adds our own .gitignore semantics (negation + dir-scoping).
+ * and adds true .gitignore semantics on top:
+ *
+ * - Last match wins (a later `!negation` re-includes; a later positive
+ *   pattern re-excludes). Raw picomatch arrays are union-only, so the
+ *   ordering is evaluated here, per pattern, in list order.
+ * - Trailing-slash dir patterns (`dist/`) expand to match contents.
+ * - Bare names (`node_modules`) match the entry itself at any depth
+ *   plus everything under it.
+ * - File-extension patterns (`*.log`) match at any depth.
+ * - Patterns already containing a `/` pass through verbatim.
  *
  * Pattern syntax matches .gitignore:
- *   node_modules    - matches any path with that segment (auto-prefixed "**"+"/")
+ *   node_modules    - matches that entry + subtree at any depth
  *   star.log         - matches any file ending in .log at any depth
  *   dist/double-star - matches anything under dist/
  *   bang.keep.log    - negation: re-include a previously-excluded path
@@ -44,36 +53,46 @@ export function buildIgnoreMatcher(
   const { gitignore = true, negated = false } = options;
   const baseDir = options.baseDir !== undefined ? toPosix(options.baseDir) : undefined;
 
-  // Split patterns into include (no leading !) and exclude (leading !).
-  const exclude: string[] = [];
-  const include: string[] = [];
+  // Split patterns into ordered entries preserving list order, so
+  // evaluation below implements gitignore last-match-wins.
+  const entries: { negated: boolean; pattern: string }[] = [];
   for (const raw of patterns) {
     const p = raw.trim();
     if (p.length === 0) continue;
     if (p.startsWith('!')) {
-      include.push(p.slice(1).trim());
+      const rest = p.slice(1).trim();
+      if (rest.length === 0) continue;
+      entries.push({ negated: true, pattern: rest });
     } else {
-      exclude.push(p);
+      entries.push({ negated: false, pattern: p });
     }
   }
 
-  // In .gitignore mode, basename-only patterns (no /) only match at the
-  // root by default. We auto-prefix `**/` and append `/**` so bare names
-  // (e.g. `node_modules`, `dist`) match anything under any matching
-  // directory at any depth. For file-extension patterns (e.g. `*.log`,
-  // `.*`) we only add the `**/` prefix so they match the file anywhere.
-  // Patterns that already contain a `/` or start with `**/` are passed
+  // In .gitignore mode, expand bare patterns (verified against
+  // picomatch v4 behavior in P-036). A trailing slash is stripped
+  // first, so `dist/` behaves like bare `dist` (dir at any depth):
+  // - bare `node_modules` (no slash) -> both the entry itself at any
+  //   depth and its contents.
+  // - file-extension `*.log` -> match at any depth (raw lib is
+  //   root-scoped).
+  // Patterns that already contain a `/` or start with `**/` pass
   // through verbatim.
-  const expandPattern = (p: string): string => {
-    if (!gitignore) return p;
-    if (p.includes('/')) return p;
-    if (p.startsWith('**/')) return p;
-    const looksLikeFileExt = p.includes('.');
-    return looksLikeFileExt ? `**/${p}` : `**/${p}/**`;
+  const expandPattern = (p: string): string[] => {
+    if (!gitignore) return [p];
+    // Strip one trailing slash first: `dist/` behaves like bare `dist`
+    // (dir at any depth + contents), not root-anchored `dist/**`.
+    const base = p.endsWith('/') ? p.slice(0, -1) : p;
+    if (base.includes('/')) return [p];
+    if (base.startsWith('**/')) return [p];
+    const looksLikeFileExt = base.includes('.');
+    return looksLikeFileExt ? [`**/${base}`] : [`**/${base}`, `**/${base}/**`];
   };
 
-  const excludeMatchers = exclude.map(p => picomatch(expandPattern(p), { dot: true, gitignore }));
-  const includeMatchers = include.map(p => picomatch(expandPattern(p), { dot: true, gitignore }));
+  const matchers = entries.map(e => {
+    const expanded = expandPattern(e.pattern);
+    const shape: string | string[] = expanded.length === 1 ? (expanded[0] as string) : expanded;
+    return { negated: e.negated, match: picomatch(shape, { dot: true, gitignore }) };
+  });
 
   return (relPath: string): boolean => {
     const posix = toPosix(relPath);
@@ -85,15 +104,23 @@ export function buildIgnoreMatcher(
       return false;
     }
 
-    const excluded = excludeMatchers.some(m => m(posix));
-    const reIncluded = includeMatchers.some(m => m(posix));
-    const isIgnored = excluded && !reIncluded;
+    // gitignore last-match-wins: walk the entries in list order; the
+    // final matching entry decides. A matching negation re-includes;
+    // a later positive pattern re-excludes.
+    let matched = false;
+    let ignored = false;
+    for (const m of matchers) {
+      if (m.match(posix)) {
+        matched = true;
+        ignored = !m.negated;
+      }
+    }
 
     // `negated: true` flips the result so the matcher returns true for
-    // paths that DO match the patterns (i.e. "include these"). Default
+    // paths that match ANY pattern (i.e. "include these"). Default
     // returns true for paths to skip.
-    if (negated) return excluded || reIncluded;
-    return isIgnored;
+    if (negated) return matched;
+    return ignored;
   };
 }
 
