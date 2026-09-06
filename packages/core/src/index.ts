@@ -69,12 +69,20 @@ export {
   createLimiter,
   withLimit,
   mapLimit,
+  parseYaml,
+  parseYamlDocument,
+  stringifyYaml,
+  Document,
+  YAMLError,
 } from './util/index.js';
 export type {
   IgnoreMatcher,
   BuildIgnoreMatcherOptions,
   Limiter,
   LimitedTask,
+  ParseOptions,
+  DocumentOptions,
+  ToStringOptions,
 } from './util/index.js';
 
 export {

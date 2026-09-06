@@ -8,3 +8,5 @@ export {
 } from './ignore.js';
 export { createLimiter, withLimit, mapLimit } from './limit.js';
 export type { Limiter, LimitedTask } from './limit.js';
+export { parseYaml, parseYamlDocument, stringifyYaml, Document, YAMLError } from './yaml.js';
+export type { ParseOptions, DocumentOptions, ToStringOptions } from './yaml.js';
