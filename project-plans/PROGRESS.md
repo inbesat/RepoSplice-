@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-030 — core dep: bun:sqlite (awaiting go-ahead)
+**Current Phase:** P-031 — core dep: p-limit (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 30 |
+| **Implemented** | 31 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 289 |
+| **Pending (implementation)** | 288 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -62,7 +62,7 @@
 - [x] **P-027** core: `openai`
 - [x] **P-028** core: `@anthropic-ai/sdk`
 - [x] **P-029** core: `dockerode`
-- [ ] **P-030** core: `bun:sqlite` (native)
+- [x] **P-030** core: `bun:sqlite` (native)
 - [ ] **P-031** core: `p-limit`
 - [ ] **P-032** core: `yaml`
 - [ ] **P-033** core: `ini`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-030 (⏳ next, awaiting go-ahead):** `bun:sqlite` native storage — no install (Bun built-in, frozen per AGENTS.md §1 over better-sqlite3). Verify `import { Database } from 'bun:sqlite'` typechecks (needs `@types/bun` from P-061 — may need to come first), create `packages/core/src/storage/sqlite.ts` with a typed open/query/close wrapper returning `Result`, plus WAL-mode + migrations stub for P-230 persistence. Smoke test with `:memory:` DB (no files, deterministic).
+**P-031 (⏳ next, awaiting go-ahead):** `p-limit` concurrency limiter for parallel sandbox/AI calls (P-168 fan-out, P-140 tool-loop). Wrap as `createLimiter(n)` with Result-typed throttle plus queue-depth introspection for the P-138 retry/backoff layer. Mocked smoke test (no real concurrency needed).
 
-**Defer to P-031 (next after P-030):** core dep `p-limit` (concurrency limiter for parallel sandbox/AI calls).
+**Defer to P-032 (next after P-031):** core dep `yaml` (config file parsing).
 
 ---
 

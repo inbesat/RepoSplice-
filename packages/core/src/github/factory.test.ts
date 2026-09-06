@@ -9,6 +9,21 @@
 import { describe, it, expect } from 'vitest';
 import { createOctokit, getRepo, request, statusToStitchError } from './factory.js';
 
+/**
+ * Build a stub `fetch` returning a JSON body. Bun's `fetch` type
+ * (via `bun-types`, P-030) carries a `preconnect` member that a bare
+ * arrow lacks, so we attach a no-op. Behaviour is identical to the
+ * previous bare-arrow stubs.
+ */
+function stubFetch(body: unknown, status = 200): typeof globalThis.fetch {
+  const fn = async () =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  return Object.assign(fn, { preconnect: () => undefined });
+}
+
 describe('P-017 @octokit/rest factory: construction', () => {
   it('createOctokit({ authType: "pat", token }) constructs an Octokit', () => {
     const octokit = createOctokit({ auth: { authType: 'pat', token: 'ghp_test_token' } });
@@ -59,16 +74,11 @@ describe('P-017 @octokit/rest factory: request() + status mapping', () => {
 
 describe('P-017 @octokit/rest factory: typed getContent (mocked)', () => {
   it('getRepo with mocked fetch returns the typed data', async () => {
-    const mockFetch: typeof globalThis.fetch = async () => {
-      return new Response(
-        JSON.stringify({
-          name: 'repo-stitcher',
-          full_name: 'inbesat/repo-stitcher',
-          default_branch: 'main',
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      );
-    };
+    const mockFetch = stubFetch({
+      name: 'repo-stitcher',
+      full_name: 'inbesat/repo-stitcher',
+      default_branch: 'main',
+    });
 
     const octokit = createOctokit({
       auth: { authType: 'pat', token: 'ghp_test' },
@@ -86,12 +96,7 @@ describe('P-017 @octokit/rest factory: typed getContent (mocked)', () => {
   });
 
   it('getRepo with 404 mocked fetch returns a typed GITHUB_API_ERROR', async () => {
-    const mockFetch: typeof globalThis.fetch = async () => {
-      return new Response(JSON.stringify({ message: 'Not Found' }), {
-        status: 404,
-        headers: { 'content-type': 'application/json' },
-      });
-    };
+    const mockFetch = stubFetch({ message: 'Not Found' }, 404);
     const octokit = createOctokit({
       auth: { authType: 'pat', token: 'ghp_test' },
       request: { fetch: mockFetch },
@@ -104,12 +109,7 @@ describe('P-017 @octokit/rest factory: typed getContent (mocked)', () => {
   });
 
   it('request() generic helper returns a typed ResultAsync (mocked)', async () => {
-    const mockFetch: typeof globalThis.fetch = async () => {
-      return new Response(JSON.stringify({ content: 'hello' }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
-    };
+    const mockFetch = stubFetch({ content: 'hello' });
     const octokit = createOctokit({
       auth: { authType: 'pat', token: 'ghp_test' },
       request: { fetch: mockFetch },
