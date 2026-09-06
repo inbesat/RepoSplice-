@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-040 — core dev deps: @types/node + vitest (awaiting go-ahead)
+**Current Phase:** P-041 — CLI dep: commander (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 40 |
+| **Implemented** | 41 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 279 |
+| **Pending (implementation)** | 278 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -72,7 +72,7 @@
 - [x] **P-037** core: `pino`
 - [x] **P-038** core: `neverthrow`
 - [x] **P-039** core: `zod-to-json-schema` (resolved via native `toJSONSchema`, ADR-017)
-- [ ] **P-040** core: `@types/node`, `vitest` dev deps
+- [x] **P-040** core: `@types/node`, `vitest` dev deps (verify root-hoisted, no dup)
 - [ ] **P-041** cli: `commander`
 - [ ] **P-042** cli: `ink` + `@inkjs/ui`
 - [ ] **P-043** cli: `elysia`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-040 (⏳ next, awaiting go-ahead):** `@types/node` + `vitest` core dev deps (already at root P-004: @types/node@26.4.1, vitest@5.0.0): verify `import { describe, it, expect } from 'vitest'` typechecks in core, add a core `vitest.config.ts` with `bun:sqlite`-safe environment and coverage thresholds (P-259). Smoke: a trivial test file runs under the core project.
+**P-041 (⏳ next, awaiting go-ahead):** `commander` in `packages/cli` (first CLI phase — owner aradhy): typed Command/program, root `stitch` program (P-189), `--help` + options parse. Smoke: parses subcommand options. NOTE: use `bun add commander --cwd packages/cli` (the `--filter` flag matches nothing on Bun 1.3.11 — see P-040).
 
-**Defer to P-041 (next after P-040):** per plan sequence (check PHASES_DETAILED.md P-041, first CLI phase — hand off to aradhy).
+**Defer to P-042 (next after P-041):** per plan sequence (check PHASES_DETAILED.md P-042, ink + @inkjs/ui).
 
 ---
 
