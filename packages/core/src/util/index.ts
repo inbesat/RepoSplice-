@@ -12,3 +12,5 @@ export { parseYaml, parseYamlDocument, stringifyYaml, Document, YAMLError } from
 export type { ParseOptions, DocumentOptions, ToStringOptions } from './yaml.js';
 export { parseIni, stringifyIni } from './ini.js';
 export type { IniValue } from './ini.js';
+export { listFiles } from './glob.js';
+export type { ListFilesOptions } from './glob.js';

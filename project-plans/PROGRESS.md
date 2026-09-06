@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-034 — core dep: glob (awaiting go-ahead)
+**Current Phase:** P-035 — core dep: fs-extra (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 34 |
+| **Implemented** | 35 |
 | **Active** | 1 |
 | **Blocked** | 1 (zod-to-json-schema v4 compat — see P-015) |
-| **Pending (implementation)** | 285 |
+| **Pending (implementation)** | 284 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -66,7 +66,7 @@
 - [x] **P-031** core: `p-limit`
 - [x] **P-032** core: `yaml`
 - [x] **P-033** core: `ini`
-- [ ] **P-034** core: `glob`
+- [x] **P-034** core: `glob`
 - [ ] **P-035** core: `fs-extra`
 - [ ] **P-036** core: `picomatch`
 - [ ] **P-037** core: `pino`
@@ -477,9 +477,9 @@
 
 ## 🚀 Next Action
 
-**P-034 (⏳ next, awaiting go-ahead):** `glob` file discovery for the P-104 walker (repo traversal, ignore-aware listing). Wrap in `util/glob.ts`: `globFiles(patterns, opts)` returning `Result<string[]>` with dot-file and ignore-file handling. Smoke: match fixture tree, ignore rules respected, no-match returns empty (not err).
+**P-035 (⏳ next, awaiting go-ahead):** `fs-extra` extended filesystem ops (`copy`, `move`, `ensureDir`, `emptyDir`, `remove`) for staging/writing phases. Wrap win-safe staging helpers in `util/fs.ts` returning `Result`, using `safeJoin` (P-012) to prevent traversal. Smoke: copy temp tree, ensure/empty dirs, remove; traversal escape errors.
 
-**Defer to P-035 (next after P-034):** per plan sequence (check PHASES_DETAILED.md P-035).
+**Defer to P-036 (next after P-035):** core dep `picomatch` (already installed P-012 for ignore matcher; formalize for .gitignore parsing P-083).
 
 ---
 

@@ -76,6 +76,7 @@ export {
   YAMLError,
   parseIni,
   stringifyIni,
+  listFiles,
 } from './util/index.js';
 export type {
   IgnoreMatcher,
@@ -86,6 +87,7 @@ export type {
   DocumentOptions,
   ToStringOptions,
   IniValue,
+  ListFilesOptions,
 } from './util/index.js';
 
 export {
