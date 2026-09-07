@@ -28,6 +28,10 @@ function unmount(container: HTMLElement, root: Root): void {
 }
 
 describe('highlight (P-053 shiki)', () => {
+  // Explicit 20s budget on every test: the first highlight in this file
+  // pays shiki's one-time WASM compile (~0.4s standalone), which under
+  // parallel jsdom load can exceed vitest's 5s default (P-055 gate flake).
+  // Poll loops stay capped at 2s each.
   it('highlights code', async () => {
     const { container, root } = await renderHighlight(
       <Highlight code="const x: number = 1;" lang="typescript" />
@@ -42,7 +46,7 @@ describe('highlight (P-053 shiki)', () => {
     } finally {
       unmount(container, root);
     }
-  });
+  }, 20000);
 
   it('highlights with the dark theme', async () => {
     const { container, root } = await renderHighlight(
@@ -54,7 +58,7 @@ describe('highlight (P-053 shiki)', () => {
     } finally {
       unmount(container, root);
     }
-  });
+  }, 20000);
 
   it('falls back to plain text for unknown languages', async () => {
     const { container, root } = await renderHighlight(
@@ -71,7 +75,7 @@ describe('highlight (P-053 shiki)', () => {
     } finally {
       unmount(container, root);
     }
-  });
+  }, 20000);
 
   it('escapes markup in highlighted output', async () => {
     // shiki encodes `<` as `&#x3C;` (probed P-053): raw angle brackets
@@ -85,5 +89,5 @@ describe('highlight (P-053 shiki)', () => {
     } finally {
       unmount(container, root);
     }
-  });
+  }, 20000);
 });
