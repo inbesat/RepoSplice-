@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+/* Design tokens (P-209): the stitch blue scale, emitted as CSS variables
+   (--color-stitch-*) for utilities like bg-stitch-900. */
+@theme {
+  --color-stitch-50: #eef3ff;
+  --color-stitch-100: #dfe9fd;
+  --color-stitch-200: #c4d5fc;
+  --color-stitch-300: #9db8f8;
+  --color-stitch-400: #7095f2;
+  --color-stitch-500: #4d72e9;
+  --color-stitch-600: #3a5bd0;
+  --color-stitch-700: #3149ab;
+  --color-stitch-800: #2f4189;
+  --color-stitch-900: #2e3d72;
+  --color-stitch-950: #1c2342;
+}
+
+/* Class-based dark mode (P-226): `dark:` variants respond to a `.dark`
+   ancestor instead of the OS preference, so the dashboard can toggle it. */
+@custom-variant dark (&:where(.dark, .dark *));
