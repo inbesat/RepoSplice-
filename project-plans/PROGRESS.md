@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-047 — Web dep: react + react-dom (awaiting go-ahead)
+**Current Phase:** P-048 — Root: vite build (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 47 |
+| **Implemented** | 48 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 272 |
+| **Pending (implementation)** | 271 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -79,7 +79,7 @@
 - [x] **P-044** cli: `picocolors` (theme ok/warn/err + NO_COLOR, 2 tests)
 - [x] **P-045** cli: `configstore` (openStore Result wrapper + redaction, 7 tests)
 - [x] **P-046** cli: `update-notifier` (gated maybeNotify + notice mapping, 4 tests)
-- [ ] **P-047** web: `react` + `react-dom`
+- [x] **P-047** web: `react` + `react-dom` (App root + SSR smoke, React 19 unified)
 - [ ] **P-048** web: `vite` + `@vitejs/plugin-react`
 - [ ] **P-049** web: `tailwindcss` + `postcss` + `autoprefixer`
 - [ ] **P-050** web: `zustand`
@@ -479,7 +479,7 @@
 
 ## 🚀 Next Action
 
-**P-047 (⏳ next, awaiting go-ahead):** `react` + `react-dom` in `packages/web` (spec says React 18 — reconcile against cli's react@19.2.8: single version preferred, check P-208/Vite needs): `react-dom/client` render + `<App/>` typecheck, Vite entry scaffold (P-208 mounts it). Smoke: SSR string matches. NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-048 (⏳ next, awaiting go-ahead):** check PHASES_DETAILED.md P-048. NOTE: `bun add --cwd <pkg>` (never `--filter`).
 
 **Defer to P-048 (next after P-047):** per plan sequence (check PHASES_DETAILED.md P-048, vite build).
 

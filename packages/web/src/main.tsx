@@ -1,7 +1,13 @@
-// Minimal React 18 entry — fleshed out in P-208 (Vite scaffold)
-import { WEB_NAME } from './index';
+// Web entry — mounted by Vite dev/preview (P-208 fleshes out routing/store).
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App.js';
 
-const root = document.getElementById('root');
-if (root) {
-  root.textContent = WEB_NAME;
+const rootEl = document.getElementById('root');
+if (rootEl !== null) {
+  createRoot(rootEl).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
 }
