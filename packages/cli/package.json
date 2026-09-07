@@ -34,6 +34,7 @@
     "@inkjs/ui": "2.0.0",
     "@repo-stitcher/core": "workspace:*",
     "commander": "15.0.0",
+    "configstore": "8.0.0",
     "elysia": "1.4.30",
     "ink": "7.1.1",
     "picocolors": "1.1.1",

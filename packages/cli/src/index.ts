@@ -9,3 +9,12 @@ export { createApp } from './serve.js';
 export type { HealthBody } from './serve.js';
 export { theme, colorsEnabled } from './theme.js';
 export type { ThemeLevel } from './theme.js';
+export {
+  openStore,
+  redactValue,
+  defaultStoreDir,
+  STITCH_CONFIG_DIR,
+  STITCH_CONFIG_FILE,
+  REDACTED,
+} from './config.js';
+export type { JsonValue, StitchStore } from './config.js';
