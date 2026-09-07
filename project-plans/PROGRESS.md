@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-051 — Web dep: @tanstack/react-query (awaiting go-ahead)
+**Current Phase:** P-052 — Web dep: react-diff-viewer-continued (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 51 |
+| **Implemented** | 52 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 268 |
+| **Pending (implementation)** | 267 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -83,7 +83,7 @@
 - [x] **P-048** web: `vite` + `@vitejs/plugin-react` (proxy config, real build, it builds)
 - [x] **P-049** web: `tailwindcss` v4 + `postcss` + `autoprefixer` (@theme tokens + dark variant, styles resolve)
 - [x] **P-050** web: `zustand` (useSessionStore reference pattern, 2 tests)
-- [ ] **P-051** web: `@tanstack/react-query`
+- [x] **P-051** web: `@tanstack/react-query` (QueryClient + useJobs/useRefreshJobs, 4 tests)
 - [ ] **P-052** web: `react-diff-viewer-continued`
 - [ ] **P-053** web: `shiki`
 - [ ] **P-054** web: `lucide-react`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-051 (⏳ next, awaiting go-ahead):** `@tanstack/react-query` in `packages/web`: `QueryClient` + `useQuery`/`useMutation` typecheck, `QueryClientProvider` at app root (P-208) + `useJobs` query scaffold (P-224). Smoke: cached query resolves via provider. NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-052 (⏳ next, awaiting go-ahead):** `react-diff-viewer-continued` in `packages/web`: diff component typechecks against React 19 (verify peer compat at install — spec predates the React 19 unification), renders old/new text hunks. Smoke: unified diff renders added/removed lines. NOTE: `bun add --cwd packages/web` (never `--filter`).
 
-**Defer to P-052 (next after P-051):** per plan sequence (check PHASES_DETAILED.md P-052).
+**Defer to P-053 (next after P-052):** per plan sequence (check PHASES_DETAILED.md P-053).
 
 ---
 
