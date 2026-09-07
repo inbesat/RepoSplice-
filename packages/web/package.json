@@ -19,9 +19,9 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "echo \"dev: deferred to P-048 (vite) + P-208 (Vite scaffold)\" && exit 0",
-    "build": "echo \"build: deferred to P-048 (vite build)\" && exit 0",
-    "preview": "echo \"preview: deferred to P-048 (vite preview)\" && exit 0",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -34,6 +34,8 @@
   },
   "devDependencies": {
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.7"
+    "@types/react-dom": "19.2.7",
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.2.2"
   }
 }

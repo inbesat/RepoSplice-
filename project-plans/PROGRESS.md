@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-048 — Root: vite build (awaiting go-ahead)
+**Current Phase:** P-049 — Web dep: tailwind + postcss + autoprefixer (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 48 |
+| **Implemented** | 49 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 271 |
+| **Pending (implementation)** | 270 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -80,7 +80,7 @@
 - [x] **P-045** cli: `configstore` (openStore Result wrapper + redaction, 7 tests)
 - [x] **P-046** cli: `update-notifier` (gated maybeNotify + notice mapping, 4 tests)
 - [x] **P-047** web: `react` + `react-dom` (App root + SSR smoke, React 19 unified)
-- [ ] **P-048** web: `vite` + `@vitejs/plugin-react`
+- [x] **P-048** web: `vite` + `@vitejs/plugin-react` (proxy config, real build, it builds)
 - [ ] **P-049** web: `tailwindcss` + `postcss` + `autoprefixer`
 - [ ] **P-050** web: `zustand`
 - [ ] **P-051** web: `@tanstack/react-query`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-048 (⏳ next, awaiting go-ahead):** check PHASES_DETAILED.md P-048. NOTE: `bun add --cwd <pkg>` (never `--filter`).
+**P-049 (⏳ next, awaiting go-ahead):** `tailwindcss` + `postcss` + `autoprefixer` in `packages/web`: tailwind + postcss configs with design-token scales (P-209) and dark-mode variant (P-226); directives resolve in entry CSS; build green. NOTE: `bun add --cwd packages/web` (never `--filter`); check Tailwind v3 vs v4 (config-file vs CSS-first) at install time.
 
-**Defer to P-048 (next after P-047):** per plan sequence (check PHASES_DETAILED.md P-048, vite build).
+**Defer to P-050 (next after P-049):** per plan sequence (check PHASES_DETAILED.md P-050).
 
 ---
 
