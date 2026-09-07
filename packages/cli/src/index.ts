@@ -7,3 +7,5 @@ export type { StatusOptions } from './program.js';
 export { QuitOnQ, isQuitInput, renderScreen } from './tui.js';
 export { createApp } from './serve.js';
 export type { HealthBody } from './serve.js';
+export { theme, colorsEnabled } from './theme.js';
+export type { ThemeLevel } from './theme.js';
