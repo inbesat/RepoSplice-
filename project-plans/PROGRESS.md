@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-050 — Web dep: zustand (awaiting go-ahead)
+**Current Phase:** P-051 — Web dep: @tanstack/react-query (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 50 |
+| **Implemented** | 51 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 269 |
+| **Pending (implementation)** | 268 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -82,7 +82,7 @@
 - [x] **P-047** web: `react` + `react-dom` (App root + SSR smoke, React 19 unified)
 - [x] **P-048** web: `vite` + `@vitejs/plugin-react` (proxy config, real build, it builds)
 - [x] **P-049** web: `tailwindcss` v4 + `postcss` + `autoprefixer` (@theme tokens + dark variant, styles resolve)
-- [ ] **P-050** web: `zustand`
+- [x] **P-050** web: `zustand` (useSessionStore reference pattern, 2 tests)
 - [ ] **P-051** web: `@tanstack/react-query`
 - [ ] **P-052** web: `react-diff-viewer-continued`
 - [ ] **P-053** web: `shiki`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-050 (⏳ next, awaiting go-ahead):** `zustand` in `packages/web`: typed `create` + `useSessionStore` scaffold holding merge-wizard state (P-215) as reference store. Smoke: getState/setState + hook slice read. NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-051 (⏳ next, awaiting go-ahead):** `@tanstack/react-query` in `packages/web`: `QueryClient` + `useQuery`/`useMutation` typecheck, `QueryClientProvider` at app root (P-208) + `useJobs` query scaffold (P-224). Smoke: cached query resolves via provider. NOTE: `bun add --cwd packages/web` (never `--filter`).
 
-**Defer to P-051 (next after P-050):** per plan sequence (check PHASES_DETAILED.md P-051).
+**Defer to P-052 (next after P-051):** per plan sequence (check PHASES_DETAILED.md P-052).
 
 ---
 
