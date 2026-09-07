@@ -18,3 +18,13 @@ export {
   REDACTED,
 } from './config.js';
 export type { JsonValue, StitchStore } from './config.js';
+export {
+  shouldCheckForUpdates,
+  createNotifier,
+  toNotice,
+  maybeNotify,
+  NO_UPDATE_FLAG,
+  NO_UPDATE_ENV,
+  UPDATE_CHECK_INTERVAL_MS,
+} from './update.js';
+export type { NotifierPackage, UpdateInfo, UpdateNotice } from './update.js';
