@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-043 — CLI dep: elysia (awaiting go-ahead)
+**Current Phase:** P-044 — CLI dep: (awaiting go-ahead, check PHASES_DETAILED.md)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 43 |
+| **Implemented** | 44 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 276 |
+| **Pending (implementation)** | 275 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -75,7 +75,7 @@
 - [x] **P-040** core: `@types/node`, `vitest` dev deps (verify root-hoisted, no dup)
 - [x] **P-041** cli: `commander` (root program + status scaffold, 4 tests)
 - [x] **P-042** cli: `ink` + `@inkjs/ui` (tui.tsx renderScreen + QuitOnQ, 5 tests)
-- [ ] **P-043** cli: `elysia`
+- [x] **P-043** cli: `elysia` (createApp /health + /ws echo, app.handle smoke)
 - [ ] **P-044** cli: `picocolors`
 - [ ] **P-045** cli: `configstore`
 - [ ] **P-046** cli: `update-notifier`
@@ -479,7 +479,7 @@
 
 ## 🚀 Next Action
 
-**P-043 (⏳ next, awaiting go-ahead):** `elysia` in `packages/cli`: `Elysia` + `.get()/.ws()/.listen()` typecheck, serve-entry scaffold (P-193) with health route + WS echo hook (P-241). Smoke: ephemeral-port `/health` → 200, then close. NOTE: `bun add --cwd packages/cli` (never `--filter`).
+**P-044 (⏳ next, awaiting go-ahead):** check PHASES_DETAILED.md P-044. NOTE: `bun add --cwd packages/cli` (never `--filter`); vitest runs Elysia on the WebStandard adapter (no `.listen()` — test via `app.handle`, sockets verified in P-193 on Bun).
 
 **Defer to P-044 (next after P-043):** per plan sequence (check PHASES_DETAILED.md P-044).
 
