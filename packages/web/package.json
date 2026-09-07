@@ -31,6 +31,7 @@
   "dependencies": {
     "@tanstack/react-query": "5.102.8",
     "react": "19.2.8",
+    "react-diff-viewer-continued": "4.4.0",
     "react-dom": "19.2.8",
     "zustand": "5.0.15"
   },

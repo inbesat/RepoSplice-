@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-052 — Web dep: react-diff-viewer-continued (awaiting go-ahead)
+**Current Phase:** P-053 — Web dep: shiki (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 52 |
+| **Implemented** | 53 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 267 |
+| **Pending (implementation)** | 266 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -84,7 +84,7 @@
 - [x] **P-049** web: `tailwindcss` v4 + `postcss` + `autoprefixer` (@theme tokens + dark variant, styles resolve)
 - [x] **P-050** web: `zustand` (useSessionStore reference pattern, 2 tests)
 - [x] **P-051** web: `@tanstack/react-query` (QueryClient + useJobs/useRefreshJobs, 4 tests)
-- [ ] **P-052** web: `react-diff-viewer-continued`
+- [x] **P-052** web: `react-diff-viewer-continued` (DiffView + stitch chrome, 2 tests)
 - [ ] **P-053** web: `shiki`
 - [ ] **P-054** web: `lucide-react`
 - [ ] **P-055** web: `@radix-ui/*` (dialog, select, tabs, tooltip, etc.)
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-052 (⏳ next, awaiting go-ahead):** `react-diff-viewer-continued` in `packages/web`: diff component typechecks against React 19 (verify peer compat at install — spec predates the React 19 unification), renders old/new text hunks. Smoke: unified diff renders added/removed lines. NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-053 (⏳ next, awaiting go-ahead):** `shiki` in `packages/web`: `codeToHtml` typechecks, `Highlight` component wrapping it with light/dark theme pair (P-226). Smoke: highlighted HTML for a snippet. NOTE: `bun add --cwd packages/web` (never `--filter`); shiki loads WASM/languages — verify offline-safe init in tests.
 
-**Defer to P-053 (next after P-052):** per plan sequence (check PHASES_DETAILED.md P-053).
+**Defer to P-054 (next after P-053):** per plan sequence (check PHASES_DETAILED.md P-054, lucide-react).
 
 ---
 
