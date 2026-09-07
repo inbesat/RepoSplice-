@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { pino, type Logger } from 'pino';
+import pino, { type Logger } from 'pino';
 import { redactPaths } from './redact.js';
 import { createJobLogger } from './index.js';
 
@@ -191,9 +191,10 @@ describe('logger output format (P-010)', () => {
 });
 
 describe('pino-roll transport smoke (P-037)', () => {
-  // Explicit 15s budget: the transport spawns a worker thread, and under
-  // full-suite parallel load worker startup alone can exceed vitest's 5s
-  // default (P-038 gate flake). The poll loop below is still capped at 5s.
+  // Explicit 20s budget: the transport spawns a worker thread, and under
+  // full-suite parallel load worker startup is slow (P-038/P-042 flakes).
+  // The stream is built explicitly so worker errors fail fast with a cause
+  // instead of polling blindly.
   it('rolling-file transport loads, writes JSON, and redacts secrets', async () => {
     // pino-roll is a worker-thread transport (P-187 audit log); this
     // smoke proves it resolves and honors our redact config end to end.
@@ -201,26 +202,33 @@ describe('pino-roll transport smoke (P-037)', () => {
     try {
       const require = createRequire(import.meta.url);
       const target = require.resolve('pino-roll');
-      const fileLogger = pino({
-        level: 'info',
-        redact: { paths: redactPaths, censor: '[REDACTED]' },
-        formatters: { level: (label: string) => ({ level: label }) },
+      const stream = pino.transport({
+        target,
         // NOTE: pino-roll only creates the file once a rotation trigger
         // exists — `frequency` (or `size`) is required, not optional.
-        transport: {
-          target,
-          options: { file: join(dir, 'app.log'), frequency: 'daily', mkdir: true },
-        },
+        options: { file: join(dir, 'app.log'), frequency: 'daily', mkdir: true },
       });
+      const workerErrors: unknown[] = [];
+      stream.on('error', (e: unknown) => workerErrors.push(e));
+      const fileLogger = pino(
+        {
+          level: 'info',
+          redact: { paths: redactPaths, censor: '[REDACTED]' },
+          formatters: { level: (label: string) => ({ level: label }) },
+        },
+        stream
+      );
       fileLogger.info({ apiKey: 'ROLL-SECRET', msg: 'rolled' });
       await fileLogger.flush();
       // The transport runs in a worker thread: flush() drains pino's
-      // side, but the file may land a beat later. Poll briefly.
+      // side, but the file may land later. Poll up to 10s, aborting early
+      // on worker error.
       let files: string[] = [];
-      for (let i = 0; i < 50 && files.length === 0; i++) {
+      for (let i = 0; i < 100 && files.length === 0 && workerErrors.length === 0; i++) {
         await new Promise(r => setTimeout(r, 100));
         files = readdirSync(dir);
       }
+      expect(workerErrors).toEqual([]);
       expect(files.length).toBeGreaterThan(0);
       const out = files.map(f => readFileSync(join(dir, f), 'utf8')).join('\n');
       expect(out).toContain('rolled');
@@ -229,7 +237,7 @@ describe('pino-roll transport smoke (P-037)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  }, 15000);
+  }, 20000);
 });
 describe('createJobLogger (P-010)', () => {
   it('child logger adds jobId to all log lines', () => {
