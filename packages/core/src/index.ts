@@ -107,6 +107,13 @@ export {
   initRepo,
 } from './git/factory.js';
 export type { Git, GitFactoryOptions } from './git/factory.js';
+export {
+  MIN_GIT_VERSION,
+  parseGitVersion,
+  isGitVersionSupported,
+  checkGitVersionOutput,
+  localGitVersion,
+} from './git/version.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
 export type {

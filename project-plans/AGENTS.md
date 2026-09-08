@@ -255,6 +255,7 @@ Before marking any phase `✅ Completed` in `PROGRESS.md`:
 | Assuming GitHub API shapes | Read INTEGRATIONS.md; use Octokit types |
 | Forgetting WS reconnect logic | `useWebSocket` hook handles it |
 | Not redacting secrets in logs | `logger.redact` does it automatically |
+| Old system git (< 2.40) | See `docs/system/git-version.md`; `stitch doctor` gates it |
 
 ---
 

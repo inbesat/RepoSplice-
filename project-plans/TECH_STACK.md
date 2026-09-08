@@ -246,7 +246,7 @@ CREATE TABLE job_events (
 
 - **Runtime (Bun)**: pinned in `bunfig.toml` + `package.json#engines`
 - **Dependencies**: exact versions in `package.json` (no `^`/`~`); updated via Dependabot PRs
-- **System deps**: documented in `stitch doctor` + `README#prerequisites`
+- **System deps**: documented in `stitch doctor` + `README#prerequisites`; git floor pinned in `docs/system/git-version.md` (>= 2.40.0, `MIN_GIT_VERSION`)
 - **AI Models**: pinned by model ID in `core/ai/models.ts`; updated via minor release
 
 ---

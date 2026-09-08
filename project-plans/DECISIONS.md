@@ -480,4 +480,47 @@
 
 ---
 
+## ADR-020: Git >= 2.40 Floor — Doc + One-Line Frozen Cross-Refs (Doctor Wiring Deferred)
+
+**Status:** Accepted
+**Date:** 2026-09-08
+
+**Context:** P-065 requires the git >= 2.40 system-doc plus a `MIN_GIT_VERSION`
+constant, cross-referenced from the install docs — two of which (AGENTS.md,
+SECURITY.md) are frozen. It also names doctor wiring (P-068) and a `doctor`
+test, but no doctor exists yet (P-068 owns it; P-066 is next).
+
+**Decision:**
+- New `docs/system/git-version.md`: requirement, `MIN_GIT_VERSION` pointer,
+  per-OS install/upgrade, `git --version` verification. Historical claims kept
+  minimal and honest: the floor is a project matrix decision (Git Core epic
+  built/tested against >= 2.40); the only release-specific assertion in the
+  doc is the empirically verified one (unrelated-history `ort` merge works,
+  transcript from git 2.45.1 included).
+- New `packages/core/src/git/version.ts` (barrel-exported):
+  `MIN_GIT_VERSION = '2.40.0'`, `parseGitVersion` (distro suffixes),
+  `isGitVersionSupported` (strict: garbage coerces to err, never silent
+  pass), plus `checkGitVersionOutput`/`localGitVersion` compositions P-068
+  needs — all covered, including the verbatim `it('flags old git')`.
+- Frozen cross-refs (this ADR is their authorization, docs-only links):
+  one pitfalls-table row in AGENTS.md, one line under SECURITY.md section 5.
+  TECH_STACK.md bullet extended (not frozen, no ADR needed for it alone).
+- Doctor behavior + `doctor` test stay with P-068 (explicit non-scope).
+
+**Alternatives Considered:**
+- **Write the doctor check now** — rejected: P-068 owns the doctor verifier;
+  building it here would pre-empt its spec and duplicate P-066's sequencing.
+- **Loose check (warn-only helper in docs)** — rejected: the strict
+  err-on-garbage contract is what makes the future doctor gate meaningful;
+  pinning it now prevents a permissive default from fossilizing.
+- **Skip frozen cross-refs to avoid an ADR** — rejected: the spec explicitly
+  requires them, and undiscoverable docs rot; a docs-only ADR is cheap.
+
+**Consequences:**
+- ✅ P-068 has tested primitives + a doc to link; nothing to re-derive.
+- ⚠️ The `doctor` test (`it('flags old git')` at doctor level) is still owed
+  by P-068 — this phase's same-named test covers the version module only.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

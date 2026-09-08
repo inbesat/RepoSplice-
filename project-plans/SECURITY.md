@@ -183,6 +183,8 @@ export const HARDENED_HOST_CONFIG: Docker.HostConfig = {
 
 ## 5. Git Operations Security
 
+System git must be >= 2.40.0 — see `docs/system/git-version.md` (floor enforced by `MIN_GIT_VERSION`, checked by `stitch doctor`).
+
 ### 5.1 Clone Safety
 - **Shallow clone by default** (`--depth=1`) — limits history download
 - **Sparse checkout** for large repos — only fetch needed paths
