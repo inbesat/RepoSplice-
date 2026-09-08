@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-059 — Web dep: clsx + tailwind-merge (awaiting go-ahead)
+**Current Phase:** P-060 — Root dev dep: vitest + @vitest/ui (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 59 |
+| **Implemented** | 60 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 260 |
+| **Pending (implementation)** | 259 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -91,7 +91,7 @@
 - [x] **P-056** web: `react-hook-form` + `@hookform/resolvers` (SettingsForm scaffold + 2 tests)
 - [x] **P-057** web: `sonner` (notifyJob helper + Toaster at root + 1 test)
 - [x] **P-058** web: `react-arborist` (FileTree scaffold + 3 tests, checkbox bubbling fix)
-- [ ] **P-059** web: `clsx` + `tailwind-merge`
+- [x] **P-059** web: `clsx` + `tailwind-merge` (`cn()` helper + 1 test)
 - [ ] **P-060** root: `vitest` + `@vitest/ui`
 - [ ] **P-061** root: `@types/bun`, `@types/node`
 - [ ] **P-062** root: `tsup`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-059 (⏳ next, awaiting go-ahead):** `clsx` + `tailwind-merge` in `packages/web` per PHASES_DETAILED.md P-059 (read the FULL spec first; the `cn()` helper becomes the standard for every styled component — verify real exports against the installed versions). NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-060 (⏳ next, awaiting go-ahead):** root dev dep `vitest` + `@vitest/ui` per PHASES_DETAILED.md P-060 (read the FULL spec first; verify real exports/versions against the installed packages before wiring scripts). NOTE: root-level install (`bun add -d --cwd <root>`); never `--filter`.
 
-**Defer to P-060 (next after P-059):** per plan sequence (check PHASES_DETAILED.md P-060).
+**Defer to P-061 (next after P-060):** per plan sequence (check PHASES_DETAILED.md P-061).
 
 ---
 
