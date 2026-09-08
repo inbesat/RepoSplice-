@@ -22,6 +22,11 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "verbatimModuleSyntax": false,
+    // P-061/ADR-018: scope global @types auto-inclusion to Bun + Node only.
+    // Module imports (react, @types/* for deps) resolve independently of this
+    // field; only implicit globals come from here. `@types/bun` is the Bun
+    // team's one-line alias over `bun-types` (no duplicate declarations).
+    "types": ["bun", "node"],
     "paths": {
       "*": ["./*"],
       "@repo-stitcher/core/*": ["./packages/core/src/*"],

@@ -435,4 +435,28 @@
 
 ---
 
+## ADR-018: Bun Types via `@types/bun` Alias + Scoped tsconfig `types`
+
+**Status:** Accepted
+**Date:** 2026-09-08
+
+**Context:** P-061 wires Bun/Node ambient types at the root. Until now `bun:sqlite` types came from a local shim (`packages/core/src/types/bun.d.ts`, P-030) holding a `/// <reference types="bun-types" />` so the frozen `tsconfig.base.json` stayed untouched. That shim's comment claimed `@types/bun` is deprecated upstream in favour of `bun-types` and suggested `types: ["bun-types", "node"]` instead. Both claims were re-probed against the live registry before touching the frozen file: `@types/bun@1.4.2` (published 2026-09-08, no `deprecated` field, ts6.0 tag) is a one-line alias (`/// <reference types="bun-types" />`) authored by the Bun team itself, depending on `bun-types@1.4.2` — the exact version already hoisted at root. And `types: ["bun-types"]` cannot work: the `types` field resolves under `node_modules/@types`, where `bun-types` does not live.
+
+**Decision:**
+- Add root devDep `@types/bun@1.4.2` (exact; `@types/node` stays at 26.4.1 — a transient 26.5.0 bump during install was deliberately reverted to keep the diff phase-pure).
+- Set `tsconfig.base.json` `types: ["bun", "node"]`, scoping global auto-inclusion to Bun + Node. Module imports (`react`, dep `@types/*`) resolve independently of this field and are unaffected.
+- Delete the `bun.d.ts` shim (its own documented completion criteria).
+
+**Alternatives Considered:**
+- **`types: ["bun-types", "node"]` (shim comment's suggestion)** — rejected: unresolvable path (TS2688), verified against TS module-resolution rules; the shim's deprecation claim is stale.
+- **Keep the shim, skip the `types` field** — rejected: every future Bun-global consumer would need its own triple-slash line; the spec's centralized wiring is strictly better. Deleting also removes a file whose comment would otherwise mislead P-139+ implementers.
+- **Accept the `@types/node` 26.5.0 drift** — rejected: types-only churn with no phase justification; reverted to 26.4.1.
+
+**Consequences:**
+- ✅ `bun:sqlite` + `Bun` globals resolve monorepo-wide with no per-file references; `types.smoke.test.ts` pins this.
+- ✅ Removing the shim was proven load-bearing first: without it and without the `types` entry, `tsc` fails on `bun:sqlite`/`Bun` (TS2868 even prescribes this exact fix).
+- ⚠️ Any future `@types/*` package whose *globals* (not imports) are needed must be appended to the `types` array with a comment — imports keep working regardless.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
