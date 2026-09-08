@@ -173,6 +173,8 @@ export type {
   DockerSandboxClient,
   DockerReachability,
 } from './sandbox/docker.js';
+export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
+export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
 export { openDb, defaultStorePath, stitchHomeDir, STITCH_STORE_FILENAME } from './store/db.js';
 export type { OpenDbOptions, StitchDb } from './store/db.js';

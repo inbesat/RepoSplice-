@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-067 - System dep doc: Docker (awaiting go-ahead)
+**Current Phase:** P-068 - stitch doctor verifier (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 67 |
+| **Implemented** | 68 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 252 |
+| **Pending (implementation)** | 251 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -99,7 +99,7 @@
 - [x] **P-064** root: fixture-repo generator (script + 4 tests + race fix)
 - [x] **P-065** System: git >=2.40 doc + MIN_GIT_VERSION (doctor deferred P-068)
 - [x] **P-066** System: git-filter-repo doc + presence probe (no semver floor; doctor deferred P-068)
-- [ ] **P-067** System: Doc Docker requirement
+- [x] **P-067** System: Docker doc + daemon probe (no engine floor; doctor deferred P-068)
 - [ ] **P-068** `stitch doctor` system-dep verifier
 
 #### Workflow Phases (P-313–P-317)
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-067 (next, awaiting go-ahead):** `docs/system/docker.md` per PHASES_DETAILED.md P-067 (read the FULL spec first; sandbox backend purpose, install per OS, `docker info` capability, daemon requirement, CI fallback P-178, base-image parity P-008/169). NOTE: docs only; engine wiring belongs to P-168.
+**P-068 (next, awaiting go-ahead):** `packages/core/src/system/doctor.ts` + `packages/cli/src/commands/doctor.ts` per PHASES_DETAILED.md P-068 (read the FULL spec first; ordered DependencyCheck list reusing the P-065/066/067 primitives, p-limit concurrency, DoctorReport JSON shape, CLI render + exit codes, init first-run wiring). NOTE: composes existing probes; no new system binaries.
 
-**Defer to P-068 (next after P-067):** per plan sequence (check PHASES_DETAILED.md P-068).
+**Defer to P-069 (next after P-068):** per plan sequence (check PHASES_DETAILED.md P-069).
 
 ---
 
