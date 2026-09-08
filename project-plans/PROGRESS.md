@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-071 - tagRename helper (awaiting go-ahead)
+**Current Phase:** P-072 - mergeRepos (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 71 |
+| **Implemented** | 72 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 248 |
+| **Pending (implementation)** | 247 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-071 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-072 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-071 (next, awaiting go-ahead):** `tagRename` helper per PHASES_DETAILED.md P-071 (read the FULL spec first; `packages/core/src/git/tagRename.ts` + `tagRename.test.ts`: listTags/renameTags prefix-namespace, collision skip, annotated preserved, provenance map). NOTE: pure-git phase (no filter-repo needed); P-070 extraction already namespaces tags.
+**P-072 (next, awaiting go-ahead):** `mergeRepos` per PHASES_DETAILED.md P-072 (read the FULL spec first; `packages/core/src/git/merge.ts`: orchestrates P-069 clone -> P-070 extract -> P-071 tag rename -> subtree/merge into the target worktree). NOTE: P-070 drops the origin remote on extraction - merge must re-add remotes before push; shallow clones are filter-repo-safe (P-070 probe).
+
+**P-071 notes (done):** `git/tagRename.ts` (listTags sorted, renameTags prefix-namespace + snapshot collision skips + annotated preserved as tag objects + check-ref-format pre-validation; duplication-over-loss ordering) + barrels. Return is { renamed: Map, skipped: [] } (TagMap<TagId> would invent P-079 types); sort is lexicographic with P-080-upgrade note. 11/11 green (7 mocked + 4 live local-git).
 
 **P-070 notes (done):** `extractPathsViaFilterRepo` extends `git/filterRepo.ts` (P-066 probe intact) + barrels. Verified vs real 2.47.0: `:prefix` prepend, shallow-safe, unmatched-path exits 0 but EMPTIES repo (post-check rev-list turns it into GIT_ERROR), origin remote removed (P-072 must re-add). Live tests gated by collection-time binary probe (CI lacks the binary); 14/14 green with it on PATH. INCIDENT: a throwaway probe ran filter-repo with implicit cwd in the project root, emptying main history; recovered via re-add origin + fetch + reset --hard origin/main (HEAD 536996a, full tail, clean tree verified). RULE: destructive probes assert cwd (guard pattern); implementation seams always pass explicit cwd.
 

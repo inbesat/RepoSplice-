@@ -12,6 +12,8 @@ export {
 } from './version.js';
 export { checkFilterRepoStatus } from './filterRepo.js';
 export type { FilterRepoStatus } from './filterRepo.js';
+export { listTags, renameTags } from './tagRename.js';
+export type { RenameTagsOptions, RenameTagsResult, TagRenameRuntime } from './tagRename.js';
 export { extractPathsViaFilterRepo, DEFAULT_FILTER_REPO_TIMEOUT_MS } from './filterRepo.js';
 export type {
   FilterRepoOptions,
