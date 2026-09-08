@@ -105,17 +105,26 @@ export {
   getStatus,
   getLog,
   initRepo,
-} from './git/factory.js';
-export type { Git, GitFactoryOptions } from './git/factory.js';
-export {
   MIN_GIT_VERSION,
   parseGitVersion,
   isGitVersionSupported,
   checkGitVersionOutput,
   localGitVersion,
-} from './git/version.js';
-export { checkFilterRepoStatus } from './git/filterRepo.js';
-export type { FilterRepoStatus } from './git/filterRepo.js';
+  checkFilterRepoStatus,
+  cloneRepo,
+  redactUrlCredentials,
+  DEFAULT_CLONE_DEPTH,
+  DEFAULT_CLONE_TIMEOUT_MS,
+} from './git/index.js';
+export type {
+  Git,
+  GitFactoryOptions,
+  FilterRepoStatus,
+  CloneCredentials,
+  CloneGit,
+  CloneOptions,
+  CloneRuntime,
+} from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
 export type {

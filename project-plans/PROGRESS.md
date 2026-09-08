@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-069 - `cloneRepo` (shallow/full) (awaiting go-ahead)
+**Current Phase:** P-070 - extractPathsViaFilterRepo (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 69 |
+| **Implemented** | 70 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 250 |
+| **Pending (implementation)** | 249 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-069 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-070 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -114,7 +114,7 @@
 ### WAVE 1 — Parallel Core Logic (inbesat) + CLI/Web (aradhy post-handoff)
 
 #### Epic 2: Git Core (P-069–P-087) — inbesat
-- [ ] **P-069** `cloneRepo` (shallow/full)
+- [x] **P-069** `cloneRepo` shallow/full (header auth, verified status, git/index barrel)
 - [ ] **P-070** `extractPathsViaFilterRepo` (--path + --to-subdirectory-filter)
 - [ ] **P-071** `tagRename` helper
 - [ ] **P-072** `mergeRepos` (--allow-unrelated-histories, ort)
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-069 (next, awaiting go-ahead):** `cloneRepo` (shallow/full) per PHASES_DETAILED.md P-069 (read the FULL spec first; Git Core epic P-069-P-087). NOTE: first real git-mutation phase — fixture repos (P-064) + doctor-verified git floor (P-065/P-068).
+**P-070 (next, awaiting go-ahead):** `extractPathsViaFilterRepo` per PHASES_DETAILED.md P-070 (read the FULL spec first; extends `packages/core/src/git/filterRepo.ts` (P-066 probe) + `git/index.ts` barrel). NOTE: needs git-filter-repo on PATH (absent on this machine - P-066 Windows trap); keep the P-066 presence probe intact and add live tests only where the binary exists.
+
+**P-069 notes (done):** `git/clone.ts` (header auth, scrubbed errors, verified status) + `git/index.ts` barrel (root barrel re-exports through it; factory gains `timeoutMs`). Live octocat/Hello-World: shallow 1.9s (1 commit), full 1.2s (3 commits). Private-repo PAT path is unit-verified only (no live private repo available).
 
 **P-068 notes (done):** doctor composes P-065/066/067 probes; no new StitchError codes; exhaustive describeError forces render decisions. P-190 owns the init first-run hookup (no init command exists yet); P-194 owns the CLI-wide --json envelope; P-195 owns doctor UX expansion. Live `stitch doctor` on this machine: git PASS (2.45.1), filter-repo FAIL (not on PATH — the P-066 Windows trap), docker FAIL optional, exit 1. Test-budget fix: generate-fixtures `deterministic` gets `{ timeout: 20000 }` (P-053 precedent) - three generations + a dozen git spawns exceed the 5s default under full parallel load (399/399 with --testTimeout=20000 proved timing, not logic); depcruise-hook flake unchanged.
 

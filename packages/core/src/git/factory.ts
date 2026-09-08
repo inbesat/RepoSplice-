@@ -24,6 +24,14 @@ export interface GitFactoryOptions {
   nonInteractive?: boolean;
   /** Working directory for the underlying git invocation. */
   baseDir?: string;
+  /**
+   * Silence timeout (ms) for git child processes, wired to simple-git's
+   * timeout plugin (`timeout: { block }`): the process is killed after
+   * `timeoutMs` without stdout/stderr output. No timeout when omitted.
+   * Must be an integer >= 1 — validated by callers (cloneRepo rejects
+   * misuse with CONFIG_ERROR); this thin factory cannot return Result.
+   */
+  timeoutMs?: number;
 }
 
 const GIT_NON_INTERACTIVE_ENV = '0';
@@ -34,10 +42,13 @@ const GIT_NON_INTERACTIVE_ENV = '0';
  * `simpleGit()` directly.
  */
 export function createGit(opts: GitFactoryOptions = {}): Git {
-  const { nonInteractive = true, baseDir } = opts;
+  const { nonInteractive = true, baseDir, timeoutMs } = opts;
   // simple-git v3 doesn't accept `env` in its options object — the env
   // is set after creation via the `env(name, value)` chainable builder.
-  const git = simpleGit({ baseDir: baseDir ?? process.cwd() });
+  const git = simpleGit({
+    baseDir: baseDir ?? process.cwd(),
+    ...(timeoutMs !== undefined ? { timeout: { block: timeoutMs } } : {}),
+  });
   if (nonInteractive) {
     git.env('GIT_TERMINAL_PROMPT', GIT_NON_INTERACTIVE_ENV);
   }

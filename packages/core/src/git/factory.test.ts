@@ -71,6 +71,16 @@ describe('P-016 git factory: createGit + init', () => {
   });
 });
 
+describe('P-069 git factory: timeoutMs', () => {
+  it('createGit() forwards timeoutMs and the instance stays usable', async () => {
+    // The silence-timeout plugin must not break normal operation: version()
+    // answers on a timeout-wired instance.
+    const git = createGit({ baseDir: workDir, timeoutMs: 5000 });
+    const result = await fromInternalPromise(git.version(), 'git.version');
+    expect(result.isOk()).toBe(true);
+  });
+});
+
 describe('P-016 git factory: full commit + log + status cycle', () => {
   it('init → add → commit → log returns the commit', async () => {
     const git = createGit({ baseDir: workDir });
