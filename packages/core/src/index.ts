@@ -114,6 +114,8 @@ export {
   checkGitVersionOutput,
   localGitVersion,
 } from './git/version.js';
+export { checkFilterRepoStatus } from './git/filterRepo.js';
+export type { FilterRepoStatus } from './git/filterRepo.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
 export type {

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-066 - System dep doc: git-filter-repo (awaiting go-ahead)
+**Current Phase:** P-067 - System dep doc: Docker (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 66 |
+| **Implemented** | 67 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 253 |
+| **Pending (implementation)** | 252 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -98,7 +98,7 @@
 - [x] **P-063** root: `nock` / `mockttp` (shared `test-utils/http.ts` + 1 test)
 - [x] **P-064** root: fixture-repo generator (script + 4 tests + race fix)
 - [x] **P-065** System: git >=2.40 doc + MIN_GIT_VERSION (doctor deferred P-068)
-- [ ] **P-066** System: Doc `git-filter-repo` (pip) install
+- [x] **P-066** System: git-filter-repo doc + presence probe (no semver floor; doctor deferred P-068)
 - [ ] **P-067** System: Doc Docker requirement
 - [ ] **P-068** `stitch doctor` system-dep verifier
 
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-066 (next, awaiting go-ahead):** `docs/system/git-filter-repo.md` per PHASES_DETAILED.md P-066 (read the FULL spec first; pip install, version, fallback behavior for path extraction/history rewrite, integrate into the doctor verifier P-068). NOTE: docs only; engine wiring belongs to P-070.
+**P-067 (next, awaiting go-ahead):** `docs/system/docker.md` per PHASES_DETAILED.md P-067 (read the FULL spec first; sandbox backend purpose, install per OS, `docker info` capability, daemon requirement, CI fallback P-178, base-image parity P-008/169). NOTE: docs only; engine wiring belongs to P-168.
 
-**Defer to P-067 (next after P-066):** per plan sequence (check PHASES_DETAILED.md P-067).
+**Defer to P-068 (next after P-067):** per plan sequence (check PHASES_DETAILED.md P-068).
 
 ---
 
