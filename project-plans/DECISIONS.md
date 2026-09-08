@@ -459,4 +459,25 @@
 
 ---
 
+## ADR-019: Exclude Build Output from Coverage (`**/dist/**`)
+
+**Status:** Accepted
+**Date:** 2026-09-08
+
+**Context:** P-062's `it('builds')` imports `packages/core/dist/index.js` + `require()`s `dist/index.cjs` to prove the bundles load. V8 coverage then tracks those loaded bundle files, and the aggregate report collapsed (statements 88.9% → 44.8%) even though every per-path threshold still passed. The installed vitest 5 defaults were read from source to rule out a replace-vs-merge trap: base `coverage.exclude` defaults to `[]`, and test-file exclusion is applied dynamically by vitest core (independent of the option), so setting `exclude` only ADDS patterns.
+
+**Decision:**
+- Add `coverage.exclude: ['**/dist/**']` to root `vitest.config.ts` (frozen file — this ADR is its authorization). The `**/` prefix matters: a bare `dist/**` would only match a root-level `dist/`, not `packages/*/dist/`.
+- Justification (P-259 anticipates this class): `dist/` is generated output, gitignored, and already covered transitively — every bundled line originates from `src/` files measured directly. The `it('builds')` load assertions guard the bundle; coverage guards the sources.
+
+**Alternatives Considered:**
+- **Move the dist-load assertions out of the suite** — rejected: spec step 3–4 requires proving the bundles load and types resolve; untested build output is how P-278 would ship a broken package.
+- **coverage `include` limited to `src/`** — rejected: larger diff touching per-project semantics; a single exclude pattern is minimal and matches P-259's planned exclude list (which will extend this same array for generated clients).
+
+**Consequences:**
+- ✅ Aggregate coverage returns to source-only numbers; thresholds unchanged and still enforced.
+- ⚠️ Future generated files (P-252 client, P-259 baselines) must extend this array with the same justification format.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

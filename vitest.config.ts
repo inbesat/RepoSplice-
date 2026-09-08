@@ -7,6 +7,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      // ADR-019: generated build output is measured via it('builds'), not
+      // coverage — every bundled line is already measured at its src/ origin.
+      exclude: ['**/dist/**'],
       thresholds: {
         'packages/core/src/**/*.ts': {
           statements: 80,
