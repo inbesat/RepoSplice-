@@ -176,6 +176,27 @@ export type {
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
+export {
+  buildDoctorChecks,
+  makeDockerCheck,
+  makeFilterRepoCheck,
+  makeGitCheck,
+  makeGitHubTokenCheck,
+  makeOllamaCheck,
+  runDoctor,
+} from './system/doctor.js';
+export type {
+  CheckResult,
+  DependencyCheck,
+  CheckOutcome,
+  DoctorReport,
+  DockerCheckSeams,
+  DoctorCheckOptions,
+  OllamaProbe,
+  ProcessRunner,
+  RunDoctorOptions,
+} from './system/doctor.js';
+
 export { openDb, defaultStorePath, stitchHomeDir, STITCH_STORE_FILENAME } from './store/db.js';
 export type { OpenDbOptions, StitchDb } from './store/db.js';
 export { migrate, dbAll, dbGet, dbRun, migrations, SCHEMA_VERSION } from './store/schema.js';

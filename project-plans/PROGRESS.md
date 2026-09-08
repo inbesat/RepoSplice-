@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-068 - stitch doctor verifier (awaiting go-ahead)
+**Current Phase:** P-069 - `cloneRepo` (shallow/full) (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 68 |
+| **Implemented** | 69 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 251 |
+| **Pending (implementation)** | 250 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
+| **Next Handoff** | P-069 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -100,7 +100,7 @@
 - [x] **P-065** System: git >=2.40 doc + MIN_GIT_VERSION (doctor deferred P-068)
 - [x] **P-066** System: git-filter-repo doc + presence probe (no semver floor; doctor deferred P-068)
 - [x] **P-067** System: Docker doc + daemon probe (no engine floor; doctor deferred P-068)
-- [ ] **P-068** `stitch doctor` system-dep verifier
+- [x] **P-068** `stitch doctor` verifier (ordered checks, p-limit, DoctorReport, CLI render + exit 0/1/2; init hook deferred P-190)
 
 #### Workflow Phases (P-313–P-317)
 - [ ] **P-313** Git branching model doc (`dev`/`main`, PR rules)
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-068 (next, awaiting go-ahead):** `packages/core/src/system/doctor.ts` + `packages/cli/src/commands/doctor.ts` per PHASES_DETAILED.md P-068 (read the FULL spec first; ordered DependencyCheck list reusing the P-065/066/067 primitives, p-limit concurrency, DoctorReport JSON shape, CLI render + exit codes, init first-run wiring). NOTE: composes existing probes; no new system binaries.
+**P-069 (next, awaiting go-ahead):** `cloneRepo` (shallow/full) per PHASES_DETAILED.md P-069 (read the FULL spec first; Git Core epic P-069-P-087). NOTE: first real git-mutation phase — fixture repos (P-064) + doctor-verified git floor (P-065/P-068).
 
-**Defer to P-069 (next after P-068):** per plan sequence (check PHASES_DETAILED.md P-069).
+**P-068 notes (done):** doctor composes P-065/066/067 probes; no new StitchError codes; exhaustive describeError forces render decisions. P-190 owns the init first-run hookup (no init command exists yet); P-194 owns the CLI-wide --json envelope; P-195 owns doctor UX expansion. Live `stitch doctor` on this machine: git PASS (2.45.1), filter-repo FAIL (not on PATH — the P-066 Windows trap), docker FAIL optional, exit 1. Test-budget fix: generate-fixtures `deterministic` gets `{ timeout: 20000 }` (P-053 precedent) - three generations + a dozen git spawns exceed the 5s default under full parallel load (399/399 with --testTimeout=20000 proved timing, not logic); depcruise-hook flake unchanged.
 
 ---
 

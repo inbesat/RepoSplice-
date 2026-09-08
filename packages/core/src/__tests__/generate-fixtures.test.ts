@@ -135,7 +135,9 @@ describe('fixture repos (P-064 generate-fixtures)', () => {
     expect(await git(dir, 'show', 'HEAD~1:LICENSE')).toBe(MIT_LICENSE.trimEnd());
   });
 
-  it('deterministic', async () => {
+  // Three full generations plus a dozen git spawns: needs headroom under
+  // full-suite parallel load (P-053 precedent for explicit slow budgets).
+  it('deterministic', { timeout: 20000 }, async () => {
     const firstRoot = await freshRoot();
     const secondRoot = await freshRoot();
     const firstRun = await generateFixtures([ECS], { root: firstRoot });

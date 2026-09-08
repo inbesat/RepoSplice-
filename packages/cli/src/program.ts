@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { registerDoctorCommand } from './commands/doctor.js';
 
 /** CLI version. Keep in sync with packages/cli/package.json until P-062 stamps it at build. */
 export const STITCH_VERSION = '0.0.0';
@@ -39,6 +40,8 @@ export function createProgram(): Command {
     .action((options: StatusOptions) => {
       console.log(runStatus(options));
     });
+
+  registerDoctorCommand(program);
 
   return program;
 }
