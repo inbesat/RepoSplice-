@@ -115,6 +115,8 @@ export {
   redactUrlCredentials,
   DEFAULT_CLONE_DEPTH,
   DEFAULT_CLONE_TIMEOUT_MS,
+  extractPathsViaFilterRepo,
+  DEFAULT_FILTER_REPO_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -124,6 +126,10 @@ export type {
   CloneGit,
   CloneOptions,
   CloneRuntime,
+  FilterRepoOptions,
+  FilterRepoOutput,
+  FilterRepoRunner,
+  FilterRepoRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-070 - extractPathsViaFilterRepo (awaiting go-ahead)
+**Current Phase:** P-071 - tagRename helper (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 70 |
+| **Implemented** | 71 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 249 |
+| **Pending (implementation)** | 248 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-070 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-071 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-070 (next, awaiting go-ahead):** `extractPathsViaFilterRepo` per PHASES_DETAILED.md P-070 (read the FULL spec first; extends `packages/core/src/git/filterRepo.ts` (P-066 probe) + `git/index.ts` barrel). NOTE: needs git-filter-repo on PATH (absent on this machine - P-066 Windows trap); keep the P-066 presence probe intact and add live tests only where the binary exists.
+**P-071 (next, awaiting go-ahead):** `tagRename` helper per PHASES_DETAILED.md P-071 (read the FULL spec first; `packages/core/src/git/tagRename.ts` + `tagRename.test.ts`: listTags/renameTags prefix-namespace, collision skip, annotated preserved, provenance map). NOTE: pure-git phase (no filter-repo needed); P-070 extraction already namespaces tags.
+
+**P-070 notes (done):** `extractPathsViaFilterRepo` extends `git/filterRepo.ts` (P-066 probe intact) + barrels. Verified vs real 2.47.0: `:prefix` prepend, shallow-safe, unmatched-path exits 0 but EMPTIES repo (post-check rev-list turns it into GIT_ERROR), origin remote removed (P-072 must re-add). Live tests gated by collection-time binary probe (CI lacks the binary); 14/14 green with it on PATH. INCIDENT: a throwaway probe ran filter-repo with implicit cwd in the project root, emptying main history; recovered via re-add origin + fetch + reset --hard origin/main (HEAD 536996a, full tail, clean tree verified). RULE: destructive probes assert cwd (guard pattern); implementation seams always pass explicit cwd.
 
 **P-069 notes (done):** `git/clone.ts` (header auth, scrubbed errors, verified status) + `git/index.ts` barrel (root barrel re-exports through it; factory gains `timeoutMs`). Live octocat/Hello-World: shallow 1.9s (1 commit), full 1.2s (3 commits). Private-repo PAT path is unit-verified only (no live private repo available).
 

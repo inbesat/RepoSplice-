@@ -12,6 +12,13 @@ export {
 } from './version.js';
 export { checkFilterRepoStatus } from './filterRepo.js';
 export type { FilterRepoStatus } from './filterRepo.js';
+export { extractPathsViaFilterRepo, DEFAULT_FILTER_REPO_TIMEOUT_MS } from './filterRepo.js';
+export type {
+  FilterRepoOptions,
+  FilterRepoOutput,
+  FilterRepoRunner,
+  FilterRepoRuntime,
+} from './filterRepo.js';
 export {
   cloneRepo,
   redactUrlCredentials,
