@@ -39,7 +39,11 @@ module.exports = {
     },
     doNotFollow: {
       // Don't descend into type-only packages.
-      path: 'node_modules',
+      // Don't open generated build output either: dist/ is gitignored output
+      // that vanishes mid-suite when it('builds') (P-062) cleans + rebuilds
+      // it in a parallel worker, which raced file reads here (P-064). The
+      // dependency EDGES stay in the graph; only resolution is skipped.
+      path: ['node_modules', 'dist'],
     },
   },
   forbidden: [

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-064 — Root dev dep: fixture-repo generator (awaiting go-ahead)
+**Current Phase:** P-065 - System dep doc: git >= 2.40 (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 64 |
+| **Implemented** | 65 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 255 |
+| **Pending (implementation)** | 254 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -96,7 +96,7 @@
 - [x] **P-061** root: `@types/bun`, `@types/node` (types:[bun,node] + ADR-018, shim deleted)
 - [x] **P-062** root: `tsup` (core ESM+CJS+dts + `it('builds')`; exports stay →src until P-278)
 - [x] **P-063** root: `nock` / `mockttp` (shared `test-utils/http.ts` + 1 test)
-- [ ] **P-064** root: fixture-repo generator
+- [x] **P-064** root: fixture-repo generator (script + 4 tests + race fix)
 - [ ] **P-065** System: Doc `git` ≥2.40 requirement
 - [ ] **P-066** System: Doc `git-filter-repo` (pip) install
 - [ ] **P-067** System: Doc Docker requirement
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-064 (⏳ next, awaiting go-ahead):** `scripts/generate-fixtures.ts` per PHASES_DETAILED.md P-064 (read the FULL spec first; deterministic fixture repo generator for integration tests — config-driven manifest, stable commit authors/dates, supports empty/multi-ecosystem/binary/nested-ignore/LICENSE variants, `--clean` safe, typed+linted). NOTE: root-level script; never `--filter`.
+**P-065 (next, awaiting go-ahead):** `docs/system/git-version.md` per PHASES_DETAILED.md P-065 (read the FULL spec first; why git >= 2.40, verify/install per OS, `MIN_GIT_VERSION` constant via P-019 semver, doctor warning + Result error, cross-refs in AGENTS/TECH_STACK). NOTE: docs + core constant; doctor wiring belongs to P-068.
 
-**Defer to P-065 (next after P-064):** per plan sequence (check PHASES_DETAILED.md P-065).
+**Defer to P-066 (next after P-065):** per plan sequence (check PHASES_DETAILED.md P-066).
 
 ---
 
