@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-057 — Web dep: sonner (awaiting go-ahead)
+**Current Phase:** P-058 — Web dep: react-arborist (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,10 +16,10 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 57 |
+| **Implemented** | 58 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 262 |
+| **Pending (implementation)** | 261 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
 | **Next Handoff** | After P-068 → aradhy starts Wave 1 (CLI + Web) |
 
@@ -89,7 +89,7 @@
 - [x] **P-054** web: `lucide-react` (StatusIcon ok/warn/err/idle, 2 tests)
 - [x] **P-055** web: `@radix-ui/*` (6 thin wrappers + axe-clean, 7 tests)
 - [x] **P-056** web: `react-hook-form` + `@hookform/resolvers` (SettingsForm scaffold + 2 tests)
-- [ ] **P-057** web: `sonner`
+- [x] **P-057** web: `sonner` (notifyJob helper + Toaster at root + 1 test)
 - [ ] **P-058** web: `react-arborist`
 - [ ] **P-059** web: `clsx` + `tailwind-merge`
 - [ ] **P-060** root: `vitest` + `@vitest/ui`
@@ -479,9 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-057 (⏳ next, awaiting go-ahead):** `sonner` in `packages/web`: `import { Toaster, toast } from 'sonner'` typechecks (P-002); mount `<Toaster/>` at the app root (P-208) + a `toast.promise` helper for job mutations (P-247); dark-mode (P-226) themed. Smoke: deferred resolve triggers success toast capture. NOTE: `bun add --cwd packages/web` (never `--filter`).
+**P-058 (⏳ next, awaiting go-ahead):** `react-arborist` in `packages/web` per PHASES_DETAILED.md P-058 (read the FULL spec first — it is larger than a plain dep phase; verify real exports/peers against the installed version before scaffolding). NOTE: `bun add --cwd packages/web` (never `--filter`).
 
-**Defer to P-058 (next after P-057):** per plan sequence (check PHASES_DETAILED.md P-058).
+**Defer to P-059 (next after P-058):** per plan sequence (check PHASES_DETAILED.md P-059).
 
 ---
 
