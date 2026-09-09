@@ -58,3 +58,12 @@ export type {
   ExtractStrategy,
   StrategyInput,
 } from './subtree.js';
+export { cherryPickRange, DEFAULT_CHERRY_PICK_TIMEOUT_MS } from './cherryPick.js';
+export type {
+  CherryPickOpts,
+  CherryPickResolveInput,
+  CherryPickResolver,
+  CherryPickStatus,
+  CherryPickGit,
+  CherryPickRuntime,
+} from './cherryPick.js';

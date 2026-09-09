@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-074 - cherryPickRange (awaiting go-ahead)
+**Current Phase:** P-075 - conflict resolver (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 74 |
+| **Implemented** | 75 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 245 |
+| **Pending (implementation)** | 244 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-074 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-075 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-074 (next, awaiting go-ahead):** `cherryPickRange` per PHASES_DETAILED.md P-074 (read the FULL spec first).
+**P-075 (next, awaiting go-ahead):** conflict resolver per PHASES_DETAILED.md P-075 (read the FULL spec first; `packages/core/src/git/conflict.ts`: detectConflicts classification + auto-resolution tiers + HIL gate + apply; consumes the P-074 hook shape).
+
+**P-074 notes (done):** `git/cherryPick.ts` (cherryPickRange(repoPath, sourceRemote, range, opts?, runtime?) — spec-exact positional: structural guards (repo -> overlap sequencer files -> clean tree -> on-branch -> HEAD exists) -> fetch -> resolve SHA-list (order kept) or from..to (oldest-first) -> single cherry-pick (stops at first problem) -> 3-class failure discriminator (conflict with stopping commit / empty pick / leftover dirt) -> conditional abort + HEAD-unchanged+clean verify (P-085) or resolveConflicts hook with add+continue; returns new SHAs oldest-first. Probed findings encoded: empty picks leave CHERRY_PICK_HEAD with clean tree; blind abort exits 128; simple-git raw resolves silent failures (noisy symbolic-ref required). Secrets scrubbed.) + barrels. 38/38 green (4 verbatim + guards + resolver quartet + scripted failure paths); cherryPick.ts ~97% stmts (5 defensive lines accepted).
 
 **P-073 notes (done):** `git/subtree.ts` (subtreeAdd(parentRepo, childRepo, prefix, opts?, runtime?) — spec-exact positional signature: cheap-first preflights (validation -> parent exists -> prefix free with ZERO git calls -> repo check -> ls-remote fetchability + symref branch resolution with HEAD fallback) -> `git subtree add` with hermetic identity flags (NO autocrlf override: it trips git-subtree clean-tree checks on foreign-normalized repos — probed) -> prefix verify; history mode keeps commits verbatim + provenance merge message, squash mode squashes; selectExtractStrategy filter-repo-first with subtree fallback, fail-closed on unknown/missing; secrets scrubbed via redactUrlCredentials) + barrels. 20/20 green (4 verbatim: squash/history/prefix-exists live + strategy table; 13 scripted mapping). subtree.ts 96% stmts (5 defensive lines accepted).
 

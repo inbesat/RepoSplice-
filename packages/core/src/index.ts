@@ -128,6 +128,8 @@ export {
   DEFAULT_SUBTREE_TIMEOUT_MS,
   SUBTREE_AUTHOR_NAME,
   SUBTREE_AUTHOR_EMAIL,
+  cherryPickRange,
+  DEFAULT_CHERRY_PICK_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -162,6 +164,12 @@ export type {
   SubtreeRuntime,
   ExtractStrategy,
   StrategyInput,
+  CherryPickOpts,
+  CherryPickResolveInput,
+  CherryPickResolver,
+  CherryPickStatus,
+  CherryPickGit,
+  CherryPickRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
