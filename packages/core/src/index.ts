@@ -119,6 +119,10 @@ export {
   DEFAULT_FILTER_REPO_TIMEOUT_MS,
   listTags,
   renameTags,
+  mergeRepos,
+  MERGE_AUTHOR_NAME,
+  MERGE_AUTHOR_EMAIL,
+  MERGE_FIXED_DATE,
 } from './git/index.js';
 export type {
   Git,
@@ -135,6 +139,19 @@ export type {
   RenameTagsOptions,
   RenameTagsResult,
   TagRenameRuntime,
+  MergeSource,
+  MergeAuthor,
+  MergeOptions,
+  MergeResult,
+  MergeGit,
+  MergeStatus,
+  MergeLog,
+  MergeRuntime,
+  ConflictInput,
+  ConflictResolver,
+  CloneLike,
+  FilterRepoLike,
+  ListTagsLike,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

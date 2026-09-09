@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-072 - mergeRepos (awaiting go-ahead)
+**Current Phase:** P-073 - subtreeAdd (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 72 |
+| **Implemented** | 73 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 247 |
+| **Pending (implementation)** | 246 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-072 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-073 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-072 (next, awaiting go-ahead):** `mergeRepos` per PHASES_DETAILED.md P-072 (read the FULL spec first; `packages/core/src/git/merge.ts`: orchestrates P-069 clone -> P-070 extract -> P-071 tag rename -> subtree/merge into the target worktree). NOTE: P-070 drops the origin remote on extraction - merge must re-add remotes before push; shallow clones are filter-repo-safe (P-070 probe).
+**P-073 (next, awaiting go-ahead):** `subtreeAdd` per PHASES_DETAILED.md P-073 (read the FULL spec first; `packages/core/src/git/subtree.ts`: `git subtree add --prefix=<prefix> <childRepo> <branch>` with squash + history modes, preflight prefix-exists + remote-fetch guards, strategy selection vs filter-repo (P-243). Plugs behind a MergeRuntime.extract adapter for the P-072 pipeline.)
+
+**P-072 notes (done):** `git/merge.ts` (mergeRepos: full-clone -> P-070 extract with `prefix/` tagPrefix -> P-071 listTags -> real `--allow-unrelated-histories` assembly on a fresh `-b main` child with empty root; R2 composition: extract does the tag rename so renameTags is NOT called — a second prepend would double-prefix; tagMap is namespaced->original (lossless); conflicts fail fast as GIT_ERROR naming files (P-203 remap noted) or via the resolveConflicts hook; atomic rollback removes the child; hermetic child config autocrlf/fileMode/gpgsign (Windows system autocrlf=true was rewriting child bytes — caught by suite); narrowed MergeGit seam (MergeStatus/MergeLog, no casts); deterministic identity+messages, proven by double-merge equality) + barrels. 33/33 green live (17 real-git incl. 5 verbatim + 14 scripted failure-mapping + 2 live filter-repo e2e); merge.ts ~98% stmts.
 
 **P-071 notes (done):** `git/tagRename.ts` (listTags sorted, renameTags prefix-namespace + snapshot collision skips + annotated preserved as tag objects + check-ref-format pre-validation; duplication-over-loss ordering) + barrels. Return is { renamed: Map, skipped: [] } (TagMap<TagId> would invent P-079 types); sort is lexicographic with P-080-upgrade note. 11/11 green (7 mocked + 4 live local-git).
 

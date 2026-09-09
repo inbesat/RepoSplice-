@@ -21,6 +21,22 @@ export type {
   FilterRepoRunner,
   FilterRepoRuntime,
 } from './filterRepo.js';
+export { mergeRepos, MERGE_AUTHOR_NAME, MERGE_AUTHOR_EMAIL, MERGE_FIXED_DATE } from './merge.js';
+export type {
+  MergeSource,
+  MergeAuthor,
+  MergeOptions,
+  MergeResult,
+  MergeGit,
+  MergeStatus,
+  MergeLog,
+  MergeRuntime,
+  ConflictInput,
+  ConflictResolver,
+  CloneLike,
+  FilterRepoLike,
+  ListTagsLike,
+} from './merge.js';
 export {
   cloneRepo,
   redactUrlCredentials,
