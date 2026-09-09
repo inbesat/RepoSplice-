@@ -44,3 +44,17 @@ export {
   DEFAULT_CLONE_TIMEOUT_MS,
 } from './clone.js';
 export type { CloneCredentials, CloneGit, CloneOptions, CloneRuntime } from './clone.js';
+export {
+  subtreeAdd,
+  selectExtractStrategy,
+  DEFAULT_SUBTREE_TIMEOUT_MS,
+  SUBTREE_AUTHOR_NAME,
+  SUBTREE_AUTHOR_EMAIL,
+} from './subtree.js';
+export type {
+  SubtreeOpts,
+  SubtreeGit,
+  SubtreeRuntime,
+  ExtractStrategy,
+  StrategyInput,
+} from './subtree.js';

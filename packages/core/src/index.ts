@@ -123,6 +123,11 @@ export {
   MERGE_AUTHOR_NAME,
   MERGE_AUTHOR_EMAIL,
   MERGE_FIXED_DATE,
+  subtreeAdd,
+  selectExtractStrategy,
+  DEFAULT_SUBTREE_TIMEOUT_MS,
+  SUBTREE_AUTHOR_NAME,
+  SUBTREE_AUTHOR_EMAIL,
 } from './git/index.js';
 export type {
   Git,
@@ -152,6 +157,11 @@ export type {
   CloneLike,
   FilterRepoLike,
   ListTagsLike,
+  SubtreeOpts,
+  SubtreeGit,
+  SubtreeRuntime,
+  ExtractStrategy,
+  StrategyInput,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
