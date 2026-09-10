@@ -141,6 +141,9 @@ export {
   parseWorktreeList,
   samePath,
   DEFAULT_WORKTREE_TIMEOUT_MS,
+  commitWithTrailers,
+  buildCommitMessage,
+  DEFAULT_COMMIT_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -207,6 +210,11 @@ export type {
   WorktreeRunner,
   WorktreeFs,
   WorktreeRuntime,
+  CoAuthor,
+  CommitOpts,
+  CommitRunner,
+  CommitRunResult,
+  CommitRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

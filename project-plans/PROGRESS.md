@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-077 - Commit with Co-Author Trailers (awaiting go-ahead)
+**Current Phase:** P-078 - pushToRemote (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 77 |
+| **Implemented** | 78 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 242 |
+| **Pending (implementation)** | 241 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-077 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-078 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-077 (next, awaiting go-ahead):** commit with co-author trailers per PHASES_DETAILED.md P-077 (read the FULL spec first; `packages/core/src/git/commit.ts`: `commitWithTrailers` with deduped `Co-Authored-By` trailers, CRLF/injection stripping (P-265), deterministic order (P-282), dirty-mismatch refusal (P-084), commits the P-076 worktree).
+**P-078 (next, awaiting go-ahead):** push to remote per PHASES_DETAILED.md P-078 (read the FULL spec first; `packages/core/src/git/push.ts`: `pushToRemote` with lease/force guards, auth via existing clone PAT pattern (P-069), dry-run + verify pushed SHA, refuses dirty/diverged per P-084/P-085).
+
+**P-077 notes (done):** `git/commit.ts` (`commitWithTrailers` + pure `buildCommitMessage`: CRLF->LF, CR/LF stripped from author fields (P-265), mailbox shape validated, dedupe by name+lowercased email, input (lineage) order preserved for P-181 (never sorted), exact staged set vs intended files, stray unstaged/untracked always refuse, unmerged refuse, empty index refuse (all GIT_ERROR + paths, P-074 precedent; P-203 owns DIRTY_TREE), unmatchable files entry -> CONFIG, returns `rev-parse HEAD` SHA (shape-checked), exit-codes-as-data runner (124 sentinel), no new error codes) + barrels. 39/39 green (10 real-git incl. 5 spec-required); commit.ts 180/180 stmts (100%). Full suite 666 passed / 0 failed (depcruise hook timeout under load = known P-021 flake; lint:deps clean).
 
 **P-076 notes (done):** `git/worktree.ts` (`writeToWorktree` + `removeWorktree`: validate-all-first (incl. every rel through resolveTargetPath rooted at the tree), rev-parse repo check, `worktree add --detach` (bad ref -> CONFIG), occupied-target refusal, verbatim string staging via fs port, `VerifyTree` port (P-171; pass:false keeps files, no error), best-effort cleanup on failure, removal only for list-registered trees/never main/re-verified gone, exit-codes-as-data runner (124 sentinel), no new error codes; spec `Result<void>` widened to `Result<WriteWorktreeResult>` so P-077/P-085/P-238 get the handle) + pure `parseWorktreeList`/`samePath`/`exitCodeOf` + barrels. 39/39 green (9 real-git incl. 4 spec-required); worktree.ts 183/183 stmts (100%). Full suite 628 passed / 0 failed.
 

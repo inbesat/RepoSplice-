@@ -86,6 +86,14 @@ export type {
   WorktreeFs,
   WorktreeRuntime,
 } from './worktree.js';
+export { commitWithTrailers, buildCommitMessage, DEFAULT_COMMIT_TIMEOUT_MS } from './commit.js';
+export type {
+  CoAuthor,
+  CommitOpts,
+  CommitRunner,
+  CommitRunResult,
+  CommitRuntime,
+} from './commit.js';
 export {
   detectConflicts,
   resolveConflicts,
