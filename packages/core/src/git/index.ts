@@ -95,6 +95,21 @@ export type {
   CommitRuntime,
 } from './commit.js';
 export {
+  pushToRemote,
+  parseGitHubRemote,
+  DEFAULT_PUSH_TIMEOUT_MS,
+  DEFAULT_PROTECTED_BRANCHES,
+} from './push.js';
+export type {
+  PushOpts,
+  PushRunner,
+  PushRunResult,
+  PushRuntime,
+  RemoteRepoCheck,
+  RepoCreator,
+  GitHubRemote,
+} from './push.js';
+export {
   detectConflicts,
   resolveConflicts,
   classifyStages,

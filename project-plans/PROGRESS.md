@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-078 - pushToRemote (awaiting go-ahead)
+**Current Phase:** P-079 - Blame/Provenance Map Foundation (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 78 |
+| **Implemented** | 79 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 241 |
+| **Pending (implementation)** | 240 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-078 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-079 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-078 (next, awaiting go-ahead):** push to remote per PHASES_DETAILED.md P-078 (read the FULL spec first; `packages/core/src/git/push.ts`: `pushToRemote` with lease/force guards, auth via existing clone PAT pattern (P-069), dry-run + verify pushed SHA, refuses dirty/diverged per P-084/P-085).
+**P-079 (next, awaiting go-ahead):** blame/provenance map foundation per PHASES_DETAILED.md P-079 (read the FULL spec first; `packages/core/src/git/blame.ts`: per-line origin via `git blame --porcelain`, lineage records for P-181, feeds P-075 conflict context + P-182 CREDITS).
+
+**P-078 notes (done):** `git/push.ts` (`pushToRemote` -> void: pre-spawn force/protected guards, rev-parse repo check, check-ref-format branch, local SHA resolve, ls-remote probe with skip-if-equal, GitHub existence + gated creation through RemoteRepoCheck/RepoCreator ports (P-092; absent port means push-is-the-probe, never conflating new-branch with missing-repo), plain/diverged-hint/lease push, post-push verify; P-069 header credentials (exact-match scrub + URL redaction, never logged); no new error codes) + pure `parseGitHubRemote` + barrels. 40/40 green (3 real-git incl. 4 spec-required via bare remotes, no network); push.ts 185/185 stmts (100%). Full suite 707 passed / 0 failed.
 
 **P-077 notes (done):** `git/commit.ts` (`commitWithTrailers` + pure `buildCommitMessage`: CRLF->LF, CR/LF stripped from author fields (P-265), mailbox shape validated, dedupe by name+lowercased email, input (lineage) order preserved for P-181 (never sorted), exact staged set vs intended files, stray unstaged/untracked always refuse, unmerged refuse, empty index refuse (all GIT_ERROR + paths, P-074 precedent; P-203 owns DIRTY_TREE), unmatchable files entry -> CONFIG, returns `rev-parse HEAD` SHA (shape-checked), exit-codes-as-data runner (124 sentinel), no new error codes) + barrels. 39/39 green (10 real-git incl. 5 spec-required); commit.ts 180/180 stmts (100%). Full suite 666 passed / 0 failed (depcruise hook timeout under load = known P-021 flake; lint:deps clean).
 

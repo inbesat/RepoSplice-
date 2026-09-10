@@ -144,6 +144,10 @@ export {
   commitWithTrailers,
   buildCommitMessage,
   DEFAULT_COMMIT_TIMEOUT_MS,
+  pushToRemote,
+  parseGitHubRemote,
+  DEFAULT_PUSH_TIMEOUT_MS,
+  DEFAULT_PROTECTED_BRANCHES,
 } from './git/index.js';
 export type {
   Git,
@@ -215,6 +219,13 @@ export type {
   CommitRunner,
   CommitRunResult,
   CommitRuntime,
+  PushOpts,
+  PushRunner,
+  PushRunResult,
+  PushRuntime,
+  RemoteRepoCheck,
+  RepoCreator,
+  GitHubRemote,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
