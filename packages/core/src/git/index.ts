@@ -68,6 +68,25 @@ export type {
   CherryPickRuntime,
 } from './cherryPick.js';
 export {
+  writeToWorktree,
+  removeWorktree,
+  parseWorktreeList,
+  samePath,
+  DEFAULT_WORKTREE_TIMEOUT_MS,
+} from './worktree.js';
+export type {
+  VerifyVerdict,
+  VerifyTree,
+  WorktreeFile,
+  WriteWorktreeOpts,
+  WriteWorktreeResult,
+  RemoveWorktreeOpts,
+  WorktreeRunResult,
+  WorktreeRunner,
+  WorktreeFs,
+  WorktreeRuntime,
+} from './worktree.js';
+export {
   detectConflicts,
   resolveConflicts,
   classifyStages,

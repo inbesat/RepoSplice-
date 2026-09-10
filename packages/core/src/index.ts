@@ -136,6 +136,11 @@ export {
   unionGitignoreSides,
   resolveTargetPath,
   DEFAULT_CONFLICT_TIMEOUT_MS,
+  writeToWorktree,
+  removeWorktree,
+  parseWorktreeList,
+  samePath,
+  DEFAULT_WORKTREE_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -192,6 +197,16 @@ export type {
   ResolvedConflict,
   ResolutionStrategy,
   ResolveReport,
+  VerifyVerdict,
+  VerifyTree,
+  WorktreeFile,
+  WriteWorktreeOpts,
+  WriteWorktreeResult,
+  RemoveWorktreeOpts,
+  WorktreeRunResult,
+  WorktreeRunner,
+  WorktreeFs,
+  WorktreeRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

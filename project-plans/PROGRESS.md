@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-076 - writeToWorktree (awaiting go-ahead)
+**Current Phase:** P-077 - Commit with Co-Author Trailers (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 76 |
+| **Implemented** | 77 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 243 |
+| **Pending (implementation)** | 242 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-076 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-077 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-076 (next, awaiting go-ahead):** write files into a git worktree per PHASES_DETAILED.md P-076 (read the FULL spec first; `packages/core/src/git/worktree.ts`: `writeToWorktree` via `git worktree add` or temp fallback, safeJoin + `.git` refusal (P-012/P-265), remove-on-abandon (P-085)).
+**P-077 (next, awaiting go-ahead):** commit with co-author trailers per PHASES_DETAILED.md P-077 (read the FULL spec first; `packages/core/src/git/commit.ts`: `commitWithTrailers` with deduped `Co-Authored-By` trailers, CRLF/injection stripping (P-265), deterministic order (P-282), dirty-mismatch refusal (P-084), commits the P-076 worktree).
+
+**P-076 notes (done):** `git/worktree.ts` (`writeToWorktree` + `removeWorktree`: validate-all-first (incl. every rel through resolveTargetPath rooted at the tree), rev-parse repo check, `worktree add --detach` (bad ref -> CONFIG), occupied-target refusal, verbatim string staging via fs port, `VerifyTree` port (P-171; pass:false keeps files, no error), best-effort cleanup on failure, removal only for list-registered trees/never main/re-verified gone, exit-codes-as-data runner (124 sentinel), no new error codes; spec `Result<void>` widened to `Result<WriteWorktreeResult>` so P-077/P-085/P-238 get the handle) + pure `parseWorktreeList`/`samePath`/`exitCodeOf` + barrels. 39/39 green (9 real-git incl. 4 spec-required); worktree.ts 183/183 stmts (100%). Full suite 628 passed / 0 failed.
 
 **P-075 notes (done):** `git/conflict.ts` (`detectConflicts` + `resolveConflicts`: porcelain `-z` + diff-U union, `ls-files -u` stage SHAs, NUL-in-8000 binary rule (numstat proven useless on unmerged paths), `--quiet -w` whitespace tier incl. trailing-newline, gitignore line-union, one-side-unchanged take, manifest/gate ports (P-108/109 and P-160 implement later), never-auto-write without approval, conditional verify with stuck-apply INTERNAL, `resolveWithin` + `.git` refusal, exit-codes-as-data runner (124 timeout sentinel), no new error codes) + pure `classifyStages`/`unionGitignoreSides`/`resolveTargetPath`/`exitCodeOf` + barrels. 63/63 green (15 real-git incl. 4 spec-required); conflict.ts 306/307 stmts (1 documented totality arm). Real-git tests carry explicit 30s budgets (root 30s does not inherit into defineProject; P-053 precedent).
 
