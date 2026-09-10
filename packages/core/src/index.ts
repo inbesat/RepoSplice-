@@ -148,6 +148,11 @@ export {
   parseGitHubRemote,
   DEFAULT_PUSH_TIMEOUT_MS,
   DEFAULT_PROTECTED_BRANCHES,
+  buildBlameMap,
+  saveBlameMap,
+  loadBlameMap,
+  parseBlamePorcelain,
+  DEFAULT_BLAME_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -226,6 +231,14 @@ export type {
   RemoteRepoCheck,
   RepoCreator,
   GitHubRemote,
+  BlameSource,
+  LineOrigin,
+  FileBlame,
+  BlameMap,
+  BlameOpts,
+  BlameRunner,
+  BlameRunResult,
+  BlameRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

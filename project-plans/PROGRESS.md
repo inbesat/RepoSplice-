@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-079 - Blame/Provenance Map Foundation (awaiting go-ahead)
+**Current Phase:** P-080 - Branch Management (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 79 |
+| **Implemented** | 80 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 240 |
+| **Pending (implementation)** | 239 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-079 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-080 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-079 (next, awaiting go-ahead):** blame/provenance map foundation per PHASES_DETAILED.md P-079 (read the FULL spec first; `packages/core/src/git/blame.ts`: per-line origin via `git blame --porcelain`, lineage records for P-181, feeds P-075 conflict context + P-182 CREDITS).
+**P-080 (next, awaiting go-ahead):** branch management per PHASES_DETAILED.md P-080 (read the FULL spec first; `packages/core/src/git/branches.ts`: `createBranch`/`deleteBranch`/`renameBranch` with protected + current-branch guards (P-093), name validation (P-012/P-265), idempotent create (P-250).
+
+**P-079 notes (done):** `git/blameMap.ts` (`buildBlameMap` + pure `parseBlamePorcelain`: ls-files blob SHAs, per-file line-porcelain blocks with final-file ranges, strict state-machine parser, per-line source resolution (unique tip ancestry, then longest prefix, then honest null; shared linear history documented ambiguous; absent prefix never matches, explicit empty = catch-all; ancestry-only cached, never path answers), uncommitted lines as null SHAs, no binary exclusion (authorship counts); `saveBlameMap`/`loadBlameMap` on the P-030 provenance table via DbLike (replace-whole-map, versioned JSON, deep row validation); no new error codes) + barrels. 36/36 green (6 real-git incl. 4 spec-required + fake-DbLike persistence); blameMap.ts 261/261 stmts (100%). Full suite 743 passed / 0 failed.
 
 **P-078 notes (done):** `git/push.ts` (`pushToRemote` -> void: pre-spawn force/protected guards, rev-parse repo check, check-ref-format branch, local SHA resolve, ls-remote probe with skip-if-equal, GitHub existence + gated creation through RemoteRepoCheck/RepoCreator ports (P-092; absent port means push-is-the-probe, never conflating new-branch with missing-repo), plain/diverged-hint/lease push, post-push verify; P-069 header credentials (exact-match scrub + URL redaction, never logged); no new error codes) + pure `parseGitHubRemote` + barrels. 40/40 green (3 real-git incl. 4 spec-required via bare remotes, no network); push.ts 185/185 stmts (100%). Full suite 707 passed / 0 failed.
 

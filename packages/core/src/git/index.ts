@@ -110,6 +110,23 @@ export type {
   GitHubRemote,
 } from './push.js';
 export {
+  buildBlameMap,
+  saveBlameMap,
+  loadBlameMap,
+  parseBlamePorcelain,
+  DEFAULT_BLAME_TIMEOUT_MS,
+} from './blameMap.js';
+export type {
+  BlameSource,
+  LineOrigin,
+  FileBlame,
+  BlameMap,
+  BlameOpts,
+  BlameRunner,
+  BlameRunResult,
+  BlameRuntime,
+} from './blameMap.js';
+export {
   detectConflicts,
   resolveConflicts,
   classifyStages,
