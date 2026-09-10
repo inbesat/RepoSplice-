@@ -67,3 +67,29 @@ export type {
   CherryPickGit,
   CherryPickRuntime,
 } from './cherryPick.js';
+export {
+  detectConflicts,
+  resolveConflicts,
+  classifyStages,
+  unionGitignoreSides,
+  resolveTargetPath,
+  DEFAULT_CONFLICT_TIMEOUT_MS,
+} from './conflict.js';
+export type {
+  Conflict,
+  ConflictGate,
+  ConflictKind,
+  ConflictOpts,
+  ConflictProposal,
+  ConflictRecommendation,
+  ConflictRunResult,
+  ConflictRunner,
+  ConflictRuntime,
+  ConflictStages,
+  GatedConflict,
+  GateDecision,
+  ManifestMerge,
+  ResolvedConflict,
+  ResolutionStrategy,
+  ResolveReport,
+} from './conflict.js';

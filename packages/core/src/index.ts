@@ -130,6 +130,12 @@ export {
   SUBTREE_AUTHOR_EMAIL,
   cherryPickRange,
   DEFAULT_CHERRY_PICK_TIMEOUT_MS,
+  detectConflicts,
+  resolveConflicts,
+  classifyStages,
+  unionGitignoreSides,
+  resolveTargetPath,
+  DEFAULT_CONFLICT_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -170,6 +176,22 @@ export type {
   CherryPickStatus,
   CherryPickGit,
   CherryPickRuntime,
+  Conflict,
+  ConflictGate,
+  ConflictKind,
+  ConflictOpts,
+  ConflictProposal,
+  ConflictRecommendation,
+  ConflictRunResult,
+  ConflictRunner,
+  ConflictRuntime,
+  ConflictStages,
+  GatedConflict,
+  GateDecision,
+  ManifestMerge,
+  ResolvedConflict,
+  ResolutionStrategy,
+  ResolveReport,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-075 - conflict resolver (awaiting go-ahead)
+**Current Phase:** P-076 - writeToWorktree (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 75 |
+| **Implemented** | 76 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 244 |
+| **Pending (implementation)** | 243 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-075 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-076 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-075 (next, awaiting go-ahead):** conflict resolver per PHASES_DETAILED.md P-075 (read the FULL spec first; `packages/core/src/git/conflict.ts`: detectConflicts classification + auto-resolution tiers + HIL gate + apply; consumes the P-074 hook shape).
+**P-076 (next, awaiting go-ahead):** write files into a git worktree per PHASES_DETAILED.md P-076 (read the FULL spec first; `packages/core/src/git/worktree.ts`: `writeToWorktree` via `git worktree add` or temp fallback, safeJoin + `.git` refusal (P-012/P-265), remove-on-abandon (P-085)).
+
+**P-075 notes (done):** `git/conflict.ts` (`detectConflicts` + `resolveConflicts`: porcelain `-z` + diff-U union, `ls-files -u` stage SHAs, NUL-in-8000 binary rule (numstat proven useless on unmerged paths), `--quiet -w` whitespace tier incl. trailing-newline, gitignore line-union, one-side-unchanged take, manifest/gate ports (P-108/109 and P-160 implement later), never-auto-write without approval, conditional verify with stuck-apply INTERNAL, `resolveWithin` + `.git` refusal, exit-codes-as-data runner (124 timeout sentinel), no new error codes) + pure `classifyStages`/`unionGitignoreSides`/`resolveTargetPath`/`exitCodeOf` + barrels. 63/63 green (15 real-git incl. 4 spec-required); conflict.ts 306/307 stmts (1 documented totality arm). Real-git tests carry explicit 30s budgets (root 30s does not inherit into defineProject; P-053 precedent).
 
 **P-074 notes (done):** `git/cherryPick.ts` (cherryPickRange(repoPath, sourceRemote, range, opts?, runtime?) — spec-exact positional: structural guards (repo -> overlap sequencer files -> clean tree -> on-branch -> HEAD exists) -> fetch -> resolve SHA-list (order kept) or from..to (oldest-first) -> single cherry-pick (stops at first problem) -> 3-class failure discriminator (conflict with stopping commit / empty pick / leftover dirt) -> conditional abort + HEAD-unchanged+clean verify (P-085) or resolveConflicts hook with add+continue; returns new SHAs oldest-first. Probed findings encoded: empty picks leave CHERRY_PICK_HEAD with clean tree; blind abort exits 128; simple-git raw resolves silent failures (noisy symbolic-ref required). Secrets scrubbed.) + barrels. 38/38 green (4 verbatim + guards + resolver quartet + scripted failure paths); cherryPick.ts ~97% stmts (5 defensive lines accepted).
 
