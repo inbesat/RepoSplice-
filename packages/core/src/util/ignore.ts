@@ -68,24 +68,40 @@ export function buildIgnoreMatcher(
     }
   }
 
-  // In .gitignore mode, expand bare patterns (verified against
-  // picomatch v4 behavior in P-036). A trailing slash is stripped
-  // first, so `dist/` behaves like bare `dist` (dir at any depth):
-  // - bare `node_modules` (no slash) -> both the entry itself at any
-  //   depth and its contents.
-  // - file-extension `*.log` -> match at any depth (raw lib is
-  //   root-scoped).
-  // Patterns that already contain a `/` or start with `**/` pass
-  // through verbatim.
+  // In .gitignore mode, expand patterns to match git's own semantics
+  // (verified against picomatch v4 behavior in P-036, extended with
+  // anchored forms in P-083 — probed: a leading `/` matched NOTHING, and
+  // `a/b` missed `a/b/c`, while git ignores anchored dir trees):
+  // - leading `/` anchors to the repo root; matcher inputs are already
+  //   root-relative, so strip it.
+  // - leading `**/` means "at any depth": reduce to the bare remainder.
+  // - a remaining `/` means anchored: match the entry itself PLUS the
+  //   tree under it (`[base, base/**]`) — exactly git's dir exclusion
+  //   (a `/**` arm only fires when the entry IS a dir, in which case git
+  //   ignores its contents too).
+  // - otherwise the P-036 bare rules: trailing slash stripped first, so
+  //   `dist/` behaves like bare `dist` (dir at any depth + contents);
+  //   file-extension `*.log` matches at any depth.
   const expandPattern = (p: string): string[] => {
     if (!gitignore) return [p];
-    // Strip one trailing slash first: `dist/` behaves like bare `dist`
-    // (dir at any depth + contents), not root-anchored `dist/**`.
-    const base = p.endsWith('/') ? p.slice(0, -1) : p;
-    if (base.includes('/')) return [p];
-    if (base.startsWith('**/')) return [p];
-    const looksLikeFileExt = base.includes('.');
-    return looksLikeFileExt ? [`**/${base}`] : [`**/${base}`, `**/${base}/**`];
+    // A leading `/` anchors to the repo root (it does NOT mean
+    // match-at-any-depth); matcher inputs are already root-relative.
+    const explicitAnchor = p.startsWith('/');
+    const noLead = explicitAnchor ? p.slice(1) : p;
+    // A leading `**/` means "at any depth" and keeps that meaning even
+    // when explicitly anchored (`/**/x` matches x anywhere below root).
+    const starStripped = noLead.startsWith('**/');
+    const core = starStripped ? noLead.slice(3) : noLead;
+    const base = core.endsWith('/') && core.length > 1 ? core.slice(0, -1) : core;
+    if (starStripped || (!explicitAnchor && !base.includes('/'))) {
+      // Any-depth forms: bare names + ext globs (P-036, untouched).
+      const looksLikeFileExt = base.includes('.');
+      return looksLikeFileExt ? [`**/${base}`] : [`**/${base}`, `**/${base}/**`];
+    }
+    // Anchored path: the entry itself plus the tree under it — exactly
+    // git's dir exclusion (a `/**` arm only fires when the entry IS a
+    // dir, in which case git ignores its contents too).
+    return [base, `${base}/**`];
   };
 
   const matchers = entries.map(e => {

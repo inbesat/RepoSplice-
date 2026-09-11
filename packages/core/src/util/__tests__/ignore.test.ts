@@ -81,6 +81,33 @@ describe('P-036 realistic .gitignore fixture', () => {
   });
 });
 
+describe('P-083 expansion: anchored patterns (leading slash + dir trees)', () => {
+  it('leading-slash patterns match from the root', () => {
+    const isIgnored = buildIgnoreMatcher(['/rooted.txt']);
+    expect(isIgnored('rooted.txt')).toBe(true);
+    expect(isIgnored('sub/rooted.txt')).toBe(false);
+  });
+
+  it('anchored dirs match the entry plus the tree under it', () => {
+    const isIgnored = buildIgnoreMatcher(['/repo-a/build']);
+    expect(isIgnored('repo-a/build')).toBe(true);
+    expect(isIgnored('repo-a/build/out.js')).toBe(true);
+    expect(isIgnored('other/build/out.js')).toBe(false);
+  });
+
+  it('anchored trailing-slash dirs match contents', () => {
+    const isIgnored = buildIgnoreMatcher(['/repo-a/src/gen/']);
+    expect(isIgnored('repo-a/src/gen/x.js')).toBe(true);
+    expect(isIgnored('repo-a/src/other.js')).toBe(false);
+  });
+
+  it('unanchored slash patterns stay root-scoped', () => {
+    const isIgnored = buildIgnoreMatcher(['sub/anchored/']);
+    expect(isIgnored('sub/anchored/x.js')).toBe(true);
+    expect(isIgnored('elsewhere/sub/anchored/x.js')).toBe(false);
+  });
+});
+
 describe('P-036 raw picomatch surface (shim verification)', () => {
   it('array form typechecks and matches as union', () => {
     const match = picomatch(['*.log', '*.tmp'], { dot: true });

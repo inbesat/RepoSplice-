@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-083 - .gitignore Merge (awaiting go-ahead)
+**Current Phase:** P-084 - Clean Tree Verify (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 83 |
+| **Implemented** | 84 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 236 |
+| **Pending (implementation)** | 235 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-083 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-084 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-083 (next, awaiting go-ahead):** .gitignore merge per PHASES_DETAILED.md P-083 (read the FULL spec first; `packages/core/src/git/gitignoreMerge.ts`: canonical child ignore from all source roots, dedupe + negation/anchor preservation, deterministic order + generated header (P-282), ignore-matcher validated (P-012/P-036), clean-tree verify intact (P-084)).
+**P-084 (next, awaiting go-ahead):** clean tree verify per PHASES_DETAILED.md P-084 (read the FULL spec first; `packages/core/src/git/clean.ts`: `isClean`/`assertClean` via porcelain, typed DIRTY_TREE error w/ paths (P-203), expected-file allowlist (P-083), fast preflight for P-074/081/238).
+
+**P-083 notes (done):** `git/gitignoreMerge.ts` (`mergeGitignores` + `collectGitignores` + pure `mergeIgnoreTexts`/`rebasePattern`: source order preserved (never sorted — last-match-wins), only anchored patterns rebase under merge prefixes, exact-line dedupe first-wins, dated+origin header with per-source dividers, LF/one trailing NL, BOM+CRLF stripped, real P-012/P-036 matcher validation + requiredFiles survival, no spawns, no new error codes) + REQUIRED matcher fix in `util/ignore.ts` (leading `/` stripped, anchored paths match entry+tree — probed: leading slash matched NOTHING before; all P-036 tests still green + 4 new anchored tests) + barrels. 20/20 green (incl. 4 spec-required + real git status selectivity proof); gitignoreMerge.ts 131/136 stmts (5 named defensive arms: unprovable matcher-throw x2, unreachable empty-merge passthrough, platform/race-only symlink+walk). Full suite 871 passed / 0 failed (only the documented P-021 depcruise-hook load flake).
 
 **P-082 notes (done):** `git/binary.ts` (`isBinary` + `classifyFiles` + pure `parseCheckAttr`: attr policy (binary:set or diff unset, exactly like git's own diff) beats caller ext list (case-sensitive, default empty) beats NUL-in-8000 magic; 8KB capped reads via fs port; traversal/absolute/.git refused; skip decisions persist to the P-030 provenance table via DbLike (single versioned row per repo with HEAD key, replace-whole-list, deep row validation); no new error codes) + barrels. 33/33 green (7 real-git incl. 4 spec-required + subtree carry-through proof); binary.ts 166/166 stmts (100%). Full suite 844 passed / 0 failed (only documented load flakes: P-021/P-037/generate-fixtures timeouts, all green standalone).
 

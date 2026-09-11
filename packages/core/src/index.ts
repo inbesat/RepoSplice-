@@ -167,6 +167,11 @@ export {
   saveSkipList,
   loadSkipList,
   DEFAULT_BINARY_TIMEOUT_MS,
+  mergeGitignores,
+  collectGitignores,
+  mergeIgnoreTexts,
+  rebasePattern,
+  DEFAULT_GITIGNORE_GENERATED_AT,
 } from './git/index.js';
 export type {
   Git,
@@ -274,6 +279,12 @@ export type {
   BinaryVerdict,
   ClassifiedFiles,
   SkipList,
+  GitignoreSource,
+  GitignoreRoot,
+  GitignoreMergeOpts,
+  MergedGitignore,
+  MergeEntry,
+  MergedIgnoreTexts,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

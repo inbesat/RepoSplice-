@@ -144,6 +144,21 @@ export type {
   StashRuntime,
 } from './stash.js';
 export {
+  mergeGitignores,
+  collectGitignores,
+  mergeIgnoreTexts,
+  rebasePattern,
+  DEFAULT_GITIGNORE_GENERATED_AT,
+} from './gitignoreMerge.js';
+export type {
+  GitignoreSource,
+  GitignoreRoot,
+  GitignoreMergeOpts,
+  MergedGitignore,
+  MergeEntry,
+  MergedIgnoreTexts,
+} from './gitignoreMerge.js';
+export {
   isBinary,
   classifyFiles,
   parseCheckAttr,
