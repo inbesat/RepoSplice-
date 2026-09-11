@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-084 - Clean Tree Verify (awaiting go-ahead)
+**Current Phase:** P-085 - Rollback / Abort (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 84 |
+| **Implemented** | 85 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 235 |
+| **Pending (implementation)** | 234 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-084 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-085 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-084 (next, awaiting go-ahead):** clean tree verify per PHASES_DETAILED.md P-084 (read the FULL spec first; `packages/core/src/git/clean.ts`: `isClean`/`assertClean` via porcelain, typed DIRTY_TREE error w/ paths (P-203), expected-file allowlist (P-083), fast preflight for P-074/081/238).
+**P-085 (next, awaiting go-ahead):** rollback/abort per PHASES_DETAILED.md P-085 (read the FULL spec first; coordinate P-074 cherry-pick abort + P-076 worktree remove + P-081 stash pop pairs with P-084 assertClean verification; atomic merge staging for P-238).
+
+**P-084 notes (done):** `git/clean.ts` (`isClean` → Result<boolean>, `assertClean(repoPath, context)` → Result<void> with typed GIT_ERROR refusal carrying sorted paths + exact count (P-203 will promote to DIRTY_TREE; until then GIT_ERROR per P-074 precedent), pure `parsePorcelainStatus`, `DEFAULT_CLEAN_TIMEOUT_MS` = 60_000; SINGLE `status --porcelain=v1 -z` spawn — no rev-parse preflight, non-repos map off the status failure; rename/copy bare source chunks consumed and never reported (probed); unmerged always dirty even when allowlisted; allowlist via P-012/P-036/P-083 matcher; refusal message capped at 20 paths with exact remainder) + barrels. 31/31 green (4 spec-required incl. single-spawn fast-porcelain proof); clean.ts 119/120 stmts, 0 uncovered branches/fns (1 named defensive arm: unprovable matcher-throw). Full suite 901 passed / 0 new failures (only the two documented load flakes: P-021 depcruise-hook timeout — clean standalone + lint:deps 51 modules — and P-037 logger roll smoke — 19/19 standalone).
 
 **P-083 notes (done):** `git/gitignoreMerge.ts` (`mergeGitignores` + `collectGitignores` + pure `mergeIgnoreTexts`/`rebasePattern`: source order preserved (never sorted — last-match-wins), only anchored patterns rebase under merge prefixes, exact-line dedupe first-wins, dated+origin header with per-source dividers, LF/one trailing NL, BOM+CRLF stripped, real P-012/P-036 matcher validation + requiredFiles survival, no spawns, no new error codes) + REQUIRED matcher fix in `util/ignore.ts` (leading `/` stripped, anchored paths match entry+tree — probed: leading slash matched NOTHING before; all P-036 tests still green + 4 new anchored tests) + barrels. 20/20 green (incl. 4 spec-required + real git status selectivity proof); gitignoreMerge.ts 131/136 stmts (5 named defensive arms: unprovable matcher-throw x2, unreachable empty-merge passthrough, platform/race-only symlink+walk). Full suite 871 passed / 0 failed (only the documented P-021 depcruise-hook load flake).
 

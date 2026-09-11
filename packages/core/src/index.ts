@@ -172,6 +172,10 @@ export {
   mergeIgnoreTexts,
   rebasePattern,
   DEFAULT_GITIGNORE_GENERATED_AT,
+  isClean,
+  assertClean,
+  parsePorcelainStatus,
+  DEFAULT_CLEAN_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -285,6 +289,12 @@ export type {
   MergedGitignore,
   MergeEntry,
   MergedIgnoreTexts,
+  CleanOpts,
+  PorcelainEntry,
+  PorcelainState,
+  CleanRunResult,
+  CleanRunner,
+  CleanRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

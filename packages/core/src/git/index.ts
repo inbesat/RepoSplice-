@@ -158,6 +158,15 @@ export type {
   MergeEntry,
   MergedIgnoreTexts,
 } from './gitignoreMerge.js';
+export { isClean, assertClean, parsePorcelainStatus, DEFAULT_CLEAN_TIMEOUT_MS } from './clean.js';
+export type {
+  CleanOpts,
+  PorcelainEntry,
+  PorcelainState,
+  CleanRunResult,
+  CleanRunner,
+  CleanRuntime,
+} from './clean.js';
 export {
   isBinary,
   classifyFiles,
