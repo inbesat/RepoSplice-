@@ -188,6 +188,17 @@ export type {
   RollbackRuntimes,
 } from './rollback.js';
 export {
+  mapParallel,
+  createRefCache,
+  fetchCached,
+  runExclusive,
+  withBloblessFilter,
+  cloneMany,
+  BLOBLESS_FILTER_ARG,
+  DEFAULT_PERF_CONCURRENCY,
+} from './perf.js';
+export type { RefEntry, RefCache, CachedValue, CloneSpec, CloneManyOpts } from './perf.js';
+export {
   isBinary,
   classifyFiles,
   parseCheckAttr,

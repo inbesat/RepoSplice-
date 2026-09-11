@@ -181,6 +181,14 @@ export {
   rollbackJob,
   DEFAULT_ROLLBACK_TIMEOUT_MS,
   DEFAULT_RESET_STASH_MESSAGE,
+  mapParallel,
+  createRefCache,
+  fetchCached,
+  runExclusive,
+  withBloblessFilter,
+  cloneMany,
+  BLOBLESS_FILTER_ARG,
+  DEFAULT_PERF_CONCURRENCY,
 } from './git/index.js';
 export type {
   Git,
@@ -311,6 +319,11 @@ export type {
   RollbackRunResult,
   RollbackRunner,
   RollbackRuntimes,
+  RefEntry,
+  RefCache,
+  CachedValue,
+  CloneSpec,
+  CloneManyOpts,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
