@@ -176,6 +176,11 @@ export {
   assertClean,
   parsePorcelainStatus,
   DEFAULT_CLEAN_TIMEOUT_MS,
+  abortGitOp,
+  resetTo,
+  rollbackJob,
+  DEFAULT_ROLLBACK_TIMEOUT_MS,
+  DEFAULT_RESET_STASH_MESSAGE,
 } from './git/index.js';
 export type {
   Git,
@@ -295,6 +300,17 @@ export type {
   CleanRunResult,
   CleanRunner,
   CleanRuntime,
+  AbortKind,
+  AbortOpts,
+  ResetStashOpts,
+  ResetOpts,
+  ResetOutcome,
+  JobSnapshot,
+  RollbackOutcome,
+  RollbackOpts,
+  RollbackRunResult,
+  RollbackRunner,
+  RollbackRuntimes,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

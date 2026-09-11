@@ -168,6 +168,26 @@ export type {
   CleanRuntime,
 } from './clean.js';
 export {
+  abortGitOp,
+  resetTo,
+  rollbackJob,
+  DEFAULT_ROLLBACK_TIMEOUT_MS,
+  DEFAULT_RESET_STASH_MESSAGE,
+} from './rollback.js';
+export type {
+  AbortKind,
+  AbortOpts,
+  ResetStashOpts,
+  ResetOpts,
+  ResetOutcome,
+  JobSnapshot,
+  RollbackOutcome,
+  RollbackOpts,
+  RollbackRunResult,
+  RollbackRunner,
+  RollbackRuntimes,
+} from './rollback.js';
+export {
   isBinary,
   classifyFiles,
   parseCheckAttr,

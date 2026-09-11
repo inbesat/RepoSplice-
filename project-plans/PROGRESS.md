@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-085 - Rollback / Abort (awaiting go-ahead)
+**Current Phase:** P-086 - Perf Parallel Cache (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 85 |
+| **Implemented** | 86 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 234 |
+| **Pending (implementation)** | 233 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-085 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-086 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-085 (next, awaiting go-ahead):** rollback/abort per PHASES_DETAILED.md P-085 (read the FULL spec first; coordinate P-074 cherry-pick abort + P-076 worktree remove + P-081 stash pop pairs with P-084 assertClean verification; atomic merge staging for P-238).
+**P-086 (next, awaiting go-ahead):** performance (parallel, cache) per PHASES_DETAILED.md P-086 (read the FULL spec first).
+
+**P-085 notes (done):** `git/rollback.ts` (`abortGitOp` → Result<void> per spec — merge/cherry-pick/rebase via probed exclusive HEAD markers with idempotent no-op when absent, worktree kind delegates to P-076 removal; `resetTo` → Result<ResetOutcome> — ref resolved to SHA before mutating, refuses ANY dirt unless stash-first (P-081, `-u`) with typed GIT_ERROR + stash guidance (P-203 owns DIRTY_TREE), verifies HEAD landed + tree clean as INTERNAL invariants; `rollbackJob(snapshot)` — abort-all + worktree remove + resetTo + expectedRef-guarded pop + conditional final verify (skipped when work was popped); JobSnapshot/ RollbackOutcome are the marker payloads P-245 persists — no DB writes here, no job tables exist yet) + barrels. 50/50 green (4 spec-required); rollback.ts 197/197 stmts + 100% branches/fns (zero defensive gaps). Full suite 952 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 52 modules).
 
 **P-084 notes (done):** `git/clean.ts` (`isClean` → Result<boolean>, `assertClean(repoPath, context)` → Result<void> with typed GIT_ERROR refusal carrying sorted paths + exact count (P-203 will promote to DIRTY_TREE; until then GIT_ERROR per P-074 precedent), pure `parsePorcelainStatus`, `DEFAULT_CLEAN_TIMEOUT_MS` = 60_000; SINGLE `status --porcelain=v1 -z` spawn — no rev-parse preflight, non-repos map off the status failure; rename/copy bare source chunks consumed and never reported (probed); unmerged always dirty even when allowlisted; allowlist via P-012/P-036/P-083 matcher; refusal message capped at 20 paths with exact remainder) + barrels. 31/31 green (4 spec-required incl. single-spawn fast-porcelain proof); clean.ts 119/120 stmts, 0 uncovered branches/fns (1 named defensive arm: unprovable matcher-throw). Full suite 901 passed / 0 new failures (only the two documented load flakes: P-021 depcruise-hook timeout — clean standalone + lint:deps 51 modules — and P-037 logger roll smoke — 19/19 standalone).
 
