@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-082 - Binary Skip List (awaiting go-ahead)
+**Current Phase:** P-083 - .gitignore Merge (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 82 |
+| **Implemented** | 83 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 237 |
+| **Pending (implementation)** | 236 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-082 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-083 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-082 (next, awaiting go-ahead):** binary skip list per PHASES_DETAILED.md P-082 (read the FULL spec first; `packages/core/src/git/binary.ts`: `isBinary` via check-attr + magic bytes + ext config (P-243), `classifyFiles` text/binary split, deterministic persisted skips, bytes still carried through merge/checksum).
+**P-083 (next, awaiting go-ahead):** .gitignore merge per PHASES_DETAILED.md P-083 (read the FULL spec first; `packages/core/src/git/gitignoreMerge.ts`: canonical child ignore from all source roots, dedupe + negation/anchor preservation, deterministic order + generated header (P-282), ignore-matcher validated (P-012/P-036), clean-tree verify intact (P-084)).
+
+**P-082 notes (done):** `git/binary.ts` (`isBinary` + `classifyFiles` + pure `parseCheckAttr`: attr policy (binary:set or diff unset, exactly like git's own diff) beats caller ext list (case-sensitive, default empty) beats NUL-in-8000 magic; 8KB capped reads via fs port; traversal/absolute/.git refused; skip decisions persist to the P-030 provenance table via DbLike (single versioned row per repo with HEAD key, replace-whole-list, deep row validation); no new error codes) + barrels. 33/33 green (7 real-git incl. 4 spec-required + subtree carry-through proof); binary.ts 166/166 stmts (100%). Full suite 844 passed / 0 failed (only documented load flakes: P-021/P-037/generate-fixtures timeouts, all green standalone).
 
 **P-081 notes (done):** `git/stash.ts` (`safeStash` + `safeStashPop`: validate-first, rev-parse check, porcelain state (untracked counts dirty; unmerged refuses both directions), clean = idempotent no-op, `push -u -m` with top-SHA snapshot + record verify, `pop --index` with empty no-op + expectedRef gate + consume verify, ref-only audit logs, exit-codes-as-data runner (124 sentinel), no new error codes) + barrels. 28/28 green (7 real-git incl. 4 spec-required); stash.ts 143/143 stmts (100%). Full suite 813 passed / 0 failed (only the 2 documented known flakes: P-021 depcruise hook + P-037 logger roll under load).
 

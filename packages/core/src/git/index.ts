@@ -144,6 +144,26 @@ export type {
   StashRuntime,
 } from './stash.js';
 export {
+  isBinary,
+  classifyFiles,
+  parseCheckAttr,
+  saveSkipList,
+  loadSkipList,
+  DEFAULT_BINARY_TIMEOUT_MS,
+} from './binary.js';
+export type {
+  SkipReason,
+  SkipDecision,
+  BinaryOpts,
+  BinaryRuntime,
+  BinaryFs,
+  BinaryRunResult,
+  BinaryRunner,
+  BinaryVerdict,
+  ClassifiedFiles,
+  SkipList,
+} from './binary.js';
+export {
   detectConflicts,
   resolveConflicts,
   classifyStages,

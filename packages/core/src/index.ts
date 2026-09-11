@@ -161,6 +161,12 @@ export {
   safeStashPop,
   DEFAULT_STASH_TIMEOUT_MS,
   DEFAULT_STASH_MESSAGE,
+  isBinary,
+  classifyFiles,
+  parseCheckAttr,
+  saveSkipList,
+  loadSkipList,
+  DEFAULT_BINARY_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -258,6 +264,16 @@ export type {
   StashRunner,
   StashRunResult,
   StashRuntime,
+  SkipReason,
+  SkipDecision,
+  BinaryOpts,
+  BinaryRuntime,
+  BinaryFs,
+  BinaryRunResult,
+  BinaryRunner,
+  BinaryVerdict,
+  ClassifiedFiles,
+  SkipList,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';
