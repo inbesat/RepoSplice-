@@ -157,6 +157,10 @@ export {
   deleteBranch,
   renameBranch,
   DEFAULT_BRANCH_TIMEOUT_MS,
+  safeStash,
+  safeStashPop,
+  DEFAULT_STASH_TIMEOUT_MS,
+  DEFAULT_STASH_MESSAGE,
 } from './git/index.js';
 export type {
   Git,
@@ -247,6 +251,13 @@ export type {
   BranchRunner,
   BranchRunResult,
   BranchRuntime,
+  StashOpts,
+  PopOpts,
+  StashOutcome,
+  PopOutcome,
+  StashRunner,
+  StashRunResult,
+  StashRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

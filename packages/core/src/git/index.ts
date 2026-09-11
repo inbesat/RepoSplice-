@@ -129,6 +129,21 @@ export type {
 export { createBranch, deleteBranch, renameBranch, DEFAULT_BRANCH_TIMEOUT_MS } from './branches.js';
 export type { BranchOpts, BranchRunner, BranchRunResult, BranchRuntime } from './branches.js';
 export {
+  safeStash,
+  safeStashPop,
+  DEFAULT_STASH_TIMEOUT_MS,
+  DEFAULT_STASH_MESSAGE,
+} from './stash.js';
+export type {
+  StashOpts,
+  PopOpts,
+  StashOutcome,
+  PopOutcome,
+  StashRunner,
+  StashRunResult,
+  StashRuntime,
+} from './stash.js';
+export {
   detectConflicts,
   resolveConflicts,
   classifyStages,
