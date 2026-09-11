@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-080 - Branch Management (awaiting go-ahead)
+**Current Phase:** P-081 - Stash Safety (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 80 |
+| **Implemented** | 81 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 239 |
+| **Pending (implementation)** | 238 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-080 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
+| **Next Handoff** | P-081 → Git Core epic (P-069-P-087); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-080 (next, awaiting go-ahead):** branch management per PHASES_DETAILED.md P-080 (read the FULL spec first; `packages/core/src/git/branches.ts`: `createBranch`/`deleteBranch`/`renameBranch` with protected + current-branch guards (P-093), name validation (P-012/P-265), idempotent create (P-250).
+**P-081 (next, awaiting go-ahead):** stash safety per PHASES_DETAILED.md P-081 (read the FULL spec first; `packages/core/src/git/stash.ts`: `safeStash`/`safeStashPop` with explicit message, no-op when clean (P-250/P-084), never auto-pop over conflicts (P-075), stash-ref audit log (P-187)).
+
+**P-080 notes (done):** `git/branches.ts` (`createBranch` + `deleteBranch` + `renameBranch`: pre-spawn blank/protected guards, rev-parse repo check, check-ref-format names, ref resolution, idempotent same-ref create (P-250), unmerged-safe delete (-d keeps git's guard, -D forces), rename-away protection evasion refusal, rename-current moves HEAD, every mutation verified, exit-codes-as-data runner (124 sentinel), DEFAULT_PROTECTED_BRANCHES reused from push.ts (single source), no new error codes) + barrels. 44/44 green (10 real-git incl. 5 spec-required); branches.ts 202/202 stmts (100%). Full suite 774 passed / 0 failed (only the 2 documented known flakes: P-021 depcruise hook + P-037 logger roll under load). Note: C: disk full (0 bytes) breaks vite transforms — full suite needs TEMP/TMPDIR redirected to E: until the disk is cleaned.
 
 **P-079 notes (done):** `git/blameMap.ts` (`buildBlameMap` + pure `parseBlamePorcelain`: ls-files blob SHAs, per-file line-porcelain blocks with final-file ranges, strict state-machine parser, per-line source resolution (unique tip ancestry, then longest prefix, then honest null; shared linear history documented ambiguous; absent prefix never matches, explicit empty = catch-all; ancestry-only cached, never path answers), uncommitted lines as null SHAs, no binary exclusion (authorship counts); `saveBlameMap`/`loadBlameMap` on the P-030 provenance table via DbLike (replace-whole-map, versioned JSON, deep row validation); no new error codes) + barrels. 36/36 green (6 real-git incl. 4 spec-required + fake-DbLike persistence); blameMap.ts 261/261 stmts (100%). Full suite 743 passed / 0 failed.
 

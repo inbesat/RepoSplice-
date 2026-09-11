@@ -153,6 +153,10 @@ export {
   loadBlameMap,
   parseBlamePorcelain,
   DEFAULT_BLAME_TIMEOUT_MS,
+  createBranch,
+  deleteBranch,
+  renameBranch,
+  DEFAULT_BRANCH_TIMEOUT_MS,
 } from './git/index.js';
 export type {
   Git,
@@ -239,6 +243,10 @@ export type {
   BlameRunner,
   BlameRunResult,
   BlameRuntime,
+  BranchOpts,
+  BranchRunner,
+  BranchRunResult,
+  BranchRuntime,
 } from './git/index.js';
 
 export { createOctokit, request, getRepo, statusToStitchError } from './github/factory.js';

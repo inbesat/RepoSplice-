@@ -126,6 +126,8 @@ export type {
   BlameRunResult,
   BlameRuntime,
 } from './blameMap.js';
+export { createBranch, deleteBranch, renameBranch, DEFAULT_BRANCH_TIMEOUT_MS } from './branches.js';
+export type { BranchOpts, BranchRunner, BranchRunResult, BranchRuntime } from './branches.js';
 export {
   detectConflicts,
   resolveConflicts,
