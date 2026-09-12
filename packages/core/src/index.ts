@@ -401,6 +401,16 @@ export type {
   RequiredStatusChecks,
   StatusOpts,
 } from './github/branches.js';
+export { openPR, buildPrBody } from './github/pr.js';
+export type {
+  PrBodySections,
+  PrSpec,
+  PrStatusOpts,
+  PrOpts,
+  OpenedPr,
+  PrPullsEndpoint,
+  PrClient,
+} from './github/pr.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
