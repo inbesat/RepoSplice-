@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-097 - GraphQL Trees (awaiting go-ahead)
+**Current Phase:** P-098 - Detect Repo License (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 97 |
+| **Implemented** | 98 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 222 |
+| **Pending (implementation)** | 221 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-097 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-098 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-097 (next, awaiting go-ahead):** GraphQL trees per PHASES_DETAILED.md P-097 (read the FULL spec first; single-query tree fetch complementing the P-090 REST path).
+**P-098 (next, awaiting go-ahead):** license detection per PHASES_DETAILED.md P-098 (read the FULL spec first; SPDX identification on the license-scan foundation).
+
+**P-097 notes (done):** GraphQL trees (`github/graphql.ts`: pure depth-nested query builder, single v4 fetch normalized to the P-090 TreeNode shape (shared types + nested builder + REST fallback by import), SHA-keyed caching with filter-free keys, NOT_FOUND-only REST fallback (other errors map typed), ignore + prune + opt-in caps post-fetch). 29/29 green (4 spec-required incl. 2 nock e2e proving query shape + wire fallback on real Octokit); graphql.ts 215/216 stmts + 0 uncovered branches/fns (1 named arm: the P-084-style defensive matcher guard). Probed truth that reshaped the work: octokit.graphql resolves data directly and throws errors with `.errors` (fakes mirror both). Full suite 1245 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 
 **P-096 notes (done):** rate-limit backoff (`github/rateLimit.ts`: `withRateLimit` wraps any Result op — equal-jitter exponential waits (P-139 parity, never hammering) floored by server retry-after, bounded by attempts + total budget, exhaustion fails loud with attempts + last status; non-rate errors pass through untouched on first sight; throwing ops/sleepers/clocks map INTERNAL, throwing observers contained; `parseRateHeaders` + onRetry telemetry feed P-295. Threading proven by composition tests wrapping the real list/tree/content/actions calls — zero churn to done phases. 16/16 green (4 spec-required); rateLimit.ts 103/103 stmts + 100% branches/fns (zero defensive gaps). Full suite 1216 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 

@@ -411,6 +411,8 @@ export type {
   PrPullsEndpoint,
   PrClient,
 } from './github/pr.js';
+export { graphqlTree, buildTreeQuery } from './github/graphql.js';
+export type { GraphqlOpts, GraphqlClient, GraphqlEndpoint } from './github/graphql.js';
 export {
   relayWorkflowRun,
   findRunsForSha,
