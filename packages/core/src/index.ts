@@ -360,6 +360,18 @@ export type {
   ListReposOpts,
   SearchReposOpts,
 } from './github/list.js';
+export { getRepoTree, buildNestedTree } from './github/tree.js';
+export type {
+  TreeClient,
+  TreeEndpoint,
+  RepoMetaEndpoint,
+  TreeEntryType,
+  TreeNode,
+  NestedKind,
+  NestedEntry,
+  RepoTree,
+  GetRepoTreeOpts,
+} from './github/tree.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-090 - GitHub Tree (awaiting go-ahead)
+**Current Phase:** P-091 - GitHub File Content (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 90 |
+| **Implemented** | 91 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 229 |
+| **Pending (implementation)** | 228 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-090 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-091 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-090 (next, awaiting go-ahead):** recursive repo tree per PHASES_DETAILED.md P-090 (read the FULL spec first; single-call tree fetch + picker nesting on the P-088/P-089 foundation).
+**P-091 (next, awaiting go-ahead):** file content + batch fetch per PHASES_DETAILED.md P-091 (read the FULL spec first; single-file and batched blob fetch on the P-088/P-090 foundation).
+
+**P-090 notes (done):** recursive repo tree (`github/tree.ts`: `getRepoTree` resolves refs (SHA-direct, branch via getCommit, default-branch fallback refusing empty repos) then single-call git.getTree; flat TreeNode[] + nested picker shape via pure buildNestedTree (implicit dirs, sorted siblings, submodule leaves); raw trees cache SHA-keyed via P-086 RefCache with filters applied post-cache; ignore (P-012 matcher) + pruneDirs + opt-in maxEntries; server truncation refuses fail-closed). 28/28 green (5 spec-required incl. 2 nock e2e proving ref resolution + 404 mapping on real Octokit); tree.ts 226/227 stmts + 0 uncovered branches/fns (1 named arm: the P-084-style defensive matcher guard). Full suite 1086 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 56 modules).
 
 **P-089 notes (done):** GitHub list/search (`github/list.ts`: `listRepos` pages listForAuthenticatedUser to short-page/maxPages, `searchRepos` surfaces total + incompleteness; RepoSummary carries license (SPDX-first) and honest null defaultBranch; 403/429 rate limits map to GITHUB_API_ERROR with a stable `(retry after Ns)` contract for P-096 (never AUTH_ERROR, no faked sleep loop); malformed identities fail closed wholesale; narrow RepoClient seam mirroring Octokit method names exactly). 26/26 green (4 spec-required incl. 2 nock e2e — the search e2e caught a REAL seam mismatch, `searchRepos` vs Octokit `repos`, fixed at the contract); list.ts 174/174 stmts + 100% branches/fns (zero defensive gaps). Full suite CLEAN: 83/83 files, 1059 passed / 0 failed.
 
