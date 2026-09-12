@@ -348,6 +348,18 @@ export type {
   ResolveAuthSecrets,
   ValidateAuthOpts,
 } from './github/auth.js';
+export { listRepos, searchRepos } from './github/list.js';
+export type {
+  RepoClient,
+  RepoListEndpoint,
+  RepoSearchEndpoint,
+  RepoSearchResult,
+  RepoSort,
+  RepoSummary,
+  RepoVisibility,
+  ListReposOpts,
+  SearchReposOpts,
+} from './github/list.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';

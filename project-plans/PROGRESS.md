@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-089 - GitHub Next (awaiting go-ahead)
+**Current Phase:** P-090 - GitHub Tree (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 89 |
+| **Implemented** | 90 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 230 |
+| **Pending (implementation)** | 229 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-089 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-090 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-089 (next, awaiting go-ahead):** next GitHub epic phase per PHASES_DETAILED.md P-089 (read the FULL spec first; builds on the P-088 auth foundation).
+**P-090 (next, awaiting go-ahead):** recursive repo tree per PHASES_DETAILED.md P-090 (read the FULL spec first; single-call tree fetch + picker nesting on the P-088/P-089 foundation).
+
+**P-089 notes (done):** GitHub list/search (`github/list.ts`: `listRepos` pages listForAuthenticatedUser to short-page/maxPages, `searchRepos` surfaces total + incompleteness; RepoSummary carries license (SPDX-first) and honest null defaultBranch; 403/429 rate limits map to GITHUB_API_ERROR with a stable `(retry after Ns)` contract for P-096 (never AUTH_ERROR, no faked sleep loop); malformed identities fail closed wholesale; narrow RepoClient seam mirroring Octokit method names exactly). 26/26 green (4 spec-required incl. 2 nock e2e — the search e2e caught a REAL seam mismatch, `searchRepos` vs Octokit `repos`, fixed at the contract); list.ts 174/174 stmts + 100% branches/fns (zero defensive gaps). Full suite CLEAN: 83/83 files, 1059 passed / 0 failed.
 
 **P-088 notes (done):** GitHub auth foundation (`github/auth.ts`: `createValidatedClient` boundary-checks the raw P-017/P-018 factory (blank tokens, bad ids, non-PEM keys, malformed base URLs) without ever echoing secrets; `resolveAuth` reads credentials off the P-009 config (App keys injected — P-200/P-206 will source privateKeyPath); `validateAuth` proves the token via users.getAuthenticated, gates write contexts on repo scopes for PATs, trusts App tokens past scope checks (server-enforced), maps 401/403/scope gaps to AUTH_ERROR with the stitch-login hint via the factory taxonomy; narrow AuthClient seam, Headers-instance tolerant). 27/27 green (5 spec-required incl. 2 nock e2e proving real-Octokit header parsing + 401 mapping); auth.ts 109/109 stmts + 100% branches/fns (zero defensive gaps). Full suite CLEAN: 82/82 files, 1033 passed / 0 failed (P-021 flake quiet; no exclusions needed this run).
 
