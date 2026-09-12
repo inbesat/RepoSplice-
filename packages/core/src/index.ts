@@ -381,6 +381,8 @@ export type {
   ContentClient,
   ContentMetaEndpoint,
 } from './github/content.js';
+export { createRepoC } from './github/create.js';
+export type { CreateSpec, CreatedRepo, CreateClient, RepoCreateEndpoint } from './github/create.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-092 - GitHub Create Repo (awaiting go-ahead)
+**Current Phase:** P-093 - GitHub Branch Protect (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 92 |
+| **Implemented** | 93 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 227 |
+| **Pending (implementation)** | 226 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-092 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-093 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-092 (next, awaiting go-ahead):** create-repo endpoint per PHASES_DETAILED.md P-092 (read the FULL spec first; the P-078 push flow already ports against it).
+**P-093 (next, awaiting go-ahead):** branch protection per PHASES_DETAILED.md P-093 (read the FULL spec first; the P-078 push flow already ports against protected-branch guards).
+
+**P-092 notes (done):** child-repo creation (`github/create.ts`: `createRepoC` resolves the namespace (org, or login via users.get), pre-checks availability with repos.get (exact, 1 call — never a paginated scan), creates user/org variants private-by-default with description/license passthrough, resumes under createIfMissing, refuses collisions as ALREADY_EXISTS-shaped GITHUB_API_ERROR/422 whether pre-detected or via server 422 race, fails closed when availability is unverifiable). 21/21 green (4 spec-required incl. 2 nock e2e proving create + resume on real Octokit); create.ts 142/142 stmts + 100% branches/fns (zero defensive gaps). Full suite CLEAN: 86/86 files, 1137 passed / 0 failed.
 
 **P-091 notes (done):** file content + batch (`github/content.ts`: `getFileContent` resolves refs once then decodes one blob (dirs, symlinks, submodules refuse with guidance; withheld >1MB content errors toward the blob API); `getFileContentsBatch` resolves once, fans out over P-086 bounded map with per-path SHA cache (pending entries skip rework), collapses input-ordered (first error wins); binary flags via NUL sniff + ext hints (bytes never shipped); opt-in maxBytes truncates; rate limits map with retry guidance). 29/29 green (5 spec-required incl. 2 nock e2e proving getContent + branch resolution on real Octokit); content.ts 209/210 stmts + 0 uncovered branches/fns (1 named arm: the P-086-style no-throw canary). Full suite 1114 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 
