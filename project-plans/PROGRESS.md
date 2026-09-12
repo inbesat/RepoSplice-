@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-093 - GitHub Branch Protect (awaiting go-ahead)
+**Current Phase:** P-094 - GitHub Open PR (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 93 |
+| **Implemented** | 94 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 226 |
+| **Pending (implementation)** | 225 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-093 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-094 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-093 (next, awaiting go-ahead):** branch protection per PHASES_DETAILED.md P-093 (read the FULL spec first; the P-078 push flow already ports against protected-branch guards).
+**P-094 (next, awaiting go-ahead):** open-PR flow per PHASES_DETAILED.md P-094 (read the FULL spec first; PR creation on the P-088/P-093 foundation, statuses gating merge).
+
+**P-093 notes (done):** remote branch lifecycle (`github/branches.ts`, P-080 parity: `createBranch`/`deleteBranch`/`renameBranch` via git refs with SHA-direct-or-getCommit resolution, declarative `protectBranch` with the P-078 force-guard (allowForcePushes needs explicit allowForce), `setStatus` for sandbox verdicts; ref-format validation up front, loud deletes, step-named rename failures, ALREADY_EXISTS-shaped 422s). 26/26 green (4 spec-required incl. 2 nock e2e proving ref + protection writes on real Octokit); branches.ts 268/268 stmts + 100% branches/fns (zero defensive gaps). Barrel aliases createRemoteBranch/deleteRemoteBranch/renameRemoteBranch (P-080 owns the bare names); protection toggles are bare booleans per Octokit types (not {enabled} wrappers). Full suite 1162 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 59 modules).
 
 **P-092 notes (done):** child-repo creation (`github/create.ts`: `createRepoC` resolves the namespace (org, or login via users.get), pre-checks availability with repos.get (exact, 1 call — never a paginated scan), creates user/org variants private-by-default with description/license passthrough, resumes under createIfMissing, refuses collisions as ALREADY_EXISTS-shaped GITHUB_API_ERROR/422 whether pre-detected or via server 422 race, fails closed when availability is unverifiable). 21/21 green (4 spec-required incl. 2 nock e2e proving create + resume on real Octokit); create.ts 142/142 stmts + 100% branches/fns (zero defensive gaps). Full suite CLEAN: 86/86 files, 1137 passed / 0 failed.
 

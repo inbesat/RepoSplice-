@@ -383,6 +383,24 @@ export type {
 } from './github/content.js';
 export { createRepoC } from './github/create.js';
 export type { CreateSpec, CreatedRepo, CreateClient, RepoCreateEndpoint } from './github/create.js';
+export {
+  createBranch as createRemoteBranch,
+  deleteBranch as deleteRemoteBranch,
+  renameBranch as renameRemoteBranch,
+  protectBranch,
+  setStatus,
+} from './github/branches.js';
+export type {
+  BranchClient,
+  BranchGitEndpoint,
+  BranchReposEndpoint,
+  CommitState,
+  CreatedBranch,
+  ProtectOpts,
+  ProtectionRules,
+  RequiredStatusChecks,
+  StatusOpts,
+} from './github/branches.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
