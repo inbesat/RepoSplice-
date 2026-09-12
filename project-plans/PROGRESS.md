@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-095 - GitHub Actions Status (awaiting go-ahead)
+**Current Phase:** P-096 - Rate Limit Backoff (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 95 |
+| **Implemented** | 96 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 224 |
+| **Pending (implementation)** | 223 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-095 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-096 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-095 (next, awaiting go-ahead):** actions status webhook per PHASES_DETAILED.md P-095 (read the FULL spec first; CI status consumption on the P-093/P-094 foundation).
+**P-096 (next, awaiting go-ahead):** rate-limit backoff per PHASES_DETAILED.md P-096 (read the FULL spec first; wait-and-retry loops consuming the retry-after contract every GitHub module already surfaces).
+
+**P-095 notes (done):** Actions status (`github/actionsStatus.ts`: `relayWorkflowRun` single-fetch normalize (the poll primitive P-096 loops), `findRunsForSha` with client-side sha filtering, pure HMAC-SHA256 `verifyWebhookSignature` (timing-safe, never throws), `mapWebhookEvent` for workflow_run/check_run deliveries (spoof check before parsing, check ids namespaced by kind), pure `correlateRunToJob` (sha-exact, branch-preferred, first-wins, null on garbage). 19/19 green (4 spec-required incl. 2 nock e2e proving relay + 404 mapping on real Octokit); actionsStatus.ts 175/175 stmts + 100% branches/fns (zero defensive gaps). No bus, server route, job store, or retry loop invented (P-241/P-193/P-239/P-096 own those). Full suite 1201 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 61 modules).
 
 **P-094 notes (done):** open-PR flow (`github/pr.ts`: deterministic pure buildPrBody from summary/credits/provenance sections; `openPR` skip-checks via pulls.list with local open-state + exact-head match-back, posts P-093 sandbox statuses before creating, creates with bare heads, converges duplicate 422 races on ALREADY_EXISTS). 20/20 green (4 spec-required incl. 2 nock e2e proving create + skip on real Octokit); pr.ts 173/173 stmts + 100% branches/fns (zero defensive gaps). Seam mirrors Octokit literal shapes (state union); P-093 setStatus reused via intersection seam, never reimplemented. Full suite 1182 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 60 modules).
 

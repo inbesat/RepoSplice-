@@ -411,6 +411,21 @@ export type {
   PrPullsEndpoint,
   PrClient,
 } from './github/pr.js';
+export {
+  relayWorkflowRun,
+  findRunsForSha,
+  verifyWebhookSignature,
+  mapWebhookEvent,
+  correlateRunToJob,
+} from './github/actionsStatus.js';
+export type {
+  RunKind,
+  WorkflowRunEvent,
+  JobRef,
+  FindRunsOpts,
+  ActionsRunsEndpoint,
+  ActionsClient,
+} from './github/actionsStatus.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
