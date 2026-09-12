@@ -372,6 +372,15 @@ export type {
   RepoTree,
   GetRepoTreeOpts,
 } from './github/tree.js';
+export { getFileContent, getFileContentsBatch } from './github/content.js';
+export type {
+  BlobContent,
+  FileContentOpts,
+  BatchSpec,
+  BatchOpts,
+  ContentClient,
+  ContentMetaEndpoint,
+} from './github/content.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';

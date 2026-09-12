@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-091 - GitHub File Content (awaiting go-ahead)
+**Current Phase:** P-092 - GitHub Create Repo (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 91 |
+| **Implemented** | 92 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 228 |
+| **Pending (implementation)** | 227 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-091 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-092 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-091 (next, awaiting go-ahead):** file content + batch fetch per PHASES_DETAILED.md P-091 (read the FULL spec first; single-file and batched blob fetch on the P-088/P-090 foundation).
+**P-092 (next, awaiting go-ahead):** create-repo endpoint per PHASES_DETAILED.md P-092 (read the FULL spec first; the P-078 push flow already ports against it).
+
+**P-091 notes (done):** file content + batch (`github/content.ts`: `getFileContent` resolves refs once then decodes one blob (dirs, symlinks, submodules refuse with guidance; withheld >1MB content errors toward the blob API); `getFileContentsBatch` resolves once, fans out over P-086 bounded map with per-path SHA cache (pending entries skip rework), collapses input-ordered (first error wins); binary flags via NUL sniff + ext hints (bytes never shipped); opt-in maxBytes truncates; rate limits map with retry guidance). 29/29 green (5 spec-required incl. 2 nock e2e proving getContent + branch resolution on real Octokit); content.ts 209/210 stmts + 0 uncovered branches/fns (1 named arm: the P-086-style no-throw canary). Full suite 1114 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 
 **P-090 notes (done):** recursive repo tree (`github/tree.ts`: `getRepoTree` resolves refs (SHA-direct, branch via getCommit, default-branch fallback refusing empty repos) then single-call git.getTree; flat TreeNode[] + nested picker shape via pure buildNestedTree (implicit dirs, sorted siblings, submodule leaves); raw trees cache SHA-keyed via P-086 RefCache with filters applied post-cache; ignore (P-012 matcher) + pruneDirs + opt-in maxEntries; server truncation refuses fail-closed). 28/28 green (5 spec-required incl. 2 nock e2e proving ref resolution + 404 mapping on real Octokit); tree.ts 226/227 stmts + 0 uncovered branches/fns (1 named arm: the P-084-style defensive matcher guard). Full suite 1086 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 56 modules).
 
