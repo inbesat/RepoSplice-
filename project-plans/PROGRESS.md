@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-096 - Rate Limit Backoff (awaiting go-ahead)
+**Current Phase:** P-097 - GraphQL Trees (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 96 |
+| **Implemented** | 97 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 223 |
+| **Pending (implementation)** | 222 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-096 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-097 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-096 (next, awaiting go-ahead):** rate-limit backoff per PHASES_DETAILED.md P-096 (read the FULL spec first; wait-and-retry loops consuming the retry-after contract every GitHub module already surfaces).
+**P-097 (next, awaiting go-ahead):** GraphQL trees per PHASES_DETAILED.md P-097 (read the FULL spec first; single-query tree fetch complementing the P-090 REST path).
+
+**P-096 notes (done):** rate-limit backoff (`github/rateLimit.ts`: `withRateLimit` wraps any Result op — equal-jitter exponential waits (P-139 parity, never hammering) floored by server retry-after, bounded by attempts + total budget, exhaustion fails loud with attempts + last status; non-rate errors pass through untouched on first sight; throwing ops/sleepers/clocks map INTERNAL, throwing observers contained; `parseRateHeaders` + onRetry telemetry feed P-295. Threading proven by composition tests wrapping the real list/tree/content/actions calls — zero churn to done phases. 16/16 green (4 spec-required); rateLimit.ts 103/103 stmts + 100% branches/fns (zero defensive gaps). Full suite 1216 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 
 **P-095 notes (done):** Actions status (`github/actionsStatus.ts`: `relayWorkflowRun` single-fetch normalize (the poll primitive P-096 loops), `findRunsForSha` with client-side sha filtering, pure HMAC-SHA256 `verifyWebhookSignature` (timing-safe, never throws), `mapWebhookEvent` for workflow_run/check_run deliveries (spoof check before parsing, check ids namespaced by kind), pure `correlateRunToJob` (sha-exact, branch-preferred, first-wins, null on garbage). 19/19 green (4 spec-required incl. 2 nock e2e proving relay + 404 mapping on real Octokit); actionsStatus.ts 175/175 stmts + 100% branches/fns (zero defensive gaps). No bus, server route, job store, or retry loop invented (P-241/P-193/P-239/P-096 own those). Full suite 1201 passed / 0 failed (only the documented P-021 depcruise-hook load flake — clean standalone + lint:deps 61 modules).
 

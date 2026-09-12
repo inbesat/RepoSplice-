@@ -426,6 +426,8 @@ export type {
   ActionsRunsEndpoint,
   ActionsClient,
 } from './github/actionsStatus.js';
+export { withRateLimit, parseRateHeaders } from './github/rateLimit.js';
+export type { RetryInfo, RateLimitOpts, RateState } from './github/rateLimit.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
