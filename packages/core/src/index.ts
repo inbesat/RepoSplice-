@@ -333,6 +333,21 @@ export type {
   OctokitAuth,
   OctokitFactoryOptions,
 } from './github/factory.js';
+export {
+  createValidatedClient,
+  resolveAuth,
+  clientFromConfig,
+  validateAuth,
+} from './github/auth.js';
+export type {
+  AuthClient,
+  AuthContext,
+  AuthEndpoint,
+  AuthenticatedUser,
+  ClientFromConfigOpts,
+  ResolveAuthSecrets,
+  ValidateAuthOpts,
+} from './github/auth.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
