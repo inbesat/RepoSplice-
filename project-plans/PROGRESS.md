@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-100 - GH Actions Sandbox Trigger (awaiting go-ahead)
+**Current Phase:** P-101 - Tests with Mocked Octokit (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 100 |
+| **Implemented** | 101 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 219 |
+| **Pending (implementation)** | 218 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-100 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-101 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-100 (next, awaiting go-ahead):** GH Actions sandbox trigger per PHASES_DETAILED.md P-100 (read the FULL spec first; repository/workflow dispatch on the P-095 relay + P-178 backend seams).
+**P-101 (next, awaiting go-ahead):** GitHub epic consolidation per PHASES_DETAILED.md P-101 (read the FULL spec first; shared octokit/nock harness + P-088-P-100 suite consolidation).
+
+**P-100 notes (done):** GH Actions sandbox trigger (`github/sandboxTrigger.ts`: `triggerSandbox` dispatches repository or workflow dispatch with an allowlisted payload (sha/ecosystem/ref/job/timeout + secret-scanned extras; secret keys refuse before any call), `local-docker` refuses loudly (P-169 owns it), `monitorSandboxRun` composes P-095 find/correlate/relay by import into a P-176-shaped verdict (pass on success only, flaky always false — P-176 owns repeats; empty lists fail fast for P-096). 26/26 green (4 spec-required incl. 3 nock e2e proving both dispatch wire paths + monitor on real Octokit); sandboxTrigger.ts 190/192 stmts + 0 uncovered branches/fns (2 named arms: compiler-mandated candidate guard + sha-filtered correlate guard). Probed truth that shaped the work: dispatches answer 204 with no run id (correlation is by sha, never by id), workflow inputs must be strings, P-175 (not P-178) owns the workflow template, P-176 reserves flaky for repeats. Full suite 1318 passed / 0 failed tests (only the documented P-021 load flake, green standalone).
 
 **P-099 notes (done):** fork support (`github/fork.ts`: `ensureFork` checks repos.get writability first (writable short-circuits, absent permissions fail closed toward forking), creates via repos.createFork (202) behind explicit `allowFork` (P-093 allowForce precedent; server 403s stay the hard gate), polls the fork until it reads back (bounded attempts/interval, thrown+resolved 404s both mean not-ready, everything else fails fast for P-096), pure `forkPrHead` for the P-094 `owner:branch` cross-fork head, `owner/repo@sha/fork` RefCache keys). 28/28 green (4 spec-required incl. 2 nock e2e proving the method names + wire paths on real Octokit); fork.ts 170/170 stmts + 0 uncovered branches/fns. Probed truth that reshaped the work: real Octokit THROWS 404s (fakes resolve them) — the nock e2e caught it, and the poll loop now accepts both shapes. Full suite 1292 passed / 0 failed tests (only the documented P-037 load flake, 19/19 standalone).
 

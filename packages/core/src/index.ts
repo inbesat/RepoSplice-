@@ -450,6 +450,21 @@ export type {
   ForkReposEndpoint,
   ForkClient,
 } from './github/fork.js';
+export {
+  triggerSandbox,
+  monitorSandboxRun,
+  DEFAULT_SANDBOX_EVENT_TYPE,
+} from './github/sandboxTrigger.js';
+export type {
+  SandboxDispatchKind,
+  TriggerSandboxOpts,
+  SandboxDispatch,
+  MonitorSandboxOpts,
+  SandboxRunVerdict,
+  SandboxReposEndpoint,
+  SandboxActionsEndpoint,
+  SandboxTriggerClient,
+} from './github/sandboxTrigger.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
