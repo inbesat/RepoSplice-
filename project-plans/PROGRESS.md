@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-099 - Fork Support (awaiting go-ahead)
+**Current Phase:** P-100 - GH Actions Sandbox Trigger (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 99 |
+| **Implemented** | 100 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 220 |
+| **Pending (implementation)** | 219 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-099 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-100 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-099 (next, awaiting go-ahead):** fork support per PHASES_DETAILED.md P-099 (read the FULL spec first; ensureFork via createFork + wait-ready on the P-078/P-094/P-096 seams).
+**P-100 (next, awaiting go-ahead):** GH Actions sandbox trigger per PHASES_DETAILED.md P-100 (read the FULL spec first; repository/workflow dispatch on the P-095 relay + P-178 backend seams).
+
+**P-099 notes (done):** fork support (`github/fork.ts`: `ensureFork` checks repos.get writability first (writable short-circuits, absent permissions fail closed toward forking), creates via repos.createFork (202) behind explicit `allowFork` (P-093 allowForce precedent; server 403s stay the hard gate), polls the fork until it reads back (bounded attempts/interval, thrown+resolved 404s both mean not-ready, everything else fails fast for P-096), pure `forkPrHead` for the P-094 `owner:branch` cross-fork head, `owner/repo@sha/fork` RefCache keys). 28/28 green (4 spec-required incl. 2 nock e2e proving the method names + wire paths on real Octokit); fork.ts 170/170 stmts + 0 uncovered branches/fns. Probed truth that reshaped the work: real Octokit THROWS 404s (fakes resolve them) — the nock e2e caught it, and the poll loop now accepts both shapes. Full suite 1292 passed / 0 failed tests (only the documented P-037 load flake, 19/19 standalone).
 
 **P-098 notes (done):** repo license detection (`github/license.ts`: `detectRepoLicense` via `licenses.getForRepo`, raw `spdx_id` funneled through P-025 normalize + P-026 registry metadata, absent/null/ NOASSERTION/unresolvable resolving to `{}` (P-123 unknown path, never an error), `owner/repo@sha/license` RefCache keys with uncached-no-sha, `?ref=` passthrough). 18/18 green (4 spec-required incl. 2 nock e2e proving the endpoint name + wire path on real Octokit); license.ts 114/116 stmts + 0 uncovered branches/fns (1 named arm: the defensive normalizer guard + its propagation). Probed truth that shaped the work: registry name/url are canonical (API url points at api.github.com), NOASSERTION already funnels to UNKNOWN via normalize (no special-case needed), `ref` is a typed getForRepo param. Full suite 1264 passed / 0 failed tests (only the documented P-021 load flake, green standalone).
 

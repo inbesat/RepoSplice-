@@ -437,6 +437,19 @@ export type {
   LicensesEndpoint,
   LicenseClient,
 } from './github/license.js';
+export {
+  ensureFork,
+  forkPrHead,
+  DEFAULT_FORK_POLL_ATTEMPTS,
+  DEFAULT_FORK_POLL_INTERVAL_MS,
+} from './github/fork.js';
+export type {
+  ForkInfo,
+  ForkUpstream,
+  EnsureForkOpts,
+  ForkReposEndpoint,
+  ForkClient,
+} from './github/fork.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
 export type { SemVer, SemverOptions } from './deps/semver.js';
