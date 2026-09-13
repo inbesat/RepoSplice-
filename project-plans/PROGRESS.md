@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-098 - Detect Repo License (awaiting go-ahead)
+**Current Phase:** P-099 - Fork Support (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 98 |
+| **Implemented** | 99 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 221 |
+| **Pending (implementation)** | 220 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-098 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-099 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-098 (next, awaiting go-ahead):** license detection per PHASES_DETAILED.md P-098 (read the FULL spec first; SPDX identification on the license-scan foundation).
+**P-099 (next, awaiting go-ahead):** fork support per PHASES_DETAILED.md P-099 (read the FULL spec first; ensureFork via createFork + wait-ready on the P-078/P-094/P-096 seams).
+
+**P-098 notes (done):** repo license detection (`github/license.ts`: `detectRepoLicense` via `licenses.getForRepo`, raw `spdx_id` funneled through P-025 normalize + P-026 registry metadata, absent/null/ NOASSERTION/unresolvable resolving to `{}` (P-123 unknown path, never an error), `owner/repo@sha/license` RefCache keys with uncached-no-sha, `?ref=` passthrough). 18/18 green (4 spec-required incl. 2 nock e2e proving the endpoint name + wire path on real Octokit); license.ts 114/116 stmts + 0 uncovered branches/fns (1 named arm: the defensive normalizer guard + its propagation). Probed truth that shaped the work: registry name/url are canonical (API url points at api.github.com), NOASSERTION already funnels to UNKNOWN via normalize (no special-case needed), `ref` is a typed getForRepo param. Full suite 1264 passed / 0 failed tests (only the documented P-021 load flake, green standalone).
 
 **P-097 notes (done):** GraphQL trees (`github/graphql.ts`: pure depth-nested query builder, single v4 fetch normalized to the P-090 TreeNode shape (shared types + nested builder + REST fallback by import), SHA-keyed caching with filter-free keys, NOT_FOUND-only REST fallback (other errors map typed), ignore + prune + opt-in caps post-fetch). 29/29 green (4 spec-required incl. 2 nock e2e proving query shape + wire fallback on real Octokit); graphql.ts 215/216 stmts + 0 uncovered branches/fns (1 named arm: the P-084-style defensive matcher guard). Probed truth that reshaped the work: octokit.graphql resolves data directly and throws errors with `.errors` (fakes mirror both). Full suite 1245 passed / 0 regressions (only the two documented load flakes: P-021 hook timeout + P-037 roll smoke at 19/19 standalone).
 
