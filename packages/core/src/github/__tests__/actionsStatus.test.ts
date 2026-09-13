@@ -7,6 +7,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { createHmac } from 'node:crypto';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import {
   relayWorkflowRun,
@@ -22,13 +23,22 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+interface Call {
+  kind: 'run' | 'runs';
+  args: Record<string, unknown>;
+}
 
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  getWorkflowRun: 'run',
+  listWorkflowRunsForRepo: 'runs',
+};
+
+/** Fake client serving scripted payloads while recording calls. */
+function fakeClient(handler: (call: Call) => unknown): ActionsClient {
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 function runPayload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -40,28 +50,6 @@ function runPayload(overrides: Record<string, unknown> = {}): Record<string, unk
     conclusion: 'success',
     html_url: 'https://github.com/o/r/actions/runs/101',
     ...overrides,
-  };
-}
-
-interface Call {
-  kind: 'run' | 'runs';
-  args: Record<string, unknown>;
-}
-
-/** Fake client serving scripted payloads while recording calls. */
-function fakeClient(handler: (call: Call) => unknown): ActionsClient {
-  const wrap = (kind: Call['kind']) => async (args?: Record<string, unknown>) => {
-    const out = handler({ kind, args: args ?? {} });
-    if (out instanceof Error) throw out;
-    return out as { data: unknown; headers: unknown; status: number };
-  };
-  return {
-    rest: {
-      actions: {
-        getWorkflowRun: wrap('run'),
-        listWorkflowRunsForRepo: wrap('runs'),
-      },
-    },
   };
 }
 

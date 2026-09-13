@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRepoC, type CreateClient, type CreatedRepo } from '../create.js';
 
@@ -20,12 +21,6 @@ const CREATED = {
   default_branch: 'main',
 };
 
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
 interface Call {
   kind: 'me' | 'get' | 'createUser' | 'createOrg';
   args: Record<string, unknown>;
@@ -35,33 +30,19 @@ function meOk(): unknown {
   return { data: { login: 'octocat', id: 1, type: 'User' }, headers: {}, status: 200 };
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  getAuthenticated: 'me',
+  get: 'get',
+  createForAuthenticatedUser: 'createUser',
+  createInOrg: 'createOrg',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): CreateClient {
-  const wrap =
-    (kind: Call['kind']) =>
-    async (
-      args?: Record<string, unknown>
-    ): Promise<{
-      data: unknown;
-      headers: unknown;
-      status: number;
-    }> => {
-      const out = handler({ kind, args: args ?? {} });
-      if (out instanceof Error) throw out;
-      return out as { data: unknown; headers: unknown; status: number };
-    };
-  return {
-    rest: {
-      repos: {
-        get: wrap('get'),
-        createForAuthenticatedUser: wrap('createUser'),
-        createInOrg: wrap('createOrg'),
-      },
-      users: {
-        getAuthenticated: wrap('me'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 function createdOk(overrides: Record<string, unknown> = {}): unknown {

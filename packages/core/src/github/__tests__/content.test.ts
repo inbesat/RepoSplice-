@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRefCache } from '../../git/perf.js';
 import {
@@ -19,8 +20,6 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const BLOB_SHA = 'cccccccccccccccccccccccccccccccccccccccc';
 
 function b64(text: string): string {
@@ -47,33 +46,23 @@ function commitOk(sha: string = SHA_A): unknown {
   return { data: { sha }, headers: {}, status: 200 };
 }
 
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
 interface Call {
   kind: 'content' | 'commit' | 'repo';
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  getContent: 'content',
+  getCommit: 'commit',
+  get: 'repo',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): ContentClient {
-  const wrap = (kind: Call['kind']) => async (args: Record<string, unknown>) => {
-    const out = handler({ kind, args });
-    if (out instanceof Error) throw out;
-    return out as { data: unknown; headers: unknown; status: number };
-  };
-  return {
-    rest: {
-      repos: {
-        get: wrap('repo'),
-        getCommit: wrap('commit'),
-        getContent: wrap('content'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 // ─── single ────────────────────────────────────────────────────────────

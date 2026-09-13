@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, okResponse, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRefCache } from '../../git/perf.js';
 import { ensureFork, forkPrHead, type ForkClient, type ForkInfo } from '../fork.js';
@@ -13,19 +14,6 @@ import { ensureFork, forkPrHead, type ForkClient, type ForkInfo } from '../fork.
 afterEach(() => {
   cleanupHttpMocks();
 });
-
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
-function okResponse(data: unknown): unknown {
-  return { data, headers: {}, status: 200 };
-}
 
 /** repos.get payload with explicit push permission. */
 function repoPayload(push: boolean, defaultBranch: string | null = 'main'): unknown {
@@ -50,30 +38,17 @@ interface Call {
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  get: 'get',
+  createFork: 'createFork',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): ForkClient {
-  const wrap =
-    (kind: Call['kind']) =>
-    async (args: {
-      owner: string;
-      repo: string;
-    }): Promise<{
-      data: unknown;
-      headers: unknown;
-      status: number;
-    }> => {
-      const out = handler({ kind, args: { ...args } });
-      if (out instanceof Error) throw out;
-      return out as { data: unknown; headers: unknown; status: number };
-    };
-  return {
-    rest: {
-      repos: {
-        get: wrap('get'),
-        createFork: wrap('createFork'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 // ─── spec-required ─────────────────────────────────────────────────────

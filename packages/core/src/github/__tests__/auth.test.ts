@@ -7,6 +7,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { Octokit } from '@octokit/rest';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError } from '../../../test-utils/githubMock.js';
 import type { GitHubConfig } from '../../config/schema.js';
 import type { OctokitFactoryOptions } from '../factory.js';
 import {
@@ -41,32 +42,18 @@ function appOpts(): OctokitFactoryOptions {
 
 /** Fake endpoint resolving one response (data/headers/status). */
 function fakeClient(response: { data: unknown; headers?: unknown; status?: number }): AuthClient {
-  return {
-    rest: {
-      users: {
-        getAuthenticated: async () => ({
-          data: response.data,
-          headers: response.headers ?? {},
-          status: response.status ?? 200,
-        }),
-      },
-    },
-  };
+  return mockOctokit(() => ({
+    data: response.data,
+    headers: response.headers ?? {},
+    status: response.status ?? 200,
+  }));
 }
 
 /** Fake endpoint rejecting like Octokit's RequestError. */
 function failingClient(status: number, message: string): AuthClient {
-  return {
-    rest: {
-      users: {
-        getAuthenticated: async () => {
-          const error = new Error(message) as Error & { status: number };
-          error.status = status;
-          throw error;
-        },
-      },
-    },
-  };
+  return mockOctokit(() => {
+    throw reqError(status, message);
+  });
 }
 
 const USER = { login: 'octocat', id: 1, type: 'User' };

@@ -8,6 +8,15 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import {
+  mockOctokit,
+  reqError,
+  okResponse,
+  fixtureRun,
+  fixtureRunList,
+  SHA_A,
+  SHA_B,
+} from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { triggerSandbox, monitorSandboxRun, type SandboxTriggerClient } from '../sandboxTrigger.js';
 
@@ -15,72 +24,24 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
-function okResponse(data: unknown, status = 200): unknown {
-  return { data, headers: {}, status };
-}
-
-function runPayload(
-  id: number,
-  sha: string,
-  status: string,
-  conclusion: string | null,
-  branch: string | null = 'main'
-): Record<string, unknown> {
-  return {
-    id,
-    head_sha: sha,
-    head_branch: branch,
-    status,
-    conclusion,
-    html_url: `https://github.com/o/r/actions/runs/${id}`,
-  };
-}
-
-function listBody(runs: unknown[]): unknown {
-  return okResponse({ total_count: runs.length, workflow_runs: runs });
-}
-
 interface Call {
   kind: 'dispatch' | 'workflowDispatch' | 'listRuns' | 'getRun';
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  createDispatchEvent: 'dispatch',
+  createWorkflowDispatch: 'workflowDispatch',
+  listWorkflowRunsForRepo: 'listRuns',
+  getWorkflowRun: 'getRun',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): SandboxTriggerClient {
-  const wrap =
-    (kind: Call['kind']) =>
-    async (
-      args: Record<string, unknown>
-    ): Promise<{
-      data: unknown;
-      headers: unknown;
-      status: number;
-    }> => {
-      const out = handler({ kind, args: { ...args } });
-      if (out instanceof Error) throw out;
-      return out as { data: unknown; headers: unknown; status: number };
-    };
-  return {
-    rest: {
-      repos: {
-        createDispatchEvent: wrap('dispatch'),
-      },
-      actions: {
-        createWorkflowDispatch: wrap('workflowDispatch'),
-        getWorkflowRun: wrap('getRun'),
-        listWorkflowRunsForRepo: wrap('listRuns'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 function baseTrigger(overrides: Record<string, unknown> = {}): Record<string, unknown> {
@@ -206,9 +167,9 @@ describe('triggers', () => {
   it('correlates', async () => {
     const client = fakeClient(call => {
       if (call.kind === 'listRuns') {
-        return listBody([runPayload(101, SHA_A, 'completed', 'success')]);
+        return fixtureRunList([fixtureRun(101, SHA_A, 'completed', 'success')]);
       }
-      return okResponse(runPayload(101, SHA_A, 'completed', 'success'));
+      return okResponse(fixtureRun(101, SHA_A, 'completed', 'success'));
     });
     const result = await monitorSandboxRun(client, 'o', 'r', SHA_A, { jobId: 'job-1' });
     expect(result.isOk()).toBe(true);
@@ -225,9 +186,9 @@ describe('triggers', () => {
     const client = fakeClient(call => {
       seen.push(call);
       if (call.kind === 'listRuns') {
-        return listBody([runPayload(101, SHA_A, 'completed', 'success', 'feature')]);
+        return fixtureRunList([fixtureRun(101, SHA_A, 'completed', 'success', 'feature')]);
       }
-      return okResponse(runPayload(101, SHA_A, 'completed', 'success', 'feature'));
+      return okResponse(fixtureRun(101, SHA_A, 'completed', 'success', 'feature'));
     });
     const result = await monitorSandboxRun(client, 'o', 'r', SHA_A, {
       jobId: 'job-1',
@@ -251,9 +212,9 @@ describe('triggers', () => {
     for (const [conclusion, status, completed, pass] of cases) {
       const client = fakeClient(call => {
         if (call.kind === 'listRuns') {
-          return listBody([runPayload(101, SHA_A, status, conclusion)]);
+          return fixtureRunList([fixtureRun(101, SHA_A, status, conclusion)]);
         }
-        return okResponse(runPayload(101, SHA_A, status, conclusion));
+        return okResponse(fixtureRun(101, SHA_A, status, conclusion));
       });
       const result = await monitorSandboxRun(client, 'o', 'r', SHA_A, { jobId: 'job-1' });
       expect(result.isOk()).toBe(true);
@@ -381,7 +342,7 @@ describe('boundary', () => {
   });
 
   it('validates monitor shapes at the boundary', async () => {
-    const client = fakeClient(() => listBody([]));
+    const client = fakeClient(() => fixtureRunList([]));
     const cases: Array<[Promise<unknown>, string]> = [
       [monitorSandboxRun(client, '  ', 'r', SHA_A, { jobId: 'j' }), 'owner'],
       [monitorSandboxRun(client, 'o', '  ', SHA_A, { jobId: 'j' }), 'repo'],
@@ -468,8 +429,8 @@ describe('errors', () => {
 
   it('fails fast when no runs exist for the sha', async () => {
     const client = fakeClient(call => {
-      if (call.kind === 'listRuns') return listBody([]);
-      return okResponse(runPayload(101, SHA_A, 'completed', 'success'));
+      if (call.kind === 'listRuns') return fixtureRunList([]);
+      return okResponse(fixtureRun(101, SHA_A, 'completed', 'success'));
     });
     const result = await monitorSandboxRun(client, 'o', 'r', SHA_A, { jobId: 'job-1' });
     expect(result.isErr()).toBe(true);
@@ -483,9 +444,9 @@ describe('errors', () => {
   it('refuses drifted and malformed runs instead of misattributing', async () => {
     const drifted = fakeClient(call => {
       if (call.kind === 'listRuns') {
-        return listBody([runPayload(101, SHA_A, 'completed', 'success')]);
+        return fixtureRunList([fixtureRun(101, SHA_A, 'completed', 'success')]);
       }
-      return okResponse(runPayload(101, SHA_B, 'completed', 'success'));
+      return okResponse(fixtureRun(101, SHA_B, 'completed', 'success'));
     });
     const driftedResult = await monitorSandboxRun(drifted, 'o', 'r', SHA_A, { jobId: 'job-1' });
     expect(driftedResult.isErr()).toBe(true);
@@ -493,8 +454,8 @@ describe('errors', () => {
     expect(driftedResult.error.code).toBe('INTERNAL');
 
     const malformed = fakeClient(call => {
-      if (call.kind === 'listRuns') return listBody([{ id: 'x' }]);
-      return okResponse(runPayload(101, SHA_A, 'completed', 'success'));
+      if (call.kind === 'listRuns') return fixtureRunList([{ id: 'x' }]);
+      return okResponse(fixtureRun(101, SHA_A, 'completed', 'success'));
     });
     const malformedResult = await monitorSandboxRun(malformed, 'o', 'r', SHA_A, {
       jobId: 'job-1',
@@ -507,7 +468,7 @@ describe('errors', () => {
   it('maps relay failures to typed errors', async () => {
     const client = fakeClient(call => {
       if (call.kind === 'listRuns') {
-        return listBody([runPayload(101, SHA_A, 'completed', 'success')]);
+        return fixtureRunList([fixtureRun(101, SHA_A, 'completed', 'success')]);
       }
       throw reqError(404, 'Not Found');
     });
@@ -694,10 +655,10 @@ describe('nock end to end', () => {
       .query(true)
       .reply(200, {
         total_count: 1,
-        workflow_runs: [runPayload(101, SHA_A, 'completed', 'success')],
+        workflow_runs: [fixtureRun(101, SHA_A, 'completed', 'success')],
       })
       .get('/repos/o/r/actions/runs/101')
-      .reply(200, runPayload(101, SHA_A, 'completed', 'success'));
+      .reply(200, fixtureRun(101, SHA_A, 'completed', 'success'));
     const built = createValidatedClient({ auth: { authType: 'pat', token: 'ghp_test' } });
     if (built.isErr()) throw new Error('client construction failed');
     const result = await monitorSandboxRun(built.value, 'o', 'r', SHA_A, { jobId: 'job-1' });

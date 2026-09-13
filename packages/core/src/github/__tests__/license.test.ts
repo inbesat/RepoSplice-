@@ -6,6 +6,13 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import {
+  mockOctokit,
+  reqError,
+  fixtureLicensePayload,
+  SHA_A,
+  SHA_B,
+} from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRefCache } from '../../git/perf.js';
 import { detectRepoLicense, type LicenseClient, type DetectedLicense } from '../license.js';
@@ -14,58 +21,28 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
-function licenseEntry(spdxId: string): Record<string, unknown> {
-  return {
-    key: spdxId.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-    name: `${spdxId} License`,
-    spdx_id: spdxId,
-    url: 'https://api.github.com/licenses/x',
-    node_id: 'MDc6TGljZW5zZXg=',
-  };
-}
-
-function licensePayload(spdxId: string | null): unknown {
-  return {
-    data: { license: spdxId === null ? null : licenseEntry(spdxId) },
-    headers: {},
-    status: 200,
-  };
-}
-
 interface Call {
   kind: 'license';
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  getForRepo: 'license',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): LicenseClient {
-  return {
-    rest: {
-      licenses: {
-        getForRepo: async (args: { owner: string; repo: string; ref?: string }) => {
-          const out = handler({ kind: 'license', args: { ...args } });
-          if (out instanceof Error) throw out;
-          return out as { data: unknown; headers: unknown; status: number };
-        },
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 // ─── spec-required ─────────────────────────────────────────────────────
 
 describe('detects', () => {
   it('known', async () => {
-    const client = fakeClient(() => licensePayload('MIT'));
+    const client = fakeClient(() => fixtureLicensePayload('MIT'));
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -79,21 +56,21 @@ describe('detects', () => {
 
   it('unknown', async () => {
     // No license section at all.
-    const missing = fakeClient(() => licensePayload(null));
+    const missing = fakeClient(() => fixtureLicensePayload(null));
     const missingResult = await detectRepoLicense(missing, 'o', 'r');
     expect(missingResult.isOk()).toBe(true);
     if (missingResult.isErr()) return;
     expect(missingResult.value).toEqual({});
 
     // GitHub's sentinel for "nothing detectable".
-    const noassert = fakeClient(() => licensePayload('NOASSERTION'));
+    const noassert = fakeClient(() => fixtureLicensePayload('NOASSERTION'));
     const noassertResult = await detectRepoLicense(noassert, 'o', 'r');
     expect(noassertResult.isOk()).toBe(true);
     if (noassertResult.isErr()) return;
     expect(noassertResult.value).toEqual({});
 
     // Garbage that normalizes to UNKNOWN.
-    const garbage = fakeClient(() => licensePayload('not-a-real-license-xyz'));
+    const garbage = fakeClient(() => fixtureLicensePayload('not-a-real-license-xyz'));
     const garbageResult = await detectRepoLicense(garbage, 'o', 'r');
     expect(garbageResult.isOk()).toBe(true);
     if (garbageResult.isErr()) return;
@@ -112,7 +89,7 @@ describe('detects', () => {
   });
 
   it('normalizes', async () => {
-    const client = fakeClient(() => licensePayload('Apache 2.0'));
+    const client = fakeClient(() => fixtureLicensePayload('Apache 2.0'));
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -128,7 +105,7 @@ describe('detects', () => {
     let calls = 0;
     const client = fakeClient(() => {
       calls += 1;
-      return licensePayload('MIT');
+      return fixtureLicensePayload('MIT');
     });
     const cache = createRefCache<DetectedLicense>();
 
@@ -153,7 +130,7 @@ describe('detects', () => {
     expect(calls).toBe(2);
 
     // No sha: uncached call, nothing stored.
-    const apiOnly = fakeClient(() => licensePayload('MIT'));
+    const apiOnly = fakeClient(() => fixtureLicensePayload('MIT'));
     const uncached = await detectRepoLicense(apiOnly, 'o', 'r', { cache });
     expect(uncached.isOk()).toBe(true);
     expect(cache.size).toBe(2);
@@ -167,7 +144,7 @@ describe('ref', () => {
     const seen: Record<string, unknown>[] = [];
     const client = fakeClient(call => {
       seen.push(call.args);
-      return licensePayload('MIT');
+      return fixtureLicensePayload('MIT');
     });
     const result = await detectRepoLicense(client, 'o', 'r', { ref: 'main' });
     expect(result.isOk()).toBe(true);
@@ -179,7 +156,7 @@ describe('ref', () => {
     const seen: Record<string, unknown>[] = [];
     const client = fakeClient(call => {
       seen.push(call.args);
-      return licensePayload('MIT');
+      return fixtureLicensePayload('MIT');
     });
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isOk()).toBe(true);
@@ -192,7 +169,7 @@ describe('ref', () => {
 
 describe('boundary', () => {
   it('validates shapes at the boundary', async () => {
-    const client = fakeClient(() => licensePayload('MIT'));
+    const client = fakeClient(() => fixtureLicensePayload('MIT'));
     const cases: Array<[Promise<unknown>, string]> = [
       [detectRepoLicense(client, '  ', 'r'), 'owner'],
       [detectRepoLicense(client, 'o', '  '), 'repo'],

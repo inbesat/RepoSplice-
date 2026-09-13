@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRefCache } from '../../git/perf.js';
 import { graphqlTree, buildTreeQuery, type GraphqlClient, type TreeNode } from '../graphql.js';
@@ -13,15 +14,6 @@ import { graphqlTree, buildTreeQuery, type GraphqlClient, type TreeNode } from '
 afterEach(() => {
   cleanupHttpMocks();
 });
-
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
 
 function blob(name: string, path: string, sha: string = SHA_A): Record<string, unknown> {
   return { name, path, oid: sha, type: 'blob' };
@@ -47,35 +39,34 @@ interface Call {
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  graphql: 'graphql',
+  getCommit: 'commit',
+  get: 'repo',
+  getTree: 'tree',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): GraphqlClient {
-  const wrap =
-    (kind: Call['kind']) =>
-    async (
-      args?: Record<string, unknown>
-    ): Promise<{ data: unknown; headers: unknown; status: number }> => {
-      const out = handler({ kind, args: args ?? {} });
-      if (out instanceof Error) throw out;
-      return out as { data: unknown; headers: unknown; status: number };
-    };
-  return {
+  return mockOctokit(call => {
+    const out = handler({
+      kind: KIND_BY_METHOD[call.method] as Call['kind'],
+      args:
+        call.method === 'graphql'
+          ? {
+              query: (call.args.query as string) ?? '',
+              variables: (call.args.variables as Record<string, unknown>) ?? {},
+            }
+          : call.args,
+    });
     // Real octokit.graphql resolves the DATA payload directly (probed) —
-    // the fake unwraps identically so shapes never drift from reality.
-    graphql: async (query: string, variables?: Record<string, unknown>) => {
-      const out = handler({ kind: 'graphql', args: { query, variables: variables ?? {} } });
-      if (out instanceof Error) throw out;
+    // unwrap identically so shapes never drift from reality.
+    if (call.method === 'graphql' && !(out instanceof Error)) {
       return (out as { data: unknown }).data;
-    },
-    rest: {
-      repos: {
-        get: wrap('repo'),
-        getCommit: wrap('commit'),
-      },
-      git: {
-        getTree: wrap('tree'),
-      },
-    },
-  };
+    }
+    return out;
+  });
 }
 
 function gqlOk(repository: unknown): unknown {

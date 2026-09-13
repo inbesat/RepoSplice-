@@ -9,6 +9,7 @@ import nock from 'nock';
 import type { Result } from 'neverthrow';
 import type { StitchError } from '../../result/index.js';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import {
   createBranch,
@@ -24,40 +25,25 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
 interface Call {
   kind: 'ref' | 'commit' | 'protect' | 'status';
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  createRef: 'ref',
+  deleteRef: 'ref',
+  getCommit: 'commit',
+  updateBranchProtection: 'protect',
+  createCommitStatus: 'status',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): BranchClient {
-  const wrap = (kind: Call['kind']) => async (args?: Record<string, unknown>) => {
-    const out = handler({ kind, args: args ?? {} });
-    if (out instanceof Error) throw out;
-    return out as { data: unknown; headers: unknown; status: number };
-  };
-  return {
-    rest: {
-      repos: {
-        getCommit: wrap('commit'),
-        updateBranchProtection: wrap('protect'),
-        createCommitStatus: wrap('status'),
-      },
-      git: {
-        createRef: wrap('ref'),
-        deleteRef: wrap('ref'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 function refOk(ref = 'refs/heads/feature', sha: string = SHA_A): unknown {

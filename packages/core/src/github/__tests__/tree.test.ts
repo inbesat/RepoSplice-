@@ -6,6 +6,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { createRefCache } from '../../git/perf.js';
 import { getRepoTree, buildNestedTree, type TreeClient, type TreeNode } from '../tree.js';
@@ -13,9 +14,6 @@ import { getRepoTree, buildNestedTree, type TreeClient, type TreeNode } from '..
 afterEach(() => {
   cleanupHttpMocks();
 });
-
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
 function blob(path: string, sha: string = SHA_A, size = 10): Record<string, unknown> {
   return { path, mode: '100644', type: 'blob', sha, size };
@@ -34,24 +32,18 @@ interface Call {
   args: Record<string, unknown>;
 }
 
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  get: 'repo',
+  getCommit: 'commit',
+  getTree: 'tree',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): TreeClient {
-  const wrap = (kind: Call['kind']) => async (args: Record<string, unknown>) => {
-    const out = handler({ kind, args });
-    if (out instanceof Error) throw out;
-    return out as { data: unknown; headers: unknown; status: number };
-  };
-  return {
-    rest: {
-      repos: {
-        get: wrap('repo'),
-        getCommit: wrap('commit'),
-      },
-      git: {
-        getTree: wrap('tree'),
-      },
-    },
-  };
+  return mockOctokit(call =>
+    handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args })
+  );
 }
 
 function treeOk(tree: unknown, truncated = false): unknown {
@@ -64,12 +56,6 @@ function commitOk(sha: string = SHA_A): unknown {
 
 function repoOk(defaultBranch: string | null = 'main'): unknown {
   return { data: { default_branch: defaultBranch }, headers: {}, status: 200 };
-}
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
 }
 
 // ─── recursive ─────────────────────────────────────────────────────────

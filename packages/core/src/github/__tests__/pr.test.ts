@@ -7,6 +7,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError, SHA_A, SHA_B } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { openPR, buildPrBody, type PrClient, type OpenedPr } from '../pr.js';
 
@@ -14,44 +15,35 @@ afterEach(() => {
   cleanupHttpMocks();
 });
 
-const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-
-function reqError(status: number, message: string): Error {
-  const error = new Error(message) as Error & { status: number };
-  error.status = status;
-  return error;
-}
-
 interface Call {
   kind: 'create' | 'list' | 'status';
   args: Record<string, unknown>;
 }
 
+/** Static stub responses the old bespoke fake served outside the handler. */
+const STATIC_STATUS: Record<string, number> = {
+  getCommit: 200,
+  updateBranchProtection: 200,
+  createRef: 201,
+  deleteRef: 200,
+};
+
+/** Suite-local kind view over the shared mock's Octokit method names. */
+const KIND_BY_METHOD: Record<string, Call['kind']> = {
+  create: 'create',
+  list: 'list',
+  createCommitStatus: 'status',
+};
+
 /** Fake client serving scripted payloads while recording calls. */
 function fakeClient(handler: (call: Call) => unknown): PrClient {
-  const wrap = (kind: Call['kind']) => async (args?: Record<string, unknown>) => {
-    const out = handler({ kind, args: args ?? {} });
-    if (out instanceof Error) throw out;
-    return out as { data: unknown; headers: unknown; status: number };
-  };
-  return {
-    rest: {
-      repos: {
-        getCommit: async () => ({ data: {}, headers: {}, status: 200 }),
-        updateBranchProtection: async () => ({ data: {}, headers: {}, status: 200 }),
-        createCommitStatus: wrap('status'),
-      },
-      git: {
-        createRef: async () => ({ data: {}, headers: {}, status: 201 }),
-        deleteRef: async () => ({ data: {}, headers: {}, status: 200 }),
-      },
-      pulls: {
-        create: wrap('create'),
-        list: wrap('list'),
-      },
-    },
-  };
+  return mockOctokit(call => {
+    const staticStatus = STATIC_STATUS[call.method];
+    if (staticStatus !== undefined) {
+      return { data: {}, headers: {}, status: staticStatus };
+    }
+    return handler({ kind: KIND_BY_METHOD[call.method] as Call['kind'], args: call.args });
+  });
 }
 
 function prOk(overrides: Record<string, unknown> = {}): unknown {

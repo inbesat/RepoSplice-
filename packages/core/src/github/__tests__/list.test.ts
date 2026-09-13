@@ -5,6 +5,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import nock from 'nock';
 import { cleanupHttpMocks } from '../../../test-utils/http.js';
+import { mockOctokit, reqError } from '../../../test-utils/githubMock.js';
 import { createValidatedClient } from '../auth.js';
 import { listRepos, searchRepos, type RepoClient, type RepoSummary } from '../list.js';
 
@@ -24,53 +25,33 @@ function repo(overrides: Record<string, unknown> = {}): Record<string, unknown> 
   };
 }
 
-/** Fake list endpoint serving pages in order, recording calls. */
-function fakeList(
-  pages: unknown[][],
-  calls: Array<Record<string, unknown>> = []
-): RepoClient['rest']['repos'] {
+/** Scripted list+search endpoints over the shared mock (pages/payloads in order). */
+function scripted(opts: {
+  pages?: unknown[][];
+  payloads?: unknown[];
+  calls?: Array<Record<string, unknown>>;
+  throwList?: Error;
+}): RepoClient {
   let n = 0;
-  return {
-    listForAuthenticatedUser: async args => {
-      calls.push({ ...(args as Record<string, unknown>) });
-      const page = pages[n] ?? [];
+  let m = 0;
+  return mockOctokit(call => {
+    if (call.method === 'listForAuthenticatedUser') {
+      opts.calls?.push({ ...call.args });
+      if (opts.throwList !== undefined) throw opts.throwList;
+      const page = opts.pages?.[n] ?? [];
       n += 1;
       return { data: page, headers: {}, status: 200 };
-    },
-  };
+    }
+    opts.calls?.push({ ...call.args });
+    const payloads = opts.payloads ?? [];
+    const payload = payloads[m] ?? payloads[payloads.length - 1];
+    m += 1;
+    return { data: payload, headers: {}, status: 200 };
+  });
 }
 
-/** Fake search endpoint serving one payload per call. */
-function fakeSearch(
-  payloads: unknown[],
-  calls: Array<Record<string, unknown>> = []
-): RepoClient['rest']['search'] {
-  let n = 0;
-  return {
-    repos: async args => {
-      calls.push({ ...(args as Record<string, unknown>) });
-      const payload = payloads[n] ?? payloads[payloads.length - 1];
-      n += 1;
-      return { data: payload, headers: {}, status: 200 };
-    },
-  };
-}
-
-function client(
-  repos: RepoClient['rest']['repos'],
-  search: RepoClient['rest']['search']
-): RepoClient {
-  return { rest: { repos, search } };
-}
-
-function throwingList(status: number, message: string): RepoClient['rest']['repos'] {
-  return {
-    listForAuthenticatedUser: async () => {
-      const error = new Error(message) as Error & { status: number };
-      error.status = status;
-      throw error;
-    },
-  };
+function throwingList(status: number, message: string): RepoClient {
+  return scripted({ throwList: reqError(status, message) });
 }
 
 // ─── listRepos ─────────────────────────────────────────────────────────
@@ -78,17 +59,14 @@ function throwingList(status: number, message: string): RepoClient['rest']['repo
 describe('paginates', () => {
   it('walks pages until a short page, preserving order', async () => {
     const calls: Array<Record<string, unknown>> = [];
-    const c = client(
-      fakeList(
-        [
-          [repo({ name: 'a' }), repo({ name: 'b' })],
-          [repo({ name: 'c' }), repo({ name: 'd' })],
-          [repo({ name: 'e' })],
-        ],
-        calls
-      ),
-      fakeSearch([])
-    );
+    const c = scripted({
+      pages: [
+        [repo({ name: 'a' }), repo({ name: 'b' })],
+        [repo({ name: 'c' }), repo({ name: 'd' })],
+        [repo({ name: 'e' })],
+      ],
+      calls,
+    });
     const result = await listRepos(c, { perPage: 2 });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -99,10 +77,10 @@ describe('paginates', () => {
 
   it('stops one page past exact multiples', async () => {
     const calls: Array<Record<string, unknown>> = [];
-    const c = client(
-      fakeList([[repo({ name: 'a' }), repo({ name: 'b' })], []], calls),
-      fakeSearch([])
-    );
+    const c = scripted({
+      pages: [[repo({ name: 'a' }), repo({ name: 'b' })], []],
+      calls,
+    });
     const result = await listRepos(c, { perPage: 2 });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -112,7 +90,7 @@ describe('paginates', () => {
 
   it('honors maxPages', async () => {
     const full = [repo({ name: 'a' }), repo({ name: 'b' })];
-    const c = client(fakeList([full, full, full]), fakeSearch([]));
+    const c = scripted({ pages: [full, full, full] });
     const result = await listRepos(c, { perPage: 2, maxPages: 2 });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -121,14 +99,14 @@ describe('paginates', () => {
 
   it('passes visibility and sort through', async () => {
     const calls: Array<Record<string, unknown>> = [];
-    const c = client(fakeList([[]], calls), fakeSearch([]));
+    const c = scripted({ pages: [[]], calls });
     const result = await listRepos(c, { visibility: 'private', sort: 'updated' });
     expect(result.isOk()).toBe(true);
     expect(calls[0]).toMatchObject({ visibility: 'private', sort: 'updated', per_page: 30 });
   });
 
   it('rejects misuse at the boundary', async () => {
-    const c = client(fakeList([[]]), fakeSearch([]));
+    const c = scripted({ pages: [[]] });
     const bad = [
       listRepos(c, { perPage: 0 }),
       listRepos(c, { perPage: 101 }),
@@ -158,10 +136,10 @@ describe('searches', () => {
   }
 
   it('surfaces total, incompleteness and matches', async () => {
-    const c = client(
-      fakeList([[]]),
-      fakeSearch([payload([repo({ name: 'hit', private: true })], 27, true)])
-    );
+    const c = scripted({
+      pages: [[]],
+      payloads: [payload([repo({ name: 'hit', private: true })], 27, true)],
+    });
     const result = await searchRepos(c, 'stitch language:typescript');
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -179,16 +157,16 @@ describe('searches', () => {
   });
 
   it('maps license fallbacks and empty defaults', async () => {
-    const c = client(
-      fakeList([[]]),
-      fakeSearch([
+    const c = scripted({
+      pages: [[]],
+      payloads: [
         payload([
           repo({ name: 'a', license: { key: 'other', spdx_id: null } }),
           repo({ name: 'b', license: null, default_branch: null }),
           repo({ name: 'c', license: {} }),
         ]),
-      ])
-    );
+      ],
+    });
     const result = await searchRepos(c, 'x');
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -202,7 +180,7 @@ describe('searches', () => {
   it('paginates search across maxPages', async () => {
     const calls: Array<Record<string, unknown>> = [];
     const page = (n: string): unknown => payload([repo({ name: n })], 3);
-    const c = client(fakeList([[]]), fakeSearch([page('a'), page('b')], calls));
+    const c = scripted({ pages: [[]], payloads: [page('a'), page('b')], calls });
     const result = await searchRepos(c, 'x', { perPage: 1, maxPages: 2 });
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
@@ -213,7 +191,7 @@ describe('searches', () => {
   });
 
   it('rejects blank queries and bad paging', async () => {
-    const c = client(fakeList([[]]), fakeSearch([]));
+    const c = scripted({ pages: [[]] });
     for (const result of [
       searchRepos(c, '  '),
       searchRepos(c, 'x', { perPage: 0 }),
@@ -242,7 +220,7 @@ describe('searches', () => {
       payload([42]),
       42,
     ]) {
-      const single = client(fakeList([[]]), fakeSearch([bad]));
+      const single = scripted({ pages: [[]], payloads: [bad] });
       const result = await searchRepos(single, 'x');
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
@@ -255,7 +233,7 @@ describe('searches', () => {
       [42],
     ];
     for (const items of badItems) {
-      const listed = await listRepos(client(fakeList([items]), fakeSearch([])), { perPage: 10 });
+      const listed = await listRepos(scripted({ pages: [items] }), { perPage: 10 });
       expect(listed.isErr()).toBe(true);
       if (listed.isOk()) continue;
       expect(listed.error.code).toBe('INTERNAL');
@@ -263,17 +241,17 @@ describe('searches', () => {
   });
 
   it('maps resolved failures without throwing', async () => {
-    const failing: RepoClient['rest']['repos'] = {
-      listForAuthenticatedUser: async () => ({ data: [], headers: {}, status: 500 }),
-    };
-    const failed = await listRepos(client(failing, fakeSearch([])), {});
+    const failed = await listRepos(
+      mockOctokit(() => ({ data: [], headers: {}, status: 500 })),
+      {}
+    );
     expect(failed.isErr()).toBe(true);
     if (failed.isOk()) return;
     expect(failed.error.code).toBe('GITHUB_API_ERROR');
-    const shapeless: RepoClient['rest']['repos'] = {
-      listForAuthenticatedUser: async () => ({ data: {}, headers: {}, status: 200 }),
-    };
-    const shapelessResult = await listRepos(client(shapeless, fakeSearch([])), {});
+    const shapelessResult = await listRepos(
+      mockOctokit(() => ({ data: {}, headers: {}, status: 200 })),
+      {}
+    );
     expect(shapelessResult.isErr()).toBe(true);
     if (shapelessResult.isOk()) return;
     expect(shapelessResult.error.code).toBe('INTERNAL');
@@ -288,15 +266,16 @@ describe('searches', () => {
 
   it('runs bare calls on defaults', async () => {
     const listCalls: Array<Record<string, unknown>> = [];
-    const listed = await listRepos(client(fakeList([[]], listCalls), fakeSearch([])));
+    const listed = await listRepos(scripted({ pages: [[]], calls: listCalls }));
     expect(listed.isOk()).toBe(true);
     expect(listCalls[0]).toMatchObject({ per_page: 30, page: 1 });
     const searchCalls: Array<Record<string, unknown>> = [];
     const searched = await searchRepos(
-      client(
-        fakeList([[]]),
-        fakeSearch([{ total_count: 0, incomplete_results: false, items: [] }], searchCalls)
-      ),
+      scripted({
+        pages: [[]],
+        payloads: [{ total_count: 0, incomplete_results: false, items: [] }],
+        calls: searchCalls,
+      }),
       'x'
     );
     expect(searched.isOk()).toBe(true);
@@ -308,19 +287,17 @@ describe('searches', () => {
 
 describe('rate limited', () => {
   function limited(status: number, headers: Record<string, string>): RepoClient {
-    return client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error(
-            status === 429 ? 'API rate limit exceeded' : 'API rate limit exceeded for user'
-          ) as Error & { status: number; response?: { headers: Record<string, string> } };
-          error.status = status;
-          error.response = { headers };
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    return mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error(
+        status === 429 ? 'API rate limit exceeded' : 'API rate limit exceeded for user'
+      ) as Error & { status: number; response?: { headers: Record<string, string> } };
+      error.status = status;
+      error.response = { headers };
+      throw error;
+    });
   }
 
   it('surfaces retry-after from the header contract', async () => {
@@ -347,18 +324,16 @@ describe('rate limited', () => {
   });
 
   it('treats message-only rate limits as limited', async () => {
-    const bare: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error('API rate limit exceeded for installation') as Error & {
-            status: number;
-          };
-          error.status = 403;
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    const bare: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error('API rate limit exceeded for installation') as Error & {
+        status: number;
+      };
+      error.status = 403;
+      throw error;
+    });
     const result = await listRepos(bare, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
@@ -366,20 +341,18 @@ describe('rate limited', () => {
   });
 
   it('reads direct header bags and odd retry values', async () => {
-    const direct: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error('slow down') as Error & {
-            status: number;
-            headers: Record<string, string>;
-          };
-          error.status = 429;
-          error.headers = { 'retry-after': '30' };
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    const direct: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error('slow down') as Error & {
+        status: number;
+        headers: Record<string, string>;
+      };
+      error.status = 429;
+      error.headers = { 'retry-after': '30' };
+      throw error;
+    });
     const result = await listRepos(direct, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
@@ -391,20 +364,18 @@ describe('rate limited', () => {
       { 'retry-after': '-5' },
       { 'x-ratelimit-reset': 'soon' },
     ]) {
-      const odd: RepoClient = client(
-        {
-          listForAuthenticatedUser: async () => {
-            const error = new Error('slow down') as Error & {
-              status: number;
-              headers: Record<string, string>;
-            };
-            error.status = 429;
-            error.headers = headers;
-            throw error;
-          },
-        },
-        fakeSearch([])
-      );
+      const odd: RepoClient = mockOctokit(call => {
+        if (call.method !== 'listForAuthenticatedUser') {
+          return { data: [], headers: {}, status: 200 };
+        }
+        const error = new Error('slow down') as Error & {
+          status: number;
+          headers: Record<string, string>;
+        };
+        error.status = 429;
+        error.headers = headers;
+        throw error;
+      });
       const oddResult = await listRepos(odd, {});
       expect(oddResult.isErr()).toBe(true);
       if (oddResult.isOk()) continue;
@@ -415,40 +386,36 @@ describe('rate limited', () => {
   });
 
   it('reads Headers instances on the rate path', async () => {
-    const headed: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error('slow down') as Error & {
-            status: number;
-            headers: Headers;
-          };
-          error.status = 429;
-          error.headers = new Headers({ 'retry-after': '45' });
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    const headed: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error('slow down') as Error & {
+        status: number;
+        headers: Headers;
+      };
+      error.status = 429;
+      error.headers = new Headers({ 'retry-after': '45' });
+      throw error;
+    });
     const result = await listRepos(headed, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
     expect(result.error.code).toBe('GITHUB_API_ERROR');
     if (result.error.code !== 'GITHUB_API_ERROR') return;
     expect(result.error.message).toContain('retry after 45s');
-    const keyless: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error('API rate limit exceeded') as Error & {
-            status: number;
-            headers: Headers;
-          };
-          error.status = 403;
-          error.headers = new Headers();
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    const keyless: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error('API rate limit exceeded') as Error & {
+        status: number;
+        headers: Headers;
+      };
+      error.status = 403;
+      error.headers = new Headers();
+      throw error;
+    });
     const keylessResult = await listRepos(keyless, {});
     expect(keylessResult.isErr()).toBe(true);
     if (keylessResult.isOk()) return;
@@ -459,20 +426,18 @@ describe('rate limited', () => {
   });
 
   it('keeps non-rate 403s on the auth path', async () => {
-    const forbidden: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          const error = new Error('Forbidden') as Error & {
-            status: number;
-            response?: { headers: Record<string, string> };
-          };
-          error.status = 403;
-          error.response = { headers: { 'x-ratelimit-remaining': '5' } };
-          throw error;
-        },
-      },
-      fakeSearch([])
-    );
+    const forbidden: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      const error = new Error('Forbidden') as Error & {
+        status: number;
+        response?: { headers: Record<string, string> };
+      };
+      error.status = 403;
+      error.response = { headers: { 'x-ratelimit-remaining': '5' } };
+      throw error;
+    });
     const result = await listRepos(forbidden, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
@@ -487,7 +452,7 @@ describe('rate limited', () => {
 describe('error maps', () => {
   it('maps auth failures with the login hint', async () => {
     for (const status of [401, 403]) {
-      const c = client(throwingList(status, `call failed ${status}`), fakeSearch([]));
+      const c = throwingList(status, `call failed ${status}`);
       const result = await listRepos(c, {});
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
@@ -503,7 +468,7 @@ describe('error maps', () => {
       { status: 500, code: 'GITHUB_API_ERROR' },
     ];
     for (const { status } of cases) {
-      const c = client(throwingList(status, `call failed ${status}`), fakeSearch([]));
+      const c = throwingList(status, `call failed ${status}`);
       const result = await listRepos(c, {});
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
@@ -511,14 +476,9 @@ describe('error maps', () => {
       if (result.error.code !== 'GITHUB_API_ERROR') continue;
       expect(result.error.message).not.toContain('stitch login');
     }
-    const hung: RepoClient = client(
-      {
-        listForAuthenticatedUser: async () => {
-          throw new Error('socket hang up');
-        },
-      },
-      fakeSearch([])
-    );
+    const hung: RepoClient = mockOctokit(() => {
+      throw new Error('socket hang up');
+    });
     const hungResult = await listRepos(hung, {});
     expect(hungResult.isErr()).toBe(true);
     if (hungResult.isOk()) return;
@@ -526,9 +486,9 @@ describe('error maps', () => {
   });
 
   it('attributes the failing search page', async () => {
-    const flaky: RepoClient['rest']['search'] = {
-      repos: async args => {
-        const params = args as Record<string, unknown>;
+    const flaky: RepoClient = mockOctokit(call => {
+      if (call.namespace === 'search') {
+        const params = call.args;
         if (params['page'] === 2) {
           const error = new Error('boom') as Error & { status: number };
           error.status = 500;
@@ -539,18 +499,22 @@ describe('error maps', () => {
           headers: {},
           status: 200,
         };
-      },
-    };
-    const result = await searchRepos(client(fakeList([[]]), flaky), 'x', { perPage: 1 });
+      }
+      return { data: [], headers: {}, status: 200 };
+    });
+    const result = await searchRepos(flaky, 'x', { perPage: 1 });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
     expect(result.error.code).toBe('GITHUB_API_ERROR');
     if (result.error.code !== 'GITHUB_API_ERROR') return;
     expect(result.error.message).toContain('page 2');
-    const resolved: RepoClient['rest']['search'] = {
-      repos: async () => ({ data: [], headers: {}, status: 502 }),
-    };
-    const resolvedResult = await searchRepos(client(fakeList([[]]), resolved), 'x');
+    const resolved: RepoClient = mockOctokit(call => {
+      if (call.namespace === 'search') {
+        return { data: [], headers: {}, status: 502 };
+      }
+      return { data: [], headers: {}, status: 200 };
+    });
+    const resolvedResult = await searchRepos(resolved, 'x');
     expect(resolvedResult.isErr()).toBe(true);
     if (resolvedResult.isOk()) return;
     expect(resolvedResult.error.code).toBe('GITHUB_API_ERROR');
@@ -558,18 +522,19 @@ describe('error maps', () => {
 
   it('attributes the failing page', async () => {
     const calls: Array<Record<string, unknown>> = [];
-    const flaky: RepoClient['rest']['repos'] = {
-      listForAuthenticatedUser: async args => {
-        calls.push({ ...(args as Record<string, unknown>) });
-        if (calls.length === 2) {
-          const error = new Error('boom') as Error & { status: number };
-          error.status = 500;
-          throw error;
-        }
-        return { data: [repo({ name: 'a' }), repo({ name: 'b' })], headers: {}, status: 200 };
-      },
-    };
-    const result = await listRepos(client(flaky, fakeSearch([])), { perPage: 2 });
+    const flaky: RepoClient = mockOctokit(call => {
+      if (call.method !== 'listForAuthenticatedUser') {
+        return { data: [], headers: {}, status: 200 };
+      }
+      calls.push({ ...call.args });
+      if (calls.length === 2) {
+        const error = new Error('boom') as Error & { status: number };
+        error.status = 500;
+        throw error;
+      }
+      return { data: [repo({ name: 'a' }), repo({ name: 'b' })], headers: {}, status: 200 };
+    });
+    const result = await listRepos(flaky, { perPage: 2 });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
     expect(result.error.code).toBe('GITHUB_API_ERROR');
@@ -578,12 +543,7 @@ describe('error maps', () => {
   });
 
   it('rejects non-Error throws as typed failures', async () => {
-    const c: RepoClient = client(
-      {
-        listForAuthenticatedUser: () => Promise.reject(),
-      },
-      fakeSearch([])
-    );
+    const c: RepoClient = mockOctokit(() => Promise.reject());
     const result = await listRepos(c, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;

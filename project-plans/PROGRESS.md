@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-101 - Tests with Mocked Octokit (awaiting go-ahead)
+**Current Phase:** P-102 - Error Mapping (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 101 |
+| **Implemented** | 102 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 218 |
+| **Pending (implementation)** | 217 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-101 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-102 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-101 (next, awaiting go-ahead):** GitHub epic consolidation per PHASES_DETAILED.md P-101 (read the FULL spec first; shared octokit/nock harness + P-088-P-100 suite consolidation).
+**P-102 (next, awaiting go-ahead):** GitHub error mapping per PHASES_DETAILED.md P-102 (read the FULL spec first; centralize the duplicated status mapping into github/errors.ts WITHOUT breaking the P-101 suites).
+
+**P-101 notes (done):** GitHub epic consolidation (`test-utils/githubMock.ts`: ONE dumb-dispatcher fake covering every narrow seam — users/repos/git/pulls/actions/licenses/search plus graphql — with call log, shared reqError/okResponse/SHAs, and repo/license/run fixtures; `github/__tests__/epic.test.ts`: the 8-module flow through one mock plus the auth/rate-limit/not-found/pagination edge matrix). All 12 Octokit suites migrated (kind-mapped adapters; list.test.ts composables ported to scripted(); rateLimit untouched — no Octokit). 331/331 github tests green; full coverage gate exit 0 (All files 96.6/94.0/98.1 vs 80/70/80). Probed truth that shaped the work: zero-arg `getAuthenticated` needs optional mock args (strictFunctionTypes), list returns bare arrays, getTree lives under `git`. Full suite 1324 passed / 0 failed tests (P-021 load flake excluded from the gate run, green standalone; P-037 clean).
 
 **P-100 notes (done):** GH Actions sandbox trigger (`github/sandboxTrigger.ts`: `triggerSandbox` dispatches repository or workflow dispatch with an allowlisted payload (sha/ecosystem/ref/job/timeout + secret-scanned extras; secret keys refuse before any call), `local-docker` refuses loudly (P-169 owns it), `monitorSandboxRun` composes P-095 find/correlate/relay by import into a P-176-shaped verdict (pass on success only, flaky always false — P-176 owns repeats; empty lists fail fast for P-096). 26/26 green (4 spec-required incl. 3 nock e2e proving both dispatch wire paths + monitor on real Octokit); sandboxTrigger.ts 190/192 stmts + 0 uncovered branches/fns (2 named arms: compiler-mandated candidate guard + sha-filtered correlate guard). Probed truth that shaped the work: dispatches answer 204 with no run id (correlation is by sha, never by id), workflow inputs must be strings, P-175 (not P-178) owns the workflow template, P-176 reserves flaky for repeats. Full suite 1318 passed / 0 failed tests (only the documented P-021 load flake, green standalone).
 
