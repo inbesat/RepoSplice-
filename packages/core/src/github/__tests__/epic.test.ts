@@ -199,13 +199,13 @@ describe('edge matrix', () => {
     const authed = await validateAuth(denied, {});
     expect(authed.isErr()).toBe(true);
     if (authed.isOk()) return;
-    expect(authed.error.code).toBe('AUTH_ERROR');
+    expect(authed.error.code).toBe('AUTH_FAILED');
 
     const tree = await getRepoTree(denied, 'o', 'r', { ref: SHA_A });
     expect(tree.isErr()).toBe(true);
     if (tree.isOk()) return;
-    expect(tree.error.code).toBe('AUTH_ERROR');
-    if (tree.error.code !== 'AUTH_ERROR') return;
+    expect(tree.error.code).toBe('AUTH_FAILED');
+    if (tree.error.code !== 'AUTH_FAILED') return;
     expect(tree.error.message).toContain('stitch login');
   });
 
@@ -221,8 +221,8 @@ describe('edge matrix', () => {
     const tree = await getRepoTree(limited, 'o', 'r', { ref: 'main' });
     expect(tree.isErr()).toBe(true);
     if (tree.isOk()) return;
-    expect(tree.error.code).toBe('GITHUB_API_ERROR');
-    if (tree.error.code !== 'GITHUB_API_ERROR') return;
+    expect(tree.error.code).toBe('RATE_LIMIT');
+    if (tree.error.code !== 'RATE_LIMIT') return;
     expect(tree.error.message).toContain('retry after 45s');
   });
 
@@ -239,15 +239,15 @@ describe('edge matrix', () => {
     const blob = await getFileContent(missing, 'o', 'ghost', 'a.txt', { ref: SHA_A });
     expect(blob.isErr()).toBe(true);
     if (blob.isOk()) return;
-    expect(blob.error.code).toBe('GITHUB_API_ERROR');
-    if (blob.error.code !== 'GITHUB_API_ERROR') return;
+    expect(blob.error.code).toBe('NOT_FOUND');
+    if (blob.error.code !== 'NOT_FOUND') return;
     expect(blob.error.status).toBe(404);
 
     const fork = await ensureFork(missing, 'o', 'ghost', { pollIntervalMs: 0 });
     expect(fork.isErr()).toBe(true);
     if (fork.isOk()) return;
-    expect(fork.error.code).toBe('GITHUB_API_ERROR');
-    if (fork.error.code !== 'GITHUB_API_ERROR') return;
+    expect(fork.error.code).toBe('NOT_FOUND');
+    if (fork.error.code !== 'NOT_FOUND') return;
     expect(fork.error.status).toBe(404);
   });
 

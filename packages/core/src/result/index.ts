@@ -44,10 +44,24 @@ export function match<T, E, A, B = A>(
  * git, github, deps, license, ai, sandbox, orchestration, config, auth, cost,
  * compliance). Stable string codes let the CLI render typed errors and the
  * web dashboard filter on them.
+ *
+ * GitHub HTTP failures carry dedicated codes per P-102 (consumed by the
+ * CLI exit map in P-203 and the help surface in P-316): AUTH_FAILED (401),
+ * RATE_LIMIT (429 / rate-limited 403), FORBIDDEN (other 403s), NOT_FOUND
+ * (404), NETWORK (transport/abort with no HTTP status). Each carries a
+ * human hint plus the offending repo/scope for the UI. AUTH_ERROR stays
+ * for local validation (bad config, missing scopes) that never hit HTTP.
  */
 export type StitchError =
   | { code: 'GIT_ERROR'; message: string; gitOutput?: string }
-  | { code: 'GITHUB_API_ERROR'; status: number; message: string }
+  | {
+      code: 'GITHUB_API_ERROR';
+      status: number;
+      message: string;
+      hint?: string;
+      repo?: string;
+      scope?: string;
+    }
   | { code: 'DOCKER_ERROR'; message: string; containerId?: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
@@ -59,7 +73,40 @@ export type StitchError =
   | { code: 'AUTH_ERROR'; provider: string; message: string }
   | { code: 'COST_LIMIT'; provider: string; spentUsd: number; limitUsd: number }
   | { code: 'COMPLIANCE_VIOLATION'; rule: string; message: string }
-  | { code: 'UNKNOWN_LICENSE'; id: string };
+  | { code: 'UNKNOWN_LICENSE'; id: string }
+  | {
+      code: 'AUTH_FAILED';
+      provider: string;
+      message: string;
+      hint: string;
+      repo?: string;
+      scope?: string;
+    }
+  | {
+      code: 'RATE_LIMIT';
+      status: number;
+      message: string;
+      hint: string;
+      repo?: string;
+      scope?: string;
+    }
+  | {
+      code: 'FORBIDDEN';
+      provider: string;
+      message: string;
+      hint: string;
+      repo?: string;
+      scope?: string;
+    }
+  | {
+      code: 'NOT_FOUND';
+      status: number;
+      message: string;
+      hint: string;
+      repo?: string;
+      scope?: string;
+    }
+  | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string };
 
 export type StitchErrorCode = StitchError['code'];
 
@@ -79,6 +126,11 @@ export const STITCH_ERROR_CODES = [
   'COST_LIMIT',
   'COMPLIANCE_VIOLATION',
   'UNKNOWN_LICENSE',
+  'AUTH_FAILED',
+  'RATE_LIMIT',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'NETWORK',
 ] as const satisfies readonly StitchErrorCode[];
 
 /** Factory: ok with a known stitch error type. */

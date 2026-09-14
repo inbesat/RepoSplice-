@@ -430,6 +430,17 @@ export type {
 } from './github/actionsStatus.js';
 export { withRateLimit, parseRateHeaders } from './github/rateLimit.js';
 export type { RetryInfo, RateLimitOpts, RateState } from './github/rateLimit.js';
+export {
+  mapGitHubError,
+  mapGitHubStatus,
+  rateLimitExhausted,
+  GITHUB_LOGIN_HINT,
+  GITHUB_CONFLICT_HINT,
+  GITHUB_NETWORK_HINT,
+  GITHUB_NOT_FOUND_HINT,
+  GITHUB_BACKOFF_HINT,
+} from './github/errors.js';
+export type { GitHubErrorContext } from './github/errors.js';
 export { detectRepoLicense } from './github/license.js';
 export type {
   DetectedLicense,

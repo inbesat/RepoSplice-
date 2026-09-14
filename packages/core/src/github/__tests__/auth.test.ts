@@ -382,11 +382,9 @@ describe('redacts token', () => {
     expect(denied.isErr()).toBe(true);
     if (denied.isOk()) return;
     // The sentinel only exists in this file, never in the module: any
-    // interpolation leak would surface here by construction.
-    const message =
-      denied.error.code === 'AUTH_ERROR' || denied.error.code === 'GITHUB_API_ERROR'
-        ? denied.error.message
-        : '';
+    // interpolation leak would surface here by construction. Not every
+    // StitchError carries a message, so read it only when present.
+    const message = 'message' in denied.error ? denied.error.message : '';
     expect(message).not.toContain('ghp_sentinel');
   });
 
@@ -407,12 +405,15 @@ describe('redacts token', () => {
 
 describe('maps errors', () => {
   it('maps 401/403 with the login hint', async () => {
-    for (const status of [401, 403]) {
+    for (const [status, code] of [
+      [401, 'AUTH_FAILED'],
+      [403, 'FORBIDDEN'],
+    ] as const) {
       const result = await validateAuth(failingClient(status, `call failed ${status}`), {});
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
-      expect(result.error.code).toBe('AUTH_ERROR');
-      if (result.error.code !== 'AUTH_ERROR') continue;
+      expect(result.error.code).toBe(code);
+      if (result.error.code !== code) continue;
       expect(result.error.message).toContain('stitch login');
     }
   });
@@ -421,8 +422,8 @@ describe('maps errors', () => {
     const missing = await validateAuth(failingClient(404, 'not found'), {});
     expect(missing.isErr()).toBe(true);
     if (missing.isOk()) return;
-    expect(missing.error.code).toBe('GITHUB_API_ERROR');
-    if (missing.error.code !== 'GITHUB_API_ERROR') return;
+    expect(missing.error.code).toBe('NOT_FOUND');
+    if (missing.error.code !== 'NOT_FOUND') return;
     expect(missing.error.message).not.toContain('stitch login');
     const broken = await validateAuth(failingClient(500, 'boom'), {});
     expect(broken.isErr()).toBe(true);
@@ -443,7 +444,7 @@ describe('maps errors', () => {
     const result = await validateAuth(client, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
+    expect(result.error.code).toBe('NETWORK');
     const primitive: AuthClient = {
       rest: {
         // Rejects with undefined (no throw statement): exercises the
@@ -466,8 +467,8 @@ describe('maps errors', () => {
     const result = await validateAuth(built.value, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('AUTH_ERROR');
-    if (result.error.code !== 'AUTH_ERROR') return;
+    expect(result.error.code).toBe('AUTH_FAILED');
+    if (result.error.code !== 'AUTH_FAILED') return;
     expect(result.error.message).toContain('stitch login');
   });
 });

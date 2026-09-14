@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-09-05
-**Current Phase:** P-102 - Error Mapping (awaiting go-ahead)
+**Current Phase:** P-103 - Deps Ecosystem Detect (awaiting go-ahead)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 102 |
+| **Implemented** | 103 |
 | **Active** | 1 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 217 |
+| **Pending (implementation)** | 216 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-102 → GitHub epic (P-088-P-101); Wave 1 after Wave 0 |
+| **Next Handoff** | P-103 → Deps epic; GitHub epic (P-088-P-102) complete |
 
 ---
 
@@ -479,7 +479,9 @@
 
 ## 🚀 Next Action
 
-**P-102 (next, awaiting go-ahead):** GitHub error mapping per PHASES_DETAILED.md P-102 (read the FULL spec first; centralize the duplicated status mapping into github/errors.ts WITHOUT breaking the P-101 suites).
+**P-103 (next, awaiting go-ahead):** Deps ecosystem detect per PHASES_DETAILED.md P-103 (read the FULL spec first; first phase of the Deps Merge epic after the closed GitHub epic P-088-P-102).
+
+**P-102 notes (done):** GitHub error mapping (`github/errors.ts`: shared mapGitHubError/mapGitHubStatus/rateLimitExhausted + canonical hints + GitHubErrorContext; 5 new StitchError codes AUTH_FAILED / RATE_LIMIT / FORBIDDEN / NOT_FOUND / NETWORK with hint + repo/scope for the UI, P-203/P-316 consume later; 409 keeps GITHUB_API_ERROR + typed conflict hint; factory taxonomy preserved for all other statuses). Threaded through all 13 modules (auth, list, tree, content, create incl. the NOT_FOUND availability check, branches, pr, actionsStatus, graphql, license, fork, sandboxTrigger, rateLimit signal + exhaustion); ~90 lines of duplicated mapping deleted per module. 19 codes total (build smoke 14→19; doctor describeError extended; INTEGRATIONS §9.1 synced). errors.test.ts 7/7; rateLimit gains a RATE_LIMIT retry proof. Probed truth that shaped the work: graphql fallback + fork poll read RAW statuses (unaffected); create.ts read the MAPPED 404 (fixed); doctor.ts is exhaustive with no default (extended); suites pin messages, codes changed only where the spec mandates. Full suite 1331 passed / 0 regressions (P-021 + P-037 load flakes green standalone); coverage gate exit 0 (96.3/93.4/97.9).
 
 **P-101 notes (done):** GitHub epic consolidation (`test-utils/githubMock.ts`: ONE dumb-dispatcher fake covering every narrow seam — users/repos/git/pulls/actions/licenses/search plus graphql — with call log, shared reqError/okResponse/SHAs, and repo/license/run fixtures; `github/__tests__/epic.test.ts`: the 8-module flow through one mock plus the auth/rate-limit/not-found/pagination edge matrix). All 12 Octokit suites migrated (kind-mapped adapters; list.test.ts composables ported to scripted(); rateLimit untouched — no Octokit). 331/331 github tests green; full coverage gate exit 0 (All files 96.6/94.0/98.1 vs 80/70/80). Probed truth that shaped the work: zero-arg `getAuthenticated` needs optional mock args (strictFunctionTypes), list returns bare arrays, getTree lives under `git`. Full suite 1324 passed / 0 failed tests (P-021 load flake excluded from the gate run, green standalone; P-037 clean).
 

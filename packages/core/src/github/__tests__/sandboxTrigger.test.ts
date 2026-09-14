@@ -374,8 +374,8 @@ describe('errors', () => {
     const missingResult = await triggerOk(missing);
     expect(missingResult.isErr()).toBe(true);
     if (missingResult.isOk()) return;
-    expect(missingResult.error.code).toBe('GITHUB_API_ERROR');
-    if (missingResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(missingResult.error.code).toBe('NOT_FOUND');
+    if (missingResult.error.code !== 'NOT_FOUND') return;
     expect(missingResult.error.status).toBe(404);
 
     const denied = fakeClient(() => {
@@ -384,8 +384,8 @@ describe('errors', () => {
     const deniedResult = await triggerOk(denied);
     expect(deniedResult.isErr()).toBe(true);
     if (deniedResult.isOk()) return;
-    expect(deniedResult.error.code).toBe('AUTH_ERROR');
-    if (deniedResult.error.code !== 'AUTH_ERROR') return;
+    expect(deniedResult.error.code).toBe('AUTH_FAILED');
+    if (deniedResult.error.code !== 'AUTH_FAILED') return;
     expect(deniedResult.error.message).toContain('stitch login');
 
     const limited = fakeClient(() => {
@@ -396,8 +396,8 @@ describe('errors', () => {
     const limitedResult = await triggerOk(limited);
     expect(limitedResult.isErr()).toBe(true);
     if (limitedResult.isOk()) return;
-    expect(limitedResult.error.code).toBe('GITHUB_API_ERROR');
-    if (limitedResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(limitedResult.error.code).toBe('RATE_LIMIT');
+    if (limitedResult.error.code !== 'RATE_LIMIT') return;
     expect(limitedResult.error.message).toContain('rate limited');
   });
 
@@ -422,9 +422,9 @@ describe('errors', () => {
     const plainResult = await triggerOk(plain);
     expect(plainResult.isErr()).toBe(true);
     if (plainResult.isOk()) return;
-    expect(plainResult.error.code).toBe('GITHUB_API_ERROR');
-    if (plainResult.error.code !== 'GITHUB_API_ERROR') return;
-    expect(plainResult.error.status).toBe(0);
+    expect(plainResult.error.code).toBe('NETWORK');
+    if (plainResult.error.code !== 'NETWORK') return;
+    expect(plainResult.error.message).toContain('socket hang up');
   });
 
   it('fails fast when no runs exist for the sha', async () => {
@@ -475,8 +475,8 @@ describe('errors', () => {
     const result = await monitorSandboxRun(client, 'o', 'r', SHA_A, { jobId: 'job-1' });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('NOT_FOUND');
+    if (result.error.code !== 'NOT_FOUND') return;
     expect(result.error.status).toBe(404);
   });
 });
@@ -493,8 +493,8 @@ describe('rate limit guidance', () => {
     const result = await triggerOk(client);
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return null;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return null;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return null;
     return result.error.message;
   }
 
@@ -542,8 +542,8 @@ describe('rate limit guidance', () => {
     const headeredResult = await triggerOk(headered);
     expect(headeredResult.isErr()).toBe(true);
     if (headeredResult.isOk()) return;
-    expect(headeredResult.error.code).toBe('GITHUB_API_ERROR');
-    if (headeredResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(headeredResult.error.code).toBe('RATE_LIMIT');
+    if (headeredResult.error.code !== 'RATE_LIMIT') return;
     expect(headeredResult.error.message).toContain('rate limited');
 
     const messaged = fakeClient(() => {
@@ -552,8 +552,8 @@ describe('rate limit guidance', () => {
     const messagedResult = await triggerOk(messaged);
     expect(messagedResult.isErr()).toBe(true);
     if (messagedResult.isOk()) return;
-    expect(messagedResult.error.code).toBe('GITHUB_API_ERROR');
-    if (messagedResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(messagedResult.error.code).toBe('RATE_LIMIT');
+    if (messagedResult.error.code !== 'RATE_LIMIT') return;
     expect(messagedResult.error.message).toContain('rate limited');
   });
 
@@ -568,8 +568,8 @@ describe('rate limit guidance', () => {
     const result = await triggerOk(client);
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 12s');
   });
 

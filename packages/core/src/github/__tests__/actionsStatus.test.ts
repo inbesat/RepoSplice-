@@ -368,8 +368,8 @@ describe('errors', () => {
     const listed = await findRunsForSha(denied, 'o', 'r', SHA_A);
     expect(listed.isErr()).toBe(true);
     if (listed.isOk()) return;
-    expect(listed.error.code).toBe('AUTH_ERROR');
-    if (listed.error.code !== 'AUTH_ERROR') return;
+    expect(listed.error.code).toBe('AUTH_FAILED');
+    if (listed.error.code !== 'AUTH_FAILED') return;
     expect(listed.error.message).toContain('stitch login');
   });
 
@@ -380,7 +380,7 @@ describe('errors', () => {
     const hungResult = await relayWorkflowRun(hung, 'o', 'r', 101);
     expect(hungResult.isErr()).toBe(true);
     if (hungResult.isOk()) return;
-    expect(hungResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(hungResult.error.code).toBe('NETWORK');
     const resolved = fakeClient(() => ({ data: {}, headers: {}, status: 503 }));
     const resolvedResult = await relayWorkflowRun(resolved, 'o', 'r', 101);
     expect(resolvedResult.isErr()).toBe(true);
@@ -413,14 +413,14 @@ describe('errors', () => {
     const direct = await shaped(429, { 'retry-after': '30' }, 'slow down');
     expect(direct.isErr()).toBe(true);
     if (direct.isOk()) return;
-    expect(direct.error.code).toBe('GITHUB_API_ERROR');
-    if (direct.error.code !== 'GITHUB_API_ERROR') return;
+    expect(direct.error.code).toBe('RATE_LIMIT');
+    if (direct.error.code !== 'RATE_LIMIT') return;
     expect(direct.error.message).toContain('retry after 30s');
     const inst = await shaped(429, new Headers({ 'retry-after': '45' }), 'slow down');
     expect(inst.isErr()).toBe(true);
     if (inst.isOk()) return;
-    expect(inst.error.code).toBe('GITHUB_API_ERROR');
-    if (inst.error.code !== 'GITHUB_API_ERROR') return;
+    expect(inst.error.code).toBe('RATE_LIMIT');
+    if (inst.error.code !== 'RATE_LIMIT') return;
     expect(inst.error.message).toContain('retry after 45s');
     for (const headers of [
       { 'retry-after': 'soon' },
@@ -433,21 +433,21 @@ describe('errors', () => {
       const odd = await shaped(429, headers, 'API rate limit exceeded');
       expect(odd.isErr()).toBe(true);
       if (odd.isOk()) continue;
-      expect(odd.error.code).toBe('GITHUB_API_ERROR');
-      if (odd.error.code !== 'GITHUB_API_ERROR') continue;
+      expect(odd.error.code).toBe('RATE_LIMIT');
+      if (odd.error.code !== 'RATE_LIMIT') continue;
       expect(odd.error.message).toContain('retry delay unknown');
     }
     const reset = String(Math.floor(Date.now() / 1000) + 60);
     const epoch = await shaped(429, { 'x-ratelimit-reset': reset }, 'slow down');
     expect(epoch.isErr()).toBe(true);
     if (epoch.isOk()) return;
-    expect(epoch.error.code).toBe('GITHUB_API_ERROR');
-    if (epoch.error.code !== 'GITHUB_API_ERROR') return;
+    expect(epoch.error.code).toBe('RATE_LIMIT');
+    if (epoch.error.code !== 'RATE_LIMIT') return;
     expect(epoch.error.message).toMatch(/retry after \d+s/);
     const remaining = await shaped(403, { 'x-ratelimit-remaining': '0' }, 'limited');
     expect(remaining.isErr()).toBe(true);
     if (remaining.isOk()) return;
-    expect(remaining.error.code).toBe('GITHUB_API_ERROR');
+    expect(remaining.error.code).toBe('RATE_LIMIT');
     const nested = fakeClient(() => {
       const error = new Error('API rate limit exceeded') as Error & {
         status: number;
@@ -460,8 +460,8 @@ describe('errors', () => {
     const nestedResult = await relayWorkflowRun(nested, 'o', 'r', 101);
     expect(nestedResult.isErr()).toBe(true);
     if (nestedResult.isOk()) return;
-    expect(nestedResult.error.code).toBe('GITHUB_API_ERROR');
-    if (nestedResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(nestedResult.error.code).toBe('RATE_LIMIT');
+    if (nestedResult.error.code !== 'RATE_LIMIT') return;
     expect(nestedResult.error.message).toContain('retry after 75s');
     const nulled = fakeClient(() => {
       const error = new Error('API rate limit exceeded') as Error & {
@@ -475,13 +475,13 @@ describe('errors', () => {
     const nulledResult = await relayWorkflowRun(nulled, 'o', 'r', 101);
     expect(nulledResult.isErr()).toBe(true);
     if (nulledResult.isOk()) return;
-    expect(nulledResult.error.code).toBe('GITHUB_API_ERROR');
-    if (nulledResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(nulledResult.error.code).toBe('RATE_LIMIT');
+    if (nulledResult.error.code !== 'RATE_LIMIT') return;
     expect(nulledResult.error.message).toContain('retry delay unknown');
     const forbidden = await shaped(403, { 'x-ratelimit-remaining': '5' }, 'Forbidden');
     expect(forbidden.isErr()).toBe(true);
     if (forbidden.isOk()) return;
-    expect(forbidden.error.code).toBe('AUTH_ERROR');
+    expect(forbidden.error.code).toBe('FORBIDDEN');
   });
 });
 
@@ -516,8 +516,8 @@ describe('nock end to end', () => {
     const result = await relayWorkflowRun(built.value, 'o', 'r', 999);
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('NOT_FOUND');
+    if (result.error.code !== 'NOT_FOUND') return;
     expect(result.error.message).toContain('relayWorkflowRun');
   });
 });

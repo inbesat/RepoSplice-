@@ -336,8 +336,8 @@ describe('rbac deny', () => {
     const result = await createRepoC(client, { name: 'child' });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('AUTH_ERROR');
-    if (result.error.code !== 'AUTH_ERROR') return;
+    expect(result.error.code).toBe('FORBIDDEN');
+    if (result.error.code !== 'FORBIDDEN') return;
     expect(result.error.message).toContain('stitch login');
   });
 
@@ -350,7 +350,7 @@ describe('rbac deny', () => {
     const result = await createRepoC(client, { name: 'child' });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('AUTH_ERROR');
+    expect(result.error.code).toBe('AUTH_FAILED');
   });
 
   it('maps status-less throws and resolved non-2xx', async () => {
@@ -361,7 +361,7 @@ describe('rbac deny', () => {
     const hungResult = await createRepoC(hung, { name: 'child' });
     expect(hungResult.isErr()).toBe(true);
     if (hungResult.isOk()) return;
-    expect(hungResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(hungResult.error.code).toBe('NETWORK');
     const resolved = fakeClient(call => {
       if (call.kind === 'me') return meOk();
       return { data: {}, headers: {}, status: 503 };
@@ -472,16 +472,16 @@ describe('rate limited', () => {
     });
     expect(direct.isErr()).toBe(true);
     if (direct.isOk()) return;
-    expect(direct.error.code).toBe('GITHUB_API_ERROR');
-    if (direct.error.code !== 'GITHUB_API_ERROR') return;
+    expect(direct.error.code).toBe('RATE_LIMIT');
+    if (direct.error.code !== 'RATE_LIMIT') return;
     expect(direct.error.message).toContain('retry after 90s');
     const inst = await createRepoC(limitedCreate(429, new Headers({ 'retry-after': '45' })), {
       name: 'child',
     });
     expect(inst.isErr()).toBe(true);
     if (inst.isOk()) return;
-    expect(inst.error.code).toBe('GITHUB_API_ERROR');
-    if (inst.error.code !== 'GITHUB_API_ERROR') return;
+    expect(inst.error.code).toBe('RATE_LIMIT');
+    if (inst.error.code !== 'RATE_LIMIT') return;
     expect(inst.error.message).toContain('retry after 45s');
     for (const headers of [
       { 'retry-after': 'soon' },
@@ -493,8 +493,8 @@ describe('rate limited', () => {
       const odd = await createRepoC(limitedCreate(429, headers), { name: 'child' });
       expect(odd.isErr()).toBe(true);
       if (odd.isOk()) continue;
-      expect(odd.error.code).toBe('GITHUB_API_ERROR');
-      if (odd.error.code !== 'GITHUB_API_ERROR') continue;
+      expect(odd.error.code).toBe('RATE_LIMIT');
+      if (odd.error.code !== 'RATE_LIMIT') continue;
       expect(odd.error.message).toContain('retry delay unknown');
     }
     const reset = String(Math.floor(Date.now() / 1000) + 60);
@@ -503,13 +503,13 @@ describe('rate limited', () => {
     });
     expect(epoch.isErr()).toBe(true);
     if (epoch.isOk()) return;
-    expect(epoch.error.code).toBe('GITHUB_API_ERROR');
-    if (epoch.error.code !== 'GITHUB_API_ERROR') return;
+    expect(epoch.error.code).toBe('RATE_LIMIT');
+    if (epoch.error.code !== 'RATE_LIMIT') return;
     expect(epoch.error.message).toMatch(/retry after \d+s/);
     const bare = await createRepoC(limitedCreate(429, undefined), { name: 'child' });
     expect(bare.isErr()).toBe(true);
     if (bare.isOk()) return;
-    expect(bare.error.code).toBe('GITHUB_API_ERROR');
+    expect(bare.error.code).toBe('RATE_LIMIT');
   });
 
   it('keeps non-rate 403s on the auth path', async () => {
@@ -519,16 +519,16 @@ describe('rate limited', () => {
     );
     expect(forbidden.isErr()).toBe(true);
     if (forbidden.isOk()) return;
-    expect(forbidden.error.code).toBe('AUTH_ERROR');
-    if (forbidden.error.code !== 'AUTH_ERROR') return;
+    expect(forbidden.error.code).toBe('FORBIDDEN');
+    if (forbidden.error.code !== 'FORBIDDEN') return;
     expect(forbidden.error.message).toContain('stitch login');
     const zero = await createRepoC(limitedCreate(403, { 'x-ratelimit-remaining': '0' }), {
       name: 'child',
     });
     expect(zero.isErr()).toBe(true);
     if (zero.isOk()) return;
-    expect(zero.error.code).toBe('GITHUB_API_ERROR');
-    if (zero.error.code !== 'GITHUB_API_ERROR') return;
+    expect(zero.error.code).toBe('RATE_LIMIT');
+    if (zero.error.code !== 'RATE_LIMIT') return;
     expect(zero.error.message).toContain('retry delay unknown');
   });
 });

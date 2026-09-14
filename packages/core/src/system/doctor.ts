@@ -132,6 +132,11 @@ function describeError(error: StitchError): string {
     case 'INTERNAL':
     case 'AUTH_ERROR':
     case 'COMPLIANCE_VIOLATION':
+    case 'AUTH_FAILED':
+    case 'RATE_LIMIT':
+    case 'FORBIDDEN':
+    case 'NOT_FOUND':
+    case 'NETWORK':
       return `${error.code}: ${error.message}`;
     case 'USER_CANCELLED':
       return `${error.code}: ${error.reason}`;

@@ -38,14 +38,12 @@
 
 import { ok, err, type Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
-import { statusToStitchError } from './factory.js';
+import { mapGitHubError, mapGitHubStatus } from './errors.js';
 import { normalizeLicense } from '../license/normalize.js';
 import { lookupLicense } from '../license/spdxIndex.js';
 import type { RefCache } from '../git/perf.js';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
-
-const LOGIN_HINT = 'run `stitch login` or check token scopes';
 
 /**
  * Detected license. All fields absent = unknown (P-123 path): the repo
@@ -106,94 +104,6 @@ function checkClient(client: LicenseClient, op: string): Result<LicenseClient, S
     return invalid('client', `${op}: client is required`);
   }
   return ok(client);
-}
-
-/** Status mapping reuses the factory taxonomy, enriched with the hint. */
-function mapStatus(status: number, statusText: string, op: string): StitchError {
-  const base = statusToStitchError(status, statusText, op);
-  if (base.code !== 'AUTH_ERROR') return base;
-  return { ...base, message: `${base.message} (${LOGIN_HINT})` };
-}
-
-/** Case-tolerant single-header read (plain bags and Headers instances). */
-function headerValue(headers: unknown, name: string): string | undefined {
-  if (typeof headers !== 'object' || headers === null) return undefined;
-  const rec = headers as Record<string, unknown>;
-  const direct = rec[name];
-  if (typeof direct === 'string') return direct;
-  const getter = rec['get'];
-  if (typeof getter === 'function') {
-    const out = (getter as (headerName: string) => unknown).call(rec, name);
-    return typeof out === 'string' ? out : undefined;
-  }
-  return undefined;
-}
-
-/** Response headers off a thrown RequestError (direct bag, then nested). */
-function thrownHeaders(error: object): unknown {
-  const rec = error as { headers?: unknown; response?: unknown };
-  if (rec.headers !== undefined) return rec.headers;
-  if (typeof rec.response === 'object' && rec.response !== null) {
-    return (rec.response as { headers?: unknown }).headers;
-  }
-  return undefined;
-}
-
-/** 429 outright; 403 only with the rate-limit signature (else auth). */
-function isRateLimited(status: number, message: string, headers: unknown): boolean {
-  if (status !== 403 && status !== 429) return false;
-  if (status === 429) return true;
-  const remaining = headerValue(headers, 'x-ratelimit-remaining');
-  if (remaining !== undefined && remaining.trim() === '0') return true;
-  return /rate limit/i.test(message);
-}
-
-/**
- * Seconds to wait: `retry-after` first, else the reset epoch, else null.
- * The `(retry after Ns)` message format is the P-096 parse contract.
- */
-function retryAfterSecs(headers: unknown): number | null {
-  const direct = headerValue(headers, 'retry-after');
-  if (direct !== undefined) {
-    const secs = Number(direct);
-    if (Number.isFinite(secs) && secs >= 0) return Math.floor(secs);
-  }
-  const reset = headerValue(headers, 'x-ratelimit-reset');
-  if (reset !== undefined) {
-    const epoch = Number(reset);
-    if (Number.isFinite(epoch)) {
-      return Math.max(0, Math.ceil(epoch - Date.now() / 1000));
-    }
-  }
-  return null;
-}
-
-function rateLimitError(op: string, status: number, headers: unknown): StitchError {
-  const after = retryAfterSecs(headers);
-  const when = after === null ? 'retry delay unknown' : `retry after ${after}s`;
-  return {
-    code: 'GITHUB_API_ERROR',
-    status,
-    message: `${op}: rate limited by GitHub (${when})`,
-  };
-}
-
-/** Thrown-call mapping: rate limits first, then the status taxonomy. */
-function mapCallError(op: string, error: unknown): StitchError {
-  if (error instanceof Error) {
-    const rec = error as { status?: unknown };
-    const status = typeof rec.status === 'number' ? rec.status : 0;
-    const headers = thrownHeaders(error);
-    if (isRateLimited(status, error.message, headers)) {
-      return rateLimitError(op, status, headers);
-    }
-    return mapStatus(status, error.message, op);
-  }
-  return {
-    code: 'GITHUB_API_ERROR',
-    status: 0,
-    message: `${op} failed: ${String(error)}`,
-  };
 }
 
 /**
@@ -291,10 +201,10 @@ export async function detectRepoLicense(
       ...(opts.ref !== undefined ? { ref: opts.ref } : {}),
     });
   } catch (error: unknown) {
-    return err(mapCallError(`${op} licenses.getForRepo`, error));
+    return err(mapGitHubError(error, { operation: `${op} licenses.getForRepo` }));
   }
   if (response.status >= 400) {
-    return err(mapStatus(response.status, '', `${op} licenses.getForRepo`));
+    return err(mapGitHubStatus(response.status, '', { operation: `${op} licenses.getForRepo` }));
   }
 
   const parsed = parseSpdxId(response.data, op);

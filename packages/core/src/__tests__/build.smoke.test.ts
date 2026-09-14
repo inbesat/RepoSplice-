@@ -54,7 +54,7 @@ describe('core build (P-062 tsup)', () => {
     // is itself the proof that emitted types resolve for external imports.
     const esm = await import('../../dist/index.js');
     expect(esm.CORE_NAME).toBe('@repo-stitcher/core');
-    expect(esm.STITCH_ERROR_CODES).toHaveLength(14);
+    expect(esm.STITCH_ERROR_CODES).toHaveLength(19);
 
     const require = createRequire(import.meta.url);
     const cjs = require('../../dist/index.cjs') as {
@@ -63,7 +63,7 @@ describe('core build (P-062 tsup)', () => {
       configJsonSchema: unknown;
     };
     expect(cjs.CORE_NAME).toBe('@repo-stitcher/core');
-    expect(cjs.STITCH_ERROR_CODES).toHaveLength(14);
+    expect(cjs.STITCH_ERROR_CODES).toHaveLength(19);
     expect(cjs.configJsonSchema).toBeTypeOf('function');
   });
 });

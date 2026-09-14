@@ -63,7 +63,7 @@ describe('backoff', () => {
     });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
+    expect(result.error.code).toBe('RATE_LIMIT');
     expect(clock.sleeps).toEqual([1000, 2000, 4000]);
   });
 
@@ -304,6 +304,32 @@ describe('retries', () => {
     );
     expect(throwingObserver.isOk()).toBe(true);
   });
+
+  it('retries RATE_LIMIT-coded errors and exhausts with the stable code', async () => {
+    const coded: StitchError = {
+      code: 'RATE_LIMIT',
+      status: 429,
+      message: 'op: rate limited by GitHub (retry after 5s)',
+      hint: 'wait 5s then retry',
+    };
+    const clock = fakeClock();
+    let calls = 0;
+    const result = await withRateLimit(
+      async (): Promise<Result<string, StitchError>> => {
+        calls += 1;
+        return err(coded);
+      },
+      { maxAttempts: 2, baseDelayMs: 1000, jitter: false, sleep: clock.sleep, now: clock.now }
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) return;
+    // Retried once on the server ask, then exhausted with RATE_LIMIT.
+    expect(calls).toBe(2);
+    expect(clock.sleeps).toEqual([5000]);
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
+    expect(result.error.message).toContain('2 attempts');
+  });
 });
 
 // ─── waits reset ───────────────────────────────────────────────────────
@@ -375,8 +401,8 @@ describe('exhausts cheap', () => {
     );
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('2 attempts');
     expect(calls).toBe(2);
     expect(clock.sleeps).toEqual([100]);
@@ -401,8 +427,8 @@ describe('exhausts cheap', () => {
     );
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('2 attempts');
     expect(calls).toBe(2);
     // Second wait (2000ms) would breach the 2500ms budget: never slept.

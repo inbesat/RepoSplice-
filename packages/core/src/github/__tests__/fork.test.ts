@@ -152,8 +152,8 @@ describe('ensures', () => {
     const gatedResult = await ensureFork(gated, 'o', 'r', { pollIntervalMs: 0 });
     expect(gatedResult.isErr()).toBe(true);
     if (gatedResult.isOk()) return;
-    expect(gatedResult.error.code).toBe('AUTH_ERROR');
-    if (gatedResult.error.code !== 'AUTH_ERROR') return;
+    expect(gatedResult.error.code).toBe('FORBIDDEN');
+    if (gatedResult.error.code !== 'FORBIDDEN') return;
     expect(gatedResult.error.message).toContain('stitch login');
   });
 });
@@ -260,8 +260,8 @@ describe('errors', () => {
     const missingResult = await ensureFork(missing, 'o', 'ghost');
     expect(missingResult.isErr()).toBe(true);
     if (missingResult.isOk()) return;
-    expect(missingResult.error.code).toBe('GITHUB_API_ERROR');
-    if (missingResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(missingResult.error.code).toBe('NOT_FOUND');
+    if (missingResult.error.code !== 'NOT_FOUND') return;
     expect(missingResult.error.status).toBe(404);
 
     const broken = fakeClient(() => {
@@ -270,7 +270,7 @@ describe('errors', () => {
     const brokenResult = await ensureFork(broken, 'o', 'r');
     expect(brokenResult.isErr()).toBe(true);
     if (brokenResult.isOk()) return;
-    expect(brokenResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(brokenResult.error.code).toBe('NETWORK');
   });
 
   it('refuses malformed payloads instead of inventing forks', async () => {
@@ -376,7 +376,7 @@ describe('errors', () => {
     const resolvedResult = await ensureFork(resolved, 'o', 'r', { pollIntervalMs: 0 });
     expect(resolvedResult.isErr()).toBe(true);
     if (resolvedResult.isOk()) return;
-    expect(resolvedResult.error.code).toBe('AUTH_ERROR');
+    expect(resolvedResult.error.code).toBe('FORBIDDEN');
   });
 
   it('maps createFork failures without polling', async () => {
@@ -485,8 +485,8 @@ describe('rate limit guidance', () => {
     const result = await ensureFork(client, 'o', 'r');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return null;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return null;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return null;
     return result.error.message;
   }
 
@@ -534,8 +534,8 @@ describe('rate limit guidance', () => {
     const headeredResult = await ensureFork(headered, 'o', 'r');
     expect(headeredResult.isErr()).toBe(true);
     if (headeredResult.isOk()) return;
-    expect(headeredResult.error.code).toBe('GITHUB_API_ERROR');
-    if (headeredResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(headeredResult.error.code).toBe('RATE_LIMIT');
+    if (headeredResult.error.code !== 'RATE_LIMIT') return;
     expect(headeredResult.error.message).toContain('rate limited');
 
     const messaged = fakeClient(() => {
@@ -544,8 +544,8 @@ describe('rate limit guidance', () => {
     const messagedResult = await ensureFork(messaged, 'o', 'r');
     expect(messagedResult.isErr()).toBe(true);
     if (messagedResult.isOk()) return;
-    expect(messagedResult.error.code).toBe('GITHUB_API_ERROR');
-    if (messagedResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(messagedResult.error.code).toBe('RATE_LIMIT');
+    if (messagedResult.error.code !== 'RATE_LIMIT') return;
     expect(messagedResult.error.message).toContain('rate limited');
   });
 
@@ -560,8 +560,8 @@ describe('rate limit guidance', () => {
     const result = await ensureFork(client, 'o', 'r');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 12s');
   });
 

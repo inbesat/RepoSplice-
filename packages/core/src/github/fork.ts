@@ -46,12 +46,10 @@
 
 import { ok, err, type Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
-import { statusToStitchError } from './factory.js';
+import { mapGitHubError, mapGitHubStatus } from './errors.js';
 import type { RefCache } from '../git/perf.js';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
-
-const LOGIN_HINT = 'run `stitch login` or check token scopes';
 
 /** Readiness polls after a 202 (forks 404 briefly, then read back). */
 export const DEFAULT_FORK_POLL_ATTEMPTS = 10;
@@ -143,94 +141,6 @@ function checkClient(client: ForkClient, op: string): Result<ForkClient, StitchE
     return invalid('client', `${op}: client is required`);
   }
   return ok(client);
-}
-
-/** Status mapping reuses the factory taxonomy, enriched with the hint. */
-function mapStatus(status: number, statusText: string, op: string): StitchError {
-  const base = statusToStitchError(status, statusText, op);
-  if (base.code !== 'AUTH_ERROR') return base;
-  return { ...base, message: `${base.message} (${LOGIN_HINT})` };
-}
-
-/** Case-tolerant single-header read (plain bags and Headers instances). */
-function headerValue(headers: unknown, name: string): string | undefined {
-  if (typeof headers !== 'object' || headers === null) return undefined;
-  const rec = headers as Record<string, unknown>;
-  const direct = rec[name];
-  if (typeof direct === 'string') return direct;
-  const getter = rec['get'];
-  if (typeof getter === 'function') {
-    const out = (getter as (headerName: string) => unknown).call(rec, name);
-    return typeof out === 'string' ? out : undefined;
-  }
-  return undefined;
-}
-
-/** Response headers off a thrown RequestError (direct bag, then nested). */
-function thrownHeaders(error: object): unknown {
-  const rec = error as { headers?: unknown; response?: unknown };
-  if (rec.headers !== undefined) return rec.headers;
-  if (typeof rec.response === 'object' && rec.response !== null) {
-    return (rec.response as { headers?: unknown }).headers;
-  }
-  return undefined;
-}
-
-/** 429 outright; 403 only with the rate-limit signature (else auth). */
-function isRateLimited(status: number, message: string, headers: unknown): boolean {
-  if (status !== 403 && status !== 429) return false;
-  if (status === 429) return true;
-  const remaining = headerValue(headers, 'x-ratelimit-remaining');
-  if (remaining !== undefined && remaining.trim() === '0') return true;
-  return /rate limit/i.test(message);
-}
-
-/**
- * Seconds to wait: `retry-after` first, else the reset epoch, else null.
- * The `(retry after Ns)` message format is the P-096 parse contract.
- */
-function retryAfterSecs(headers: unknown): number | null {
-  const direct = headerValue(headers, 'retry-after');
-  if (direct !== undefined) {
-    const secs = Number(direct);
-    if (Number.isFinite(secs) && secs >= 0) return Math.floor(secs);
-  }
-  const reset = headerValue(headers, 'x-ratelimit-reset');
-  if (reset !== undefined) {
-    const epoch = Number(reset);
-    if (Number.isFinite(epoch)) {
-      return Math.max(0, Math.ceil(epoch - Date.now() / 1000));
-    }
-  }
-  return null;
-}
-
-function rateLimitError(op: string, status: number, headers: unknown): StitchError {
-  const after = retryAfterSecs(headers);
-  const when = after === null ? 'retry delay unknown' : `retry after ${after}s`;
-  return {
-    code: 'GITHUB_API_ERROR',
-    status,
-    message: `${op}: rate limited by GitHub (${when})`,
-  };
-}
-
-/** Thrown-call mapping: rate limits first, then the status taxonomy. */
-function mapCallError(op: string, error: unknown): StitchError {
-  if (error instanceof Error) {
-    const rec = error as { status?: unknown };
-    const status = typeof rec.status === 'number' ? rec.status : 0;
-    const headers = thrownHeaders(error);
-    if (isRateLimited(status, error.message, headers)) {
-      return rateLimitError(op, status, headers);
-    }
-    return mapStatus(status, error.message, op);
-  }
-  return {
-    code: 'GITHUB_API_ERROR',
-    status: 0,
-    message: `${op} failed: ${String(error)}`,
-  };
 }
 
 /** Upstream truth: push rights plus the default branch for routing. */
@@ -331,7 +241,7 @@ async function waitReady(
       if (error instanceof Error && rec.status === 404) {
         status = 404;
       } else {
-        return err(mapCallError(`${op} repos.get(fork)`, error));
+        return err(mapGitHubError(error, { operation: `${op} repos.get(fork)` }));
       }
     }
     if (status === 404) {
@@ -340,7 +250,7 @@ async function waitReady(
       continue;
     }
     if (status >= 400) {
-      return err(mapStatus(status, '', `${op} repos.get(fork)`));
+      return err(mapGitHubStatus(status, '', { operation: `${op} repos.get(fork)` }));
     }
     return ok(undefined);
   }
@@ -420,10 +330,10 @@ export async function ensureFork(
   try {
     upstream = await checked.value.rest.repos.get({ owner, repo });
   } catch (error: unknown) {
-    return err(mapCallError(`${op} repos.get`, error));
+    return err(mapGitHubError(error, { operation: `${op} repos.get` }));
   }
   if (upstream.status >= 400) {
-    return err(mapStatus(upstream.status, '', `${op} repos.get`));
+    return err(mapGitHubStatus(upstream.status, '', { operation: `${op} repos.get` }));
   }
   const truth = parseUpstream(upstream.data, op);
   if (truth.isErr()) return err(truth.error);
@@ -447,10 +357,10 @@ export async function ensureFork(
   try {
     forked = await checked.value.rest.repos.createFork({ owner, repo });
   } catch (error: unknown) {
-    return err(mapCallError(`${op} repos.createFork`, error));
+    return err(mapGitHubError(error, { operation: `${op} repos.createFork` }));
   }
   if (forked.status >= 400) {
-    return err(mapStatus(forked.status, '', `${op} repos.createFork`));
+    return err(mapGitHubStatus(forked.status, '', { operation: `${op} repos.createFork` }));
   }
   const identity = parseFork(forked.data, op);
   if (identity.isErr()) return err(identity.error);

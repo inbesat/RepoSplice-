@@ -23,9 +23,9 @@
 // - Secrets travel in options/headers only: no error message, log field,
 //   or refusal text ever interpolates a token or key (only presence,
 //   field names, and the `stitch login` hint).
-// - Misuse is CONFIG_ERROR; auth failures are AUTH_ERROR with the login
-//   hint (P-203 owns future taxonomy — factory precedent); malformed
-//   payloads are INTERNAL fail-closed (never invent an identity).
+// - Misuse is CONFIG_ERROR; local scope refusals are AUTH_ERROR with the
+//   login hint; HTTP auth failures map via the shared P-102 mapper
+//   (AUTH_FAILED/FORBIDDEN/NOT_FOUND/RATE_LIMIT + hints).
 // - The narrow AuthClient seam keeps tests off real network (P-069
 //   CloneGit precedent: structural, no casts, no full-Octokit fakes).
 //
@@ -39,7 +39,8 @@ import { Octokit } from '@octokit/rest';
 import { ok, err, type Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
 import type { GitHubConfig } from '../config/schema.js';
-import { createOctokit, statusToStitchError, type OctokitFactoryOptions } from './factory.js';
+import { createOctokit, type OctokitFactoryOptions } from './factory.js';
+import { GITHUB_LOGIN_HINT, mapGitHubError, mapGitHubStatus } from './errors.js';
 
 /** Operation context: read (any identity) vs write (repo scopes). */
 export type AuthContext = 'read' | 'write';
@@ -69,8 +70,6 @@ export interface AuthClient {
 
 /** Write contexts require one of these PAT scopes. */
 const WRITE_SCOPES = ['repo', 'public_repo'];
-
-const LOGIN_HINT = 'run `stitch login` or check token scopes';
 
 function invalid(field: string, message: string): Result<never, StitchError> {
   return err({ code: 'CONFIG_ERROR', field, message });
@@ -104,7 +103,7 @@ export function createValidatedClient(opts: OctokitFactoryOptions): Result<Octok
     }
     if (auth.authType === 'pat') {
       if (!isNonBlankString(auth.token)) {
-        return invalid('auth.token', `${op}: PAT token is required (${LOGIN_HINT})`);
+        return invalid('auth.token', `${op}: PAT token is required (${GITHUB_LOGIN_HINT})`);
       }
     } else if (auth.authType === 'app') {
       if (!Number.isInteger(auth.appId) || auth.appId < 1) {
@@ -162,7 +161,7 @@ export function resolveAuth(
     if (!isNonBlankString(github.token)) {
       return invalid(
         'github.token',
-        `${op}: authType "pat" requires a token (${LOGIN_HINT}; set github.token or GITHUB_TOKEN)`
+        `${op}: authType "pat" requires a token (${GITHUB_LOGIN_HINT}; set github.token or GITHUB_TOKEN)`
       );
     }
     return ok({ authType: 'pat', token: github.token });
@@ -217,33 +216,6 @@ export function clientFromConfig(
     ...(clientOpts.baseUrl !== undefined ? { baseUrl: clientOpts.baseUrl } : {}),
     ...(clientOpts.userAgent !== undefined ? { userAgent: clientOpts.userAgent } : {}),
   });
-}
-
-/** Thrown-error to typed error: status when present, typed fallbacks. */
-function mapThrown(error: unknown, op: string): StitchError {
-  if (error instanceof Error) {
-    const rec = error as { status?: unknown };
-    if (typeof rec.status === 'number') {
-      return mapStatus(rec.status, error.message, op);
-    }
-    return {
-      code: 'GITHUB_API_ERROR',
-      status: 0,
-      message: `${op} failed: ${error.message}`,
-    };
-  }
-  return {
-    code: 'GITHUB_API_ERROR',
-    status: 0,
-    message: `${op} failed: ${String(error)}`,
-  };
-}
-
-/** Status mapping reuses the factory taxonomy, enriched with the hint. */
-function mapStatus(status: number, statusText: string, op: string): StitchError {
-  const base = statusToStitchError(status, statusText, op);
-  if (base.code !== 'AUTH_ERROR') return base;
-  return { ...base, message: `${base.message} (${LOGIN_HINT})` };
 }
 
 /** Case-tolerant single-header read (plain bags and Headers instances). */
@@ -309,10 +281,10 @@ export async function validateAuth(
   try {
     response = await client.rest.users.getAuthenticated();
   } catch (error: unknown) {
-    return err(mapThrown(error, op));
+    return err(mapGitHubError(error, { operation: op }));
   }
   if (response.status >= 400) {
-    return err(mapStatus(response.status, '', op));
+    return err(mapGitHubStatus(response.status, '', { operation: op }));
   }
   const user = parseUser(response.data, op);
   if (user.isErr()) return err(user.error);
@@ -325,7 +297,7 @@ export async function validateAuth(
     return err({
       code: 'AUTH_ERROR',
       provider: 'github',
-      message: `${op}: write operations require the 'repo' scope (found: ${scopes.join(', ')}) (${LOGIN_HINT})`,
+      message: `${op}: write operations require the 'repo' scope (found: ${scopes.join(', ')}) (${GITHUB_LOGIN_HINT})`,
     });
   }
   return ok({ login: user.value.login, id: user.value.id, type: user.value.type, scopes });

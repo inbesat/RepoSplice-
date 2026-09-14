@@ -208,8 +208,8 @@ describe('errors', () => {
     const missing = await detectRepoLicense(notFound, 'o', 'ghost');
     expect(missing.isErr()).toBe(true);
     if (missing.isOk()) return;
-    expect(missing.error.code).toBe('GITHUB_API_ERROR');
-    if (missing.error.code !== 'GITHUB_API_ERROR') return;
+    expect(missing.error.code).toBe('NOT_FOUND');
+    if (missing.error.code !== 'NOT_FOUND') return;
     expect(missing.error.status).toBe(404);
 
     const denied = fakeClient(() => {
@@ -218,8 +218,8 @@ describe('errors', () => {
     const deniedResult = await detectRepoLicense(denied, 'o', 'r');
     expect(deniedResult.isErr()).toBe(true);
     if (deniedResult.isOk()) return;
-    expect(deniedResult.error.code).toBe('AUTH_ERROR');
-    if (deniedResult.error.code !== 'AUTH_ERROR') return;
+    expect(deniedResult.error.code).toBe('AUTH_FAILED');
+    if (deniedResult.error.code !== 'AUTH_FAILED') return;
     expect(deniedResult.error.message).toContain('stitch login');
 
     const limited = fakeClient(() => {
@@ -230,8 +230,8 @@ describe('errors', () => {
     const limitedResult = await detectRepoLicense(limited, 'o', 'r');
     expect(limitedResult.isErr()).toBe(true);
     if (limitedResult.isOk()) return;
-    expect(limitedResult.error.code).toBe('GITHUB_API_ERROR');
-    if (limitedResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(limitedResult.error.code).toBe('RATE_LIMIT');
+    if (limitedResult.error.code !== 'RATE_LIMIT') return;
     expect(limitedResult.error.message).toContain('rate limited');
 
     const broken = fakeClient(() => {
@@ -240,7 +240,7 @@ describe('errors', () => {
     const brokenResult = await detectRepoLicense(broken, 'o', 'r');
     expect(brokenResult.isErr()).toBe(true);
     if (brokenResult.isOk()) return;
-    expect(brokenResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(brokenResult.error.code).toBe('NETWORK');
 
     const thrownString: LicenseClient = {
       rest: {
@@ -285,8 +285,8 @@ describe('rate limit guidance', () => {
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return null;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return null;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return null;
     return result.error.message;
   }
 
@@ -330,8 +330,8 @@ describe('rate limit guidance', () => {
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('rate limited');
   });
 
@@ -346,8 +346,8 @@ describe('rate limit guidance', () => {
     const result = await detectRepoLicense(client, 'o', 'r');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 12s');
   });
 });
@@ -389,8 +389,8 @@ describe('nock end to end', () => {
     const result = await detectRepoLicense(built.value, 'o', 'ghost');
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('NOT_FOUND');
+    if (result.error.code !== 'NOT_FOUND') return;
     expect(result.error.status).toBe(404);
     expect(scope.isDone()).toBe(true);
   });

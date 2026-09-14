@@ -451,7 +451,7 @@ type ClientMsg =
 ```ts
 type StitchError =
   | { code: 'GIT_ERROR'; message: string; gitOutput?: string }
-  | { code: 'GITHUB_API_ERROR'; status: number; message: string }
+  | { code: 'GITHUB_API_ERROR'; status: number; message: string; hint?: string; repo?: string; scope?: string }
   | { code: 'DOCKER_ERROR'; message: string; containerId?: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
@@ -460,7 +460,20 @@ type StitchError =
   | { code: 'CONFIG_ERROR'; field: string; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
+  | { code: 'AUTH_ERROR'; provider: string; message: string }
+  | { code: 'COST_LIMIT'; provider: string; spentUsd: number; limitUsd: number }
+  | { code: 'COMPLIANCE_VIOLATION'; rule: string; message: string }
+  | { code: 'UNKNOWN_LICENSE'; id: string }
+  | { code: 'AUTH_FAILED'; provider: string; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'RATE_LIMIT'; status: number; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'FORBIDDEN'; provider: string; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'NOT_FOUND'; status: number; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string }
 ```
+GitHub HTTP failures map via `packages/core/src/github/errors.ts` (P-102):
+401 → AUTH_FAILED, rate-limited 403/429 → RATE_LIMIT, other 403 → FORBIDDEN,
+404 → NOT_FOUND, 409 → GITHUB_API_ERROR + conflict hint, transport/abort →
+NETWORK. Local validation refusals stay AUTH_ERROR/CONFIG_ERROR/INTERNAL.
 
 ### 9.2 HTTP Error Responses (Server)
 ```ts

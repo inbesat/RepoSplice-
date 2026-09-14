@@ -415,8 +415,8 @@ describe('rate limited', () => {
     });
     expect(direct.isErr()).toBe(true);
     if (direct.isOk()) return;
-    expect(direct.error.code).toBe('GITHUB_API_ERROR');
-    if (direct.error.code !== 'GITHUB_API_ERROR') return;
+    expect(direct.error.code).toBe('RATE_LIMIT');
+    if (direct.error.code !== 'RATE_LIMIT') return;
     expect(direct.error.message).toContain('retry after 120s');
     expect(direct.error.message).not.toContain('stitch login');
     const inst = await getRepoTree(
@@ -429,8 +429,8 @@ describe('rate limited', () => {
     );
     expect(inst.isErr()).toBe(true);
     if (inst.isOk()) return;
-    expect(inst.error.code).toBe('GITHUB_API_ERROR');
-    if (inst.error.code !== 'GITHUB_API_ERROR') return;
+    expect(inst.error.code).toBe('RATE_LIMIT');
+    if (inst.error.code !== 'RATE_LIMIT') return;
     expect(inst.error.message).toContain('retry after 45s');
   });
 
@@ -440,7 +440,7 @@ describe('rate limited', () => {
     });
     expect(zero.isErr()).toBe(true);
     if (zero.isOk()) return;
-    expect(zero.error.code).toBe('GITHUB_API_ERROR');
+    expect(zero.error.code).toBe('RATE_LIMIT');
     for (const headers of [
       { 'retry-after': 'soon' },
       { 'retry-after': '-5' },
@@ -450,8 +450,8 @@ describe('rate limited', () => {
       const odd = await getRepoTree(limitedTree(429, headers), 'o', 'r', { ref: SHA_A });
       expect(odd.isErr()).toBe(true);
       if (odd.isOk()) continue;
-      expect(odd.error.code).toBe('GITHUB_API_ERROR');
-      if (odd.error.code !== 'GITHUB_API_ERROR') continue;
+      expect(odd.error.code).toBe('RATE_LIMIT');
+      if (odd.error.code !== 'RATE_LIMIT') continue;
       expect(odd.error.message).toContain('retry delay unknown');
     }
     const reset = String(Math.floor(Date.now() / 1000) + 60);
@@ -460,14 +460,14 @@ describe('rate limited', () => {
     });
     expect(epoch.isErr()).toBe(true);
     if (epoch.isOk()) return;
-    expect(epoch.error.code).toBe('GITHUB_API_ERROR');
-    if (epoch.error.code !== 'GITHUB_API_ERROR') return;
+    expect(epoch.error.code).toBe('RATE_LIMIT');
+    if (epoch.error.code !== 'RATE_LIMIT') return;
     expect(epoch.error.message).toMatch(/retry after \d+s/);
     const keyless = await getRepoTree(limitedTree(403, new Headers()), 'o', 'r', { ref: SHA_A });
     expect(keyless.isErr()).toBe(true);
     if (keyless.isOk()) return;
-    expect(keyless.error.code).toBe('GITHUB_API_ERROR');
-    if (keyless.error.code !== 'GITHUB_API_ERROR') return;
+    expect(keyless.error.code).toBe('RATE_LIMIT');
+    if (keyless.error.code !== 'RATE_LIMIT') return;
     expect(keyless.error.message).toContain('retry delay unknown');
   });
 
@@ -481,8 +481,8 @@ describe('rate limited', () => {
     const result = await getRepoTree(forbidden, 'o', 'r', { ref: SHA_A });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('AUTH_ERROR');
-    if (result.error.code !== 'AUTH_ERROR') return;
+    expect(result.error.code).toBe('FORBIDDEN');
+    if (result.error.code !== 'FORBIDDEN') return;
     expect(result.error.message).toContain('stitch login');
   });
 });
@@ -506,7 +506,11 @@ describe('errors', () => {
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
       if (status === 401) {
-        expect(result.error.code).toBe('AUTH_ERROR');
+        expect(result.error.code).toBe('AUTH_FAILED');
+        continue;
+      }
+      if (status === 404) {
+        expect(result.error.code).toBe('NOT_FOUND');
         continue;
       }
       expect(result.error.code).toBe('GITHUB_API_ERROR');
@@ -520,7 +524,7 @@ describe('errors', () => {
     const hungResult = await getRepoTree(hung, 'o', 'r', { ref: SHA_A });
     expect(hungResult.isErr()).toBe(true);
     if (hungResult.isOk()) return;
-    expect(hungResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(hungResult.error.code).toBe('NETWORK');
     const rejected: TreeClient = {
       rest: {
         repos: {
@@ -639,8 +643,8 @@ describe('nock end to end', () => {
     const result = await getRepoTree(built.value, 'octocat', 'missing', { ref: 'main' });
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('NOT_FOUND');
+    if (result.error.code !== 'NOT_FOUND') return;
     expect(result.error.message).toContain('getRepoTree');
   });
 });

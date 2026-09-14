@@ -8,35 +8,35 @@
 // raw headers) for the analytics panel (P-295).
 //
 // Verified behavior (probed, do not assume otherwise):
-// - Sibling modules surface rate limits as GITHUB_API_ERROR carrying
+// - Sibling modules surface rate limits as RATE_LIMIT carrying
 //   `(retry after Ns)` (retry-after header or reset-epoch derived) or
-//   `(retry delay unknown)` — that message contract is the ONLY retry
-//   signal (no new StitchError codes until P-203).
+//   `(retry delay unknown)` — that code + message contract is the retry
+//   signal (P-102 centralizes the mapping in github/errors.ts; the legacy
+//   GITHUB_API_ERROR + marker shape still retries for compatibility).
 // - Equal jitter (P-139 parity): sleep = floor + rand * curve, so waits
 //   stay within [floor, floor + curve] and always honor server asks.
 //
 // Safety contract:
-// - Only rate signals retry (GITHUB_API_ERROR with a rate marker);
-//   auth/config/internal/transport errors return immediately, unwrapped
-//   and unmodified — never spin on a bad token.
+// - Only rate signals retry (RATE_LIMIT, or GITHUB_API_ERROR with a rate
+//   marker); auth/config/internal/transport errors return immediately,
+//   unwrapped and unmodified — never spin on a bad token.
 // - Two caps, whichever hits first: attempt count and total wait budget;
-//   exhaustion fails loud with attempts + last status (never silent,
-//   never partial sleeps past the budget).
+//   exhaustion fails loud with the RATE_LIMIT code, attempts + last status
+//   (never silent, never partial sleeps past the budget).
 // - Throwing ops, sleepers, clocks, and observers all map to INTERNAL
 //   or are contained (observers must not fail ops) — nothing escapes as
-//   a rejection; no new StitchError codes (P-203 owns taxonomy).
+//   a rejection.
 // - Fake clocks/randoms make every wait deterministic in tests; the one
 //   real-timer test uses ~10ms waits (no flake surface).
 //
 // Seams and future phases:
-// - P-203 owns the RATE_LIMIT code (this module emits GITHUB_API_ERROR
-//   with the stable retry contract until then); P-290 loops batches
+// - P-102 owns the RATE_LIMIT code (emitted here on exhaustion and by the
+//   shared mapper); P-203 consumes it for exit codes, P-290 loops batches
 //   through this wrapper; P-295 consumes onRetry + parseRateHeaders.
-// - Error mapping duplicates the sibling GitHub modules by codebase
-//   convention (P-203 consolidates when the taxonomy lands).
 
 import { ok, err, type Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
+import { rateLimitExhausted } from './errors.js';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_BASE_DELAY_MS = 1000;
@@ -162,8 +162,19 @@ interface RetrySignal {
   status: number;
 }
 
-/** Rate signals only (GITHUB_API_ERROR + retry marker); all else passes. */
+/** Rate signals: the RATE_LIMIT code, or the legacy GITHUB_API_ERROR marker shape. */
+function serverWaitMs(message: string): number {
+  const match = /retry after (\d+)s/.exec(message);
+  const hinted = match === null ? Number.NaN : Number(match[1]);
+  if (Number.isFinite(hinted)) return hinted * 1000;
+  return 0;
+}
+
+/** Rate signals only (RATE_LIMIT + retry marker); all else passes. */
 function retrySignal(error: StitchError): RetrySignal {
+  if (error.code === 'RATE_LIMIT') {
+    return { retryable: true, serverWaitMs: serverWaitMs(error.message), status: error.status };
+  }
   if (error.code !== 'GITHUB_API_ERROR') {
     return { retryable: false, serverWaitMs: 0, status: 0 };
   }
@@ -217,15 +228,8 @@ export async function withRateLimit<T>(
     const signal = retrySignal(result.error);
     if (!signal.retryable) return err(result.error);
     failures += 1;
-    const failed = (count: number): StitchError => ({
-      code: 'GITHUB_API_ERROR',
-      status: signal.status,
-      message:
-        `${where}: budget exhausted after ${count} attempt${count === 1 ? '' : 's'} ` +
-        `(last status ${signal.status})`,
-    });
     if (failures >= options.maxAttempts) {
-      return err(failed(failures));
+      return err(rateLimitExhausted(where, signal.status, failures));
     }
     const curve = Math.min(options.maxDelayMs, options.baseDelayMs * 2 ** (failures - 1));
     // Equal jitter (P-139 parity): waits stay within [curve/2, curve],
@@ -240,7 +244,7 @@ export async function withRateLimit<T>(
     const elapsed = readNow(options.now, where);
     if (elapsed.isErr()) return err(elapsed.error);
     if (elapsed.value - startedAt + waitMs > options.maxWaitMs) {
-      return err(failed(failures));
+      return err(rateLimitExhausted(where, signal.status, failures));
     }
     try {
       await options.sleep(waitMs);

@@ -307,8 +307,8 @@ describe('rate limited', () => {
     );
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 120s');
     expect(result.error.message).not.toContain('stitch login');
   });
@@ -318,8 +318,8 @@ describe('rate limited', () => {
     const result = await listRepos(limited(429, { 'x-ratelimit-reset': reset }), {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toMatch(/retry after \d+s/);
   });
 
@@ -337,7 +337,7 @@ describe('rate limited', () => {
     const result = await listRepos(bare, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
+    expect(result.error.code).toBe('RATE_LIMIT');
   });
 
   it('reads direct header bags and odd retry values', async () => {
@@ -356,8 +356,8 @@ describe('rate limited', () => {
     const result = await listRepos(direct, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 30s');
     for (const headers of [
       { 'retry-after': 'soon' },
@@ -379,8 +379,8 @@ describe('rate limited', () => {
       const oddResult = await listRepos(odd, {});
       expect(oddResult.isErr()).toBe(true);
       if (oddResult.isOk()) continue;
-      expect(oddResult.error.code).toBe('GITHUB_API_ERROR');
-      if (oddResult.error.code !== 'GITHUB_API_ERROR') continue;
+      expect(oddResult.error.code).toBe('RATE_LIMIT');
+      if (oddResult.error.code !== 'RATE_LIMIT') continue;
       expect(oddResult.error.message).toContain('retry delay unknown');
     }
   });
@@ -401,8 +401,8 @@ describe('rate limited', () => {
     const result = await listRepos(headed, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('GITHUB_API_ERROR');
-    if (result.error.code !== 'GITHUB_API_ERROR') return;
+    expect(result.error.code).toBe('RATE_LIMIT');
+    if (result.error.code !== 'RATE_LIMIT') return;
     expect(result.error.message).toContain('retry after 45s');
     const keyless: RepoClient = mockOctokit(call => {
       if (call.method !== 'listForAuthenticatedUser') {
@@ -419,8 +419,8 @@ describe('rate limited', () => {
     const keylessResult = await listRepos(keyless, {});
     expect(keylessResult.isErr()).toBe(true);
     if (keylessResult.isOk()) return;
-    expect(keylessResult.error.code).toBe('GITHUB_API_ERROR');
-    if (keylessResult.error.code !== 'GITHUB_API_ERROR') return;
+    expect(keylessResult.error.code).toBe('RATE_LIMIT');
+    if (keylessResult.error.code !== 'RATE_LIMIT') return;
     // get() returns null for the missing key: delay genuinely unknown.
     expect(keylessResult.error.message).toContain('retry delay unknown');
   });
@@ -441,8 +441,8 @@ describe('rate limited', () => {
     const result = await listRepos(forbidden, {});
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
-    expect(result.error.code).toBe('AUTH_ERROR');
-    if (result.error.code !== 'AUTH_ERROR') return;
+    expect(result.error.code).toBe('FORBIDDEN');
+    if (result.error.code !== 'FORBIDDEN') return;
     expect(result.error.message).toContain('stitch login');
   });
 });
@@ -451,29 +451,32 @@ describe('rate limited', () => {
 
 describe('error maps', () => {
   it('maps auth failures with the login hint', async () => {
-    for (const status of [401, 403]) {
+    for (const [status, code] of [
+      [401, 'AUTH_FAILED'],
+      [403, 'FORBIDDEN'],
+    ] as const) {
       const c = throwingList(status, `call failed ${status}`);
       const result = await listRepos(c, {});
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
-      expect(result.error.code).toBe('AUTH_ERROR');
-      if (result.error.code !== 'AUTH_ERROR') continue;
+      expect(result.error.code).toBe(code);
+      if (result.error.code !== code) continue;
       expect(result.error.message).toContain('stitch login');
     }
   });
 
   it('maps transport failures without auth flavor', async () => {
-    const cases: Array<{ status: number; code: 'GITHUB_API_ERROR' }> = [
-      { status: 404, code: 'GITHUB_API_ERROR' },
+    const cases: Array<{ status: number; code: 'NOT_FOUND' | 'GITHUB_API_ERROR' }> = [
+      { status: 404, code: 'NOT_FOUND' },
       { status: 500, code: 'GITHUB_API_ERROR' },
     ];
-    for (const { status } of cases) {
+    for (const { status, code } of cases) {
       const c = throwingList(status, `call failed ${status}`);
       const result = await listRepos(c, {});
       expect(result.isErr()).toBe(true);
       if (result.isOk()) continue;
-      expect(result.error.code).toBe('GITHUB_API_ERROR');
-      if (result.error.code !== 'GITHUB_API_ERROR') continue;
+      expect(result.error.code).toBe(code);
+      if (result.error.code !== code) continue;
       expect(result.error.message).not.toContain('stitch login');
     }
     const hung: RepoClient = mockOctokit(() => {
@@ -482,7 +485,7 @@ describe('error maps', () => {
     const hungResult = await listRepos(hung, {});
     expect(hungResult.isErr()).toBe(true);
     if (hungResult.isOk()) return;
-    expect(hungResult.error.code).toBe('GITHUB_API_ERROR');
+    expect(hungResult.error.code).toBe('NETWORK');
   });
 
   it('attributes the failing search page', async () => {
