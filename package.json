@@ -25,7 +25,7 @@
     "dev:web": "echo \"dev:web: deferred to P-208 (Vite scaffold)\" && exit 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "echo \"validate: deferred to AGENTS.md gate (per-phase)\" && exit 0",
+    "validate": "bun run typecheck && bun run lint && bun run test && bun run build",
     "prepare": "husky",
     "commitlint": "commitlint",
     "lint-staged": "lint-staged",

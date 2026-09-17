@@ -51,6 +51,12 @@ export function match<T, E, A, B = A>(
  * (404), NETWORK (transport/abort with no HTTP status). Each carries a
  * human hint plus the offending repo/scope for the UI. AUTH_ERROR stays
  * for local validation (bad config, missing scopes) that never hit HTTP.
+ *
+ * Deps manifest parsing carries dedicated codes per P-104: DEPS_PARSE_ERROR
+ * (malformed manifest content, with the offending file) and FILE_NOT_FOUND
+ * (manifest path missing, or content empty). P-105-P-107 reuse both.
+ * Deps manifest union carries ECOSYSTEM_MISMATCH per P-108 (inputs span
+ * more than one ecosystem, with the sorted ecosystem list).
  */
 export type StitchError =
   | { code: 'GIT_ERROR'; message: string; gitOutput?: string }
@@ -106,7 +112,10 @@ export type StitchError =
       repo?: string;
       scope?: string;
     }
-  | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string };
+  | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'DEPS_PARSE_ERROR'; file: string; message: string }
+  | { code: 'FILE_NOT_FOUND'; path: string; message: string }
+  | { code: 'ECOSYSTEM_MISMATCH'; message: string; ecosystems: string[] };
 
 export type StitchErrorCode = StitchError['code'];
 
@@ -131,6 +140,9 @@ export const STITCH_ERROR_CODES = [
   'FORBIDDEN',
   'NOT_FOUND',
   'NETWORK',
+  'DEPS_PARSE_ERROR',
+  'FILE_NOT_FOUND',
+  'ECOSYSTEM_MISMATCH',
 ] as const satisfies readonly StitchErrorCode[];
 
 /** Factory: ok with a known stitch error type. */

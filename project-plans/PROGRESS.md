@@ -3,8 +3,8 @@
 
 **Version:** 1.0.0
 **Status:** Updated every session
-**Last Updated:** 2026-09-05
-**Current Phase:** P-103 - Deps Ecosystem Detect (awaiting go-ahead)
+**Last Updated:** 2026-09-18
+**Current Phase:** P-110 - PeerDep conflicts (next)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). As of this update, the **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (319/366 phases at 9/9 FULL via `check_phase_detail.ps1`), but no production code has been written yet — so implementation checkboxes remain unchecked below.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 319 |
 | **Plan Document (deep-elaborated)** | 319/319 (9/9 FULL) |
-| **Implemented** | 103 |
-| **Active** | 1 |
+| **Implemented** | 109 |
+| **Active** | 0 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
-| **Pending (implementation)** | 216 |
+| **Pending (implementation)** | 210 |
 | **Current Wave** | 0 — Foundation & Dependencies (inbesat) |
-| **Next Handoff** | P-103 → Deps epic; GitHub epic (P-088-P-102) complete |
+| **Next Handoff** | P-110 → PeerDep conflicts; GitHub epic (P-088-P-102) complete; Deps parsers (P-104-P-107) complete; Union (P-108) + Semver resolver (P-109) complete |
 
 ---
 
@@ -152,13 +152,13 @@
 - [ ] **P-102** Error mapping
 
 #### Epic 4: Deps/Manifest Merge (P-103–P-117) — inbesat
-- [ ] **P-103** Ecosystem detect
-- [ ] **P-104** Parse package.json
-- [ ] **P-105** Parse requirements/pyproject
-- [ ] **P-106** Parse Cargo.toml
-- [ ] **P-107** Parse go.mod
-- [ ] **P-108** Union + conflict detect
-- [ ] **P-109** Semver collision resolver
+- [x] **P-103** Ecosystem detect
+- [x] **P-104** Parse package.json
+- [x] **P-105** Parse requirements/pyproject
+- [x] **P-106** Parse Cargo.toml
+- [x] **P-107** Parse go.mod
+- [x] **P-108** Union + conflict detect
+- [x] **P-109** Semver collision resolver
 - [ ] **P-110** PeerDep conflicts
 - [ ] **P-111** Dedupe/nest strategy
 - [ ] **P-112** Scripts merge
@@ -471,15 +471,21 @@
 | 2026-09-05 | P-006 implementation | **P-006** | Installed `@changesets/cli@3.0.2` (66 packages, root devDep). `changeset init` is interactive; wrote `.changeset/config.json` directly per spec (8 fields). Created `.github/workflows/release.yml` per spec verbatim. Added root scripts: `changeset`, `changeset:status`, `changeset:version`, `changeset:publish`. Verified: `bunx changeset status` exit 0; probe `.changeset/smoke-test.md` removed. All 6 validation gates green. Commit `40cfcf5`. |
 | 2026-09-05 | P-007 implementation | **P-007** | Created `.github/workflows/ci.yml` per spec verbatim: 3 jobs (lint-and-typecheck, test with codecov, build with artifact upload). Added `.github/dependabot.yml` (not in spec; recommended by P-000 risk table): weekly Monday, 5-PR limit, dependency groups. YAML validation via installed `yaml@2.9.0`. Build job note: `bun run build` is stub until P-062. All 5 validation gates green + yaml validation. Commit `1238483`. |
 | 2026-09-05 | P-008 implementation | **P-008** | Created `docker/sandbox-base.Dockerfile` per spec verbatim. Created `.github/workflows/docker.yml` (spec said only "build/push on tag"): linux/amd64+arm64 matrix, docker/setup-qemu@v3, docker/setup-buildx@v3, docker/login@v3 to GHCR, docker/metadata@v5, docker/build-push@v5 with GHA cache. Image name: `ghcr.io/${{ github.repository_owner }}/repo-stitcher-sandbox`. Created `.dockerignore` (not in spec; per AGENTS.md). Validation via `hadolint@2.15.1` (bunx): 5 warnings on spec-verbatim lines, no errors. YAML validation: all 4 workflow files parse cleanly. All 5 validation gates green. Commit `5b71ae2`. |
+| 2026-09-16 | P-108 union manifests | **P-108** | `merge.ts` + `merge.test.ts` (24 tests); `Conflict`/`MergeResult`/`UnifiedManifest` types; `ECOSYSTEM_MISMATCH` error code + doctor/INTEGRATIONS sync; all 4 ecosystems (npm/python/cargo/go) with version/peer/script/config conflict taxonomy; sourceLabel positional labels; recordMerge helper; 135/135 deps tests green; typecheck/lint/build pass. |
 | 2026-09-05 | P-009 implementation | **P-009** | Installed `zod@^4.5.4` to `packages/core`. Created `packages/core/src/config/schema.ts` exporting 11 Zod schemas (one per leaf + root `ConfigSchema`), inferred types, `defaultConfig`, and `loadConfig({ defaults?, file?, env?, cli? })` that deep-merges layers in spec-mandated precedence (defaults<file<env<cli), then `ConfigSchema.parse` + separate `validateGitHubCredentials` pass. Cross-field validation moved out of `.refine` to keep defaults round-trip-safe. Created `schema.test.ts` with 21 tests / 3 describe blocks (spec required 3: valid parse, invalid rejection, merge precedence). Re-exported all from `packages/core/src/index.ts`. Created root `.env.example` for all 5 env var groups. Coverage: 95.65% stmts / 88.88% br / 100% func / 100% lines. All 6 validation gates green. |
+| 2026-09-18 | P-109 semver resolver + audit repair | **P-109** (+infra) | `deps/semver.ts`: `resolveCollision` (validation-first, identical/subset-a/subset-b/conjunction taxonomy, prerelease threading only when either range has one, `''`/whitespace canonicalized to `*` — probed against the raw lib), `maxSatisfying` (typed CONFIG_ERROR on bad range, ok(null) no-match), `toSuggestedResolution` maps to `Conflict.suggestedResolution`; `semver.test.ts` 36 tests incl. the 289-pair no-throw matrix; barrel-exported. **Audit repairs (completed-phase verification):** root `validate` was an echo no-op → now `typecheck && lint && test && build`; P-021 cruise hook flake fixed at the ROOT — smoke test shells the same `depcruise` CLI child process (159s in-process → <1s, 30s under 4× concurrent load; bun emits `.exe` shims not `.cmd`); pino-roll transport smoke poll 10s→25s (worker startup latency measured past old budget, 102-worker load); stale `packages/core/.semver-probe.mjs` deleted (lint violations); P-108 `sameCargoDep` version-only equality + required-wins `optional` (A's hard requirement no longer silently demoted); vitest hookTimeout 10s→180s safety net. Final: `bun run validate` exit 0 (102 files, 1466 passed, 6 skipped); coverage gate exit 0 (94.53/90.28/98.06); depcruise 0 violations. |
 
 ---
 
-> KNOWN FLAKE (P-037): `dependency-cruiser.smoke.test.ts` beforeAll hook (in-process `cruise()`) exceeds its 60s hookTimeout under full `test:coverage` parallel load (passes standalone ~26s and via `lint:deps`). Not caused by P-037 (no new modules in cruise surface). Future infra pass should raise the hook timeout or memoize the cruise; do NOT silence by deleting the test.
+> FLAKE RESOLVED (2026-09-18, P-037/P-021): `dependency-cruiser.smoke.test.ts` now shells the `depcruise` CLI child process instead of the in-process `cruise()` (which grew from ~26s standalone to 130s+ in-run inside vitest workers). The child is not CPU-starved by the worker pool and stays in seconds under load. Same config, same tree, same zero-violation assertion — fixed at the root, not silenced.
 
 ## 🚀 Next Action
 
-**P-103 (next, awaiting go-ahead):** Deps ecosystem detect per PHASES_DETAILED.md P-103 (read the FULL spec first; first phase of the Deps Merge epic after the closed GitHub epic P-088-P-102).
+**P-110 (next):** PeerDep conflicts per PHASES_DETAILED.md P-110 (peer-dependency mismatch refinement on top of the P-108 merge taxonomy).
+
+**P-104 notes (done):** npm package.json parser (`deps/types.ts`: `NpmManifest` + single-member `ParsedManifest` union; `deps/parse/npm.ts`: `parsePackageJson(content, filePath)` → `Result<ParsedManifest, StitchError>` via JSON.parse try/catch + non-object guard + zod schema (dep maps record<string,string>, name/version strings, workspaces array|{packages} union; unknown fields stripped) with full-line `//` comment stripping (provably safe: JSON strings are single-line), deps-normalize-to-{} + workspaces-unwrap-to-string[] + shallow copies; `serializePackageJson` emits canonical 9-section order, 2-space + trailing newline, absent sections omitted, parse→serialize→parse fixed point. 2 new StitchError codes DEPS_PARSE_ERROR {file,message} + FILE_NOT_FOUND {path,message} — union + STITCH_ERROR_CODES (21) + doctor describeError + INTEGRATIONS §9.1 synced; build smoke 19→21 updated (caught by suite, not by hand). Barrels `deps/parse/index.ts` + `deps/index.ts` created; public surface via `src/index.ts`. 17/17 green (5 spec-required incl. snapshot + key-order + round-trip + comment/URL + peerMeta + validation-path tests). Full core suite 1299 passed + 6 skipped / 0 regressions; lint:deps 72 modules clean.)
+
+**P-103 notes (done):** Deps ecosystem detect (`deps/ecosystem.ts`: async `detectEcosystems(repoPath, options?)` → `Promise<Result<DetectedEcosystem[], StitchError>>` via single `listFiles` walk over 5 marker globs (`**/package.json`, `**/pyproject.toml`, `**/requirements*.txt`, `**/Cargo.toml`, `**/go.mod`); `classifyManifest(basename)` routes to parser ids npm/python/cargo/gomod; default subtree ignores `**/.git/**` + `**/node_modules/**` plus best-effort root `.gitignore` via the real P-012/P-036 matcher and optional caller `ignore`; code-unit path sort for P-282 determinism; blank/missing root → CONFIG_ERROR, walk failures propagate INTERNAL, `ok([])` for empty repos; lockfiles alone (`go.sum`, `Cargo.lock`) never count; zero new StitchError codes; barrel-exported from `core/src/index.ts`). 15/15 green (6 spec-required node/python/rust/go/multi/ignores + classify/lockfile/blank/missing/empty/caller-ignore/defaults). Full core suite 1282 passed + 6 skipped / 0 regressions (1 unrelated pino-roll timing flake in logger.test.ts, 19/19 standalone; file untouched).
 
 **P-102 notes (done):** GitHub error mapping (`github/errors.ts`: shared mapGitHubError/mapGitHubStatus/rateLimitExhausted + canonical hints + GitHubErrorContext; 5 new StitchError codes AUTH_FAILED / RATE_LIMIT / FORBIDDEN / NOT_FOUND / NETWORK with hint + repo/scope for the UI, P-203/P-316 consume later; 409 keeps GITHUB_API_ERROR + typed conflict hint; factory taxonomy preserved for all other statuses). Threaded through all 13 modules (auth, list, tree, content, create incl. the NOT_FOUND availability check, branches, pr, actionsStatus, graphql, license, fork, sandboxTrigger, rateLimit signal + exhaustion); ~90 lines of duplicated mapping deleted per module. 19 codes total (build smoke 14→19; doctor describeError extended; INTEGRATIONS §9.1 synced). errors.test.ts 7/7; rateLimit gains a RATE_LIMIT retry proof. Probed truth that shaped the work: graphql fallback + fork poll read RAW statuses (unaffected); create.ts read the MAPPED 404 (fixed); doctor.ts is exhaustive with no default (extended); suites pin messages, codes changed only where the spec mandates. Full suite 1331 passed / 0 regressions (P-021 + P-037 load flakes green standalone); coverage gate exit 0 (96.3/93.4/97.9).
 

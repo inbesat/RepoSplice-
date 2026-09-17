@@ -137,6 +137,9 @@ function describeError(error: StitchError): string {
     case 'FORBIDDEN':
     case 'NOT_FOUND':
     case 'NETWORK':
+    case 'DEPS_PARSE_ERROR':
+    case 'FILE_NOT_FOUND':
+    case 'ECOSYSTEM_MISMATCH':
       return `${error.code}: ${error.message}`;
     case 'USER_CANCELLED':
       return `${error.code}: ${error.reason}`;

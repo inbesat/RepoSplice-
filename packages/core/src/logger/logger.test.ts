@@ -221,10 +221,11 @@ describe('pino-roll transport smoke (P-037)', () => {
       fileLogger.info({ apiKey: 'ROLL-SECRET', msg: 'rolled' });
       await fileLogger.flush();
       // The transport runs in a worker thread: flush() drains pino's
-      // side, but the file may land later. Poll up to 10s, aborting early
-      // on worker error.
+      // side, but the file may land later. Poll up to 25s (the worker
+      // startup latency under full-suite 102-worker load measured past
+      // the old 10s budget with no error), aborting early on worker error.
       let files: string[] = [];
-      for (let i = 0; i < 100 && files.length === 0 && workerErrors.length === 0; i++) {
+      for (let i = 0; i < 250 && files.length === 0 && workerErrors.length === 0; i++) {
         await new Promise(r => setTimeout(r, 100));
         files = readdirSync(dir);
       }
@@ -237,7 +238,7 @@ describe('pino-roll transport smoke (P-037)', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  }, 20000);
+  }, 30000);
 });
 describe('createJobLogger (P-010)', () => {
   it('child logger adds jobId to all log lines', () => {

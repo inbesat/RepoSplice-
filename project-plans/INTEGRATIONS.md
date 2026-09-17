@@ -469,11 +469,19 @@ type StitchError =
   | { code: 'FORBIDDEN'; provider: string; message: string; hint: string; repo?: string; scope?: string }
   | { code: 'NOT_FOUND'; status: number; message: string; hint: string; repo?: string; scope?: string }
   | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string }
+  | { code: 'DEPS_PARSE_ERROR'; file: string; message: string }
+  | { code: 'FILE_NOT_FOUND'; path: string; message: string }
+  | { code: 'ECOSYSTEM_MISMATCH'; message: string; ecosystems: string[] }
 ```
 GitHub HTTP failures map via `packages/core/src/github/errors.ts` (P-102):
 401 → AUTH_FAILED, rate-limited 403/429 → RATE_LIMIT, other 403 → FORBIDDEN,
 404 → NOT_FOUND, 409 → GITHUB_API_ERROR + conflict hint, transport/abort →
 NETWORK. Local validation refusals stay AUTH_ERROR/CONFIG_ERROR/INTERNAL.
+Deps manifest parsing maps via `packages/core/src/deps/parse/*` (P-104):
+malformed content → DEPS_PARSE_ERROR (with the offending file),
+missing/empty manifest → FILE_NOT_FOUND.
+Deps manifest union maps via `packages/core/src/deps/merge.ts` (P-108):
+mixed-ecosystem inputs → ECOSYSTEM_MISMATCH (with the sorted ecosystem list).
 
 ### 9.2 HTTP Error Responses (Server)
 ```ts

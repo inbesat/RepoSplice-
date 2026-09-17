@@ -478,7 +478,41 @@ export type {
 } from './github/sandboxTrigger.js';
 
 export { validRange, coerce, satisfies, intersects, semver } from './deps/semver.js';
-export type { SemVer, SemverOptions } from './deps/semver.js';
+export type { SemVer, RangeOptions } from './deps/semver.js';
+export { resolveCollision, toSuggestedResolution, maxSatisfying } from './deps/semver.js';
+export type { CollisionBasis, CollisionResolution } from './deps/semver.js';
+// Deps merge taxonomy keeps its spec names (`Conflict`, `MergeResult`)
+// inside `deps/*`; the public barrel aliases them because git already
+// owns those identifiers (merge-op result, file-conflict shape).
+// cli/web import `DepsConflict`/`DepsMergeResult` for P-116/P-219.
+export type {
+  NpmManifest,
+  PythonManifest,
+  CargoManifest,
+  GoManifest,
+  ParsedManifest,
+  Conflict as DepsConflict,
+  UnifiedManifest,
+  MergeResult as DepsMergeResult,
+} from './deps/types.js';
+export { parsePackageJson, serializePackageJson } from './deps/parse/index.js';
+export {
+  parseRequirementsTxt,
+  parsePyprojectToml,
+  parsePythonManifest,
+  parseCargoToml,
+  parseGoMod,
+  serializeGoMod,
+} from './deps/parse/index.js';
+export { recordMerge, sourceLabel, unionManifests } from './deps/merge.js';
+export type { RecordMergeOptions, RecordMergeResult } from './deps/merge.js';
+export { detectEcosystems, classifyManifest, DEFAULT_ECOSYSTEM_IGNORE } from './deps/ecosystem.js';
+export type {
+  Ecosystem,
+  EcosystemParser,
+  DetectedEcosystem,
+  DetectEcosystemsOptions,
+} from './deps/ecosystem.js';
 
 export { initTreeSitter, loadLanguage, parse, isSupportedLanguage } from './analysis/treeSitter.js';
 export type { SupportedLanguage, Language, Tree } from './analysis/treeSitter.js';

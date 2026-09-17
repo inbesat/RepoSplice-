@@ -1,0 +1,38 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`P-104 npm: serializes stable order > snapshot 1`] = `
+"{
+  "dependencies": {
+    "react": "^18.0.0",
+    "lodash": "~4.17.21"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.3"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "semver": "^7.8.5"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
+}
+"
+`;
