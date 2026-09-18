@@ -309,15 +309,10 @@ export function resolveCollision(
     const narrow = rangeB.trim().length === 0 ? '*' : rangeB;
     return ok({ kind: 'resolved', range: narrow, basis: 'subset-b' });
   }
-  // A `''` or whitespace input canonicalizes to `*` (valid, full set) but
-  // the space-joined conjunction would be `" <b>"` or `"  "` — an
-  // empty/whitespace resolution the no-throw contract forbids. When the
-  // conjunction trims to empty, the full-set side IS the resolution.
-  const conjunction = `${rangeA} ${rangeB}`.trim();
-  if (conjunction.length === 0) {
-    return ok({ kind: 'resolved', range: '*', basis: 'conjunction' });
-  }
-  return ok({ kind: 'resolved', range: conjunction, basis: 'conjunction' });
+  // Both sides are non-empty here: whitespace-only sides are the any-range
+  // (`*`), which every valid range is a subset of (subset-b) — so they are
+  // caught above. The space-joined conjunction is the narrowest form left.
+  return ok({ kind: 'resolved', range: `${rangeA} ${rangeB}`, basis: 'conjunction' });
 }
 
 /**
