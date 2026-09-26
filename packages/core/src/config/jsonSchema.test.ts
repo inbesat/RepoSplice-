@@ -10,11 +10,13 @@ describe('config jsonSchema (P-039)', () => {
     expect(Object.keys(small.properties ?? {})).toEqual(['name', 'count']);
     expect(small.required).toEqual(['name', 'count']);
 
-    // The full ConfigSchema (P-009) emits all 8 top-level sections, all required.
+    // The full ConfigSchema (P-009) emits all 9 top-level sections, all required.
+    // P-158 added `agent` (the tool args/result limits block).
     const full = configJsonSchema();
     expect(full.type).toBe('object');
     expect(Object.keys(full.properties ?? {}).sort()).toEqual(
       [
+        'agent',
         'anthropic',
         'autonomy',
         'github',
@@ -27,6 +29,7 @@ describe('config jsonSchema (P-039)', () => {
     );
     expect([...(full.required ?? [])].sort()).toEqual(
       [
+        'agent',
         'anthropic',
         'autonomy',
         'github',

@@ -1,0 +1,8 @@
+{
+  "name": "unknown-repo-fixture",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {
+    "mystery-lib": "0.0.1"
+  }
+}

@@ -1,8 +1,8 @@
-// Thin Result-returning wrapper around `license-checker` (P-023).
+// Thin Result-returning wrapper around `license-checker` (P-023, P-118).
 //
-// `scanDeclared(depsDir)` walks `depsDir/node_modules/**/package.json`,
+// `scanDeclared` / `scanDeclaredLicenses` walks `depsDir/node_modules/**/package.json`,
 // returns a `Result<DeclaredLicense[]>` (per the P-011 contract) of
-// `{ package, version, licenses, licenseFile?, repository? }` entries.
+// `{ package, version, licenses, licenseFile?, repository?, path? }` entries.
 // The `licenses` field is left as a raw string here; SPDX normalization
 // is the job of P-024 (`spdx-expression-parse`).
 //
@@ -16,7 +16,8 @@ import { err, ok, type Result } from 'neverthrow';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
-import { fromInternalPromise, type StitchError } from '../result/index.js';
+import type { StitchError } from '../result/index.js';
+import { normalizeExpression } from './spdx.js';
 
 // license-checker is JS only (no .d.ts). Use createRequire so we can
 // import the CJS module from ESM. We type the subset we use.
@@ -45,6 +46,7 @@ interface LicenseCheckerEntry {
   url?: string;
   email?: string;
   private?: boolean;
+  path?: string;
 }
 
 export interface DeclaredLicense {
@@ -65,6 +67,10 @@ export interface DeclaredLicense {
   licenseFile?: string;
   /** Resolved repository URL (from `repository.url` or `repository`). */
   repository?: string;
+  /** Filesystem path to the package directory (for provenance, P-124/P-311). */
+  path?: string;
+  /** Raw license string as written in manifest, before SPDX normalization (for provenance). */
+  rawLicenses?: string;
 }
 
 export interface ScanDeclaredOptions {
@@ -77,18 +83,33 @@ export interface ScanDeclaredOptions {
 }
 
 /**
+ * Robustly parse an npm package key of the form `name@version` or
+ * `@scope/name@version` into its package and version parts.
+ * Uses lastIndexOf('@') so scoped packages are handled correctly.
+ * Returns null if the key is malformed (no '@' or '@' at position 0).
+ */
+export function parseNpmPkg(key: string): { pkg: string; version: string } | null {
+  const atIdx = key.lastIndexOf('@');
+  if (atIdx <= 0) return null;
+  const pkg = key.slice(0, atIdx);
+  const version = key.slice(atIdx + 1);
+  if (pkg.length === 0 || version.length === 0) return null;
+  return { pkg, version };
+}
+
+/**
  * Scan `depsDir` (a directory containing a `node_modules/`) and return
  * the declared license for every installed package.
  *
- * Returns ok(entries) on success, or err(INTERNAL) if license-checker
- * fails (bad path, malformed `package.json`, etc.).
+ * Returns ok(entries) on success, or err(LICENSE_SCAN_FAILED) if
+ * license-checker fails (bad path, malformed `package.json`, etc.).
+ * Entries are sorted by package name and deduped by `package@version`
+ * for deterministic output.
  */
 export async function scanDeclared(
   depsDir: string,
   options: ScanDeclaredOptions = {}
 ): Promise<Result<DeclaredLicense[], StitchError>> {
-  // license-checker uses a Node-style callback; promisify via
-  // fromInternalPromise by wrapping in a manual Promise.
   const promise = new Promise<Record<string, LicenseCheckerEntry>>((resolveP, rejectP) => {
     licenseChecker.init(
       {
@@ -106,32 +127,58 @@ export async function scanDeclared(
       }
     );
   });
-  const dataResult = await fromInternalPromise(promise, 'license-checker.init');
-  if (dataResult.isErr()) {
-    const detail =
-      dataResult.error.code === 'INTERNAL' ? dataResult.error.message : dataResult.error.code;
+
+  let data: Record<string, LicenseCheckerEntry>;
+  try {
+    data = await promise;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     return err<DeclaredLicense[], StitchError>({
-      code: 'INTERNAL',
-      message: `license-checker failed for ${depsDir}: ${detail}`,
+      code: 'LICENSE_SCAN_FAILED',
+      message: `license-checker failed for ${depsDir}: ${msg}`,
     });
   }
+
+  const seen = new Set<string>();
   const entries: DeclaredLicense[] = [];
-  for (const [key, value] of Object.entries(dataResult.value)) {
-    const atIdx = key.lastIndexOf('@');
-    if (atIdx <= 0) continue; // skip the root or malformed keys
-    const pkg = key.slice(0, atIdx);
-    const version = key.slice(atIdx + 1);
-    if (value.private) continue; // skip private packages (AGENTS §1)
-    const licenses = Array.isArray(value.licenses)
+  for (const [key, value] of Object.entries(data)) {
+    const parsed = parseNpmPkg(key);
+    if (parsed === null) continue;
+    const { pkg, version } = parsed;
+    if (value.private === true) continue;
+    const dedupeKey = `${pkg}@${version}`;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    // Handle dual-license array and UNKNOWN sentinel (deferred to P-123)
+    const rawLicenses = Array.isArray(value.licenses)
       ? value.licenses.join(' OR ')
       : (value.licenses ?? 'UNKNOWN');
-    const entry: DeclaredLicense = { package: pkg, version, licenses };
-    if (value.licenseFile) entry.licenseFile = value.licenseFile;
-    if (value.repository) entry.repository = value.repository;
+    const licenses = normalizeExpression(rawLicenses);
+
+    const entry: DeclaredLicense = { package: pkg, version, licenses, rawLicenses };
+    if (value.licenseFile !== undefined) entry.licenseFile = value.licenseFile;
+    if (value.repository !== undefined) entry.repository = value.repository;
+    if (value.path !== undefined) entry.path = value.path;
+    else entry.path = join(depsDir, 'node_modules', pkg);
+
     entries.push(entry);
   }
+
+  // Sort by package name for deterministic output (code-unit, not locale)
+  entries.sort((a, b) => {
+    if (a.package < b.package) return -1;
+    if (a.package > b.package) return 1;
+    if (a.version < b.version) return -1;
+    if (a.version > b.version) return 1;
+    return 0;
+  });
+
   return ok(entries);
 }
+
+/** Alias for spec compliance: P-118 calls it scanDeclaredLicenses. */
+export const scanDeclaredLicenses = scanDeclared;
 
 /**
  * Convenience: write a tiny `node_modules/<pkg>/package.json` fixture

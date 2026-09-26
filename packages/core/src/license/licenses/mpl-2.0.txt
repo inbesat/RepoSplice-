@@ -1,0 +1,317 @@
+Mozilla Public License Version 2.0
+==================================
+
+1. Definitions
+--------------
+
+1.1. "Contributor"
+    means each individual or legal entity that creates, contributes to
+    the creation of, or owns Covered Software.
+
+1.2. "Contributor Version"
+    means the combination of the Contributions of others (if any) used
+    by a Contributor and that Contributor's own Contribution.
+
+1.3. "Contribution"
+    means Covered Software of a particular Contributor.
+
+1.4. "Covered Software"
+    means Source Code Form to which the initial Contributor has attached
+    the notice in Exhibit A, the Executable Form of such Source Code Form,
+    and Modifications of such Source Code Form, in each case including
+    portions thereof.
+
+1.5. "Incompatible With Secondary Licenses"
+    means
+
+    (a) that the initial Contributor has attached the notice described
+        in Exhibit B to the Covered Software; or
+
+    (b) that the Covered Software was made available under the terms
+        of version 1.1 or earlier of the License, but not also under the
+        terms of a Secondary License.
+
+1.6. "Executable Form"
+    means any form of the work other than Source Code Form.
+
+1.7. "Larger Work"
+    means a work that combines Covered Software with other material, in
+    a single or separate file(s).
+
+1.8. "License"
+    means this document.
+
+1.9. "Licensable"
+    means having the right to grant, to the extent set forth in this
+    License, any and all rights in Covered Software.
+
+1.10. "Modifications"
+    means any of the following:
+
+    (a) any file in Source Code Form that results from an addition to,
+        deletion from, or modification of the contents of Covered Software; or
+
+    (b) any new file in Source Code Form that contains any Covered Software.
+
+1.11. "Patent Claims" of a Contributor
+    means any patent claim(s), including without limitation, method,
+    process, and apparatus claims, in any patent Licensable by such
+    Contributor that would be infringed by the Covered Software.
+
+1.12. "Secondary License"
+    means the GNU General Public License, Version 2.0, the GNU Lesser
+    General Public License, Version 2.1, the GNU Affero General Public
+    License, Version 3.0, or any later versions of those licenses.
+
+1.13. "Source Code Form"
+    means the form of the work that is logically intelligible as
+    Source Code, including without limitation any representation
+    of the work that is logically intelligible as Source Code.
+
+1.14. "You" (or "Your")
+    means an individual or a legal entity exercising rights under this
+    License. For legal entities, "You" includes any entities that
+    control, are controlled by, or are under common control with
+    that entity. For purposes of this definition, "control" means
+    (a) the power, direct or indirect, to cause the direction or
+    management of such entity, whether by contract or otherwise, or
+    (b) ownership of more than fifty percent (50%) of the outstanding
+    shares or beneficial ownership of such entity.
+
+2. License Grants and Conditions
+---------------------------------
+
+2.1. Grants
+
+Each Contributor hereby grants You a world-wide, royalty-free,
+non-exclusive license:
+
+(a) under intellectual property rights (other than patent or trademark)
+    Licensable by such Contributor, to use, reproduce, make available,
+    modify, display, perform, distribute, and otherwise exploit its
+    Contributions, in Source Code Form, Executable Form, or any combination
+    thereof, and
+
+(b) under Patent Claims of such Contributor, to make, have made, use,
+    offer to sell, sell, import, and otherwise dispose of its
+    Contributions in Executable Form, and make, have made, use, offer
+    to sell, sell, import, and otherwise dispose of the Covered Software
+    in Executable Form. This grant is effective on the date the
+    Contribution is first published as Covered Software under this License.
+
+2.2. Effective Date
+
+The licenses granted in Section 2.1 with respect to any Contribution
+become effective on the date the Contribution is first published as
+Covered Software.
+
+2.3. No Additional Grants
+
+No Contributor grants You any rights (a) in any student's work,
+(b) in any work that a Contributor has not contributed to, or (c) under
+intellectual property rights not Licensable by such Contributor.
+
+2.4. Subsequent Licenses
+
+No Contributor grants You any rights under the terms of any
+Secondary License for the Covered Software, unless such Contributor
+grants such rights to You under a separate agreement.
+
+2.5. Representation
+
+Each Contributor represents that its Contributions are the
+Contributions of such Contributor and that it has the right to grant
+the rights to You granted by this License.
+
+2.6. Fair Use
+
+This License is not intended to limit any rights You have under
+applicable copyright laws of your jurisdiction (such as fair use,
+fair dealing, or similar legal concepts).
+
+2.7. Conditions
+
+The licenses granted in Section 2.1 are subject to the following
+conditions:
+
+2.7.1. Distribution of Source Code Form
+
+All distribution of Covered Software in Source Code Form must be
+under the terms of this License. You must inform recipients that the
+Source Code Form of the Covered Software is governed by the terms of
+this License, and how they can obtain a copy of this License. You may
+not alter or remove the notices in the Source Code Form of the
+Covered Software.
+
+2.7.2. Distribution of Executable Form
+
+If You distribute Covered Software in Executable Form, such
+distribution must also be made under the terms of this License,
+and You must inform recipients of the Executable Form that the
+Executable Form is governed by this License, and how they can obtain
+a copy of this License.
+
+2.7.3. Distribution of a Larger Work
+
+You may create and distribute a Larger Work under terms of Your
+choice, provided that You also comply with the requirements of this
+License for the Covered Software. If the Larger Work combines
+Covered Software with other material in a separate file(s), You must
+ensure that the Covered Software is separately identifiable from
+other material in the Larger Work, and that the Covered Software
+is distributed under the terms of this License in that file(s).
+
+2.7.4. Notices
+
+You may not remove or alter the notices in the Covered Software.
+All notices must be preserved. You may add a new notice to the
+Covered Software.
+
+2.7.5. Application of Additional Terms
+
+You may not apply any terms to the Covered Software that modify,
+restrict, or are inconsistent with this License. You may add
+Additional Terms. Additional Terms that apply to the Covered Software
+must not conflict with this License.
+
+3. Responsibilities
+-------------------
+
+3.1. Distribution of Source Code
+
+All distribution of Covered Software in Source Code Form must be
+under the terms of this License. You must inform recipients that the
+Source Code Form of the Covered Software is governed by the terms of
+this License, and how they can obtain a copy of this License.
+
+3.2. Distribution of Executable Form
+
+If You distribute Covered Software in Executable Form, such
+distribution must also be made under the terms of this License,
+and You must inform recipients of the Executable Form that the
+Executable Form is governed by this License, and how they can obtain
+a copy of this License.
+
+3.3. Distribution of a Larger Work
+
+You may create and distribute a Larger Work under terms of Your
+choice, provided that You also comply with the requirements of this
+License for the Covered Software.
+
+3.4. Notices
+
+You may not remove or alter the notices in the Covered Software.
+
+4. Inability to Comply Due to Statute or Regulation
+---------------------------------------------------
+
+If it is impossible for You to comply with any of the terms of this
+License due to statute, regulation, or other legal requirement, You
+must (a) comply with the terms of this License to the maximum extent
+possible, and (b) describe the limitations and the reasons for them
+in writing.
+
+5. Termination
+--------------
+
+5.1. The rights granted under this License will terminate automatically
+if You fail to comply with any of its terms. However, if You become
+compliant, then the rights granted under this License from a
+particular Contributor are reinstated (a) provisionally, unless and
+until such Contributor explicitly terminates Your rights, and
+(b) permanently, if You fail to become compliant and such Contributor
+explicitly terminates Your rights.
+
+5.2. If You initiate litigation against any entity by asserting a
+patent claim (excluding declaratory actions) against Covered Software
+under this License, the rights granted under Section 2.1 for all
+Contributions of such Contributor are terminated.
+
+5.3. In the event of termination under Sections 5.1 or 5.2 above,
+all end-user license agreements (with respect to Covered Software)
+validly granted under this License prior to termination survive
+termination.
+
+6. Disclaimer of Warranty
+-------------------------
+
+Covered Software is provided under this License on an "as is" basis,
+without warranty of any kind, either express, implied, or statutory,
+including, but not limited to, warranties that the Covered Software
+is merchantable, fit for a particular purpose, or non-infringing.
+The entire risk as to the quality and performance of the Covered
+Software is with You. Should the Covered Software prove defective,
+You are responsible for any resulting damages.
+
+7. Limitation of Liability
+--------------------------
+
+Under no circumstances and under no legal theory, whether tort
+(contract), or otherwise, shall any Contributor, or any entity
+that provides Covered Software under this License, be liable to You
+for any direct, indirect, special, incidental, or consequential
+damages of any character, including, without limitation, damages
+for loss of goodwill, work stopped, data lost, or profits lost,
+whether or not such Contributor has been warned of the possibility
+of such damages. This limitation of liability shall not apply to
+liability for death or personal injury resulting from such
+Contributor's negligence to the extent that applicable law prohibits
+the limitation of liability. Some jurisdictions do not allow the
+exclusion or limitation of incidental or consequential damages,
+so this limitation may not apply to You.
+
+8. Litigation
+-------------
+
+Any litigation relating to this License may be brought only in the
+courts of a jurisdiction where the Contributor maintains its principal
+place of business and such litigation shall be governed by the laws of
+that jurisdiction, without reference to conflict-of-law rules.
+
+9. Miscellaneous
+----------------
+
+This License represents the complete agreement concerning the subject
+matter hereof. If any provision of this License is held to be
+unenforceable, such provision shall be reformulated only to the
+minimum extent necessary to make it enforceable.
+
+10. Versions of the License
+---------------------------
+
+10.1. New Versions
+
+Mozilla Foundation is the license steward. Except as provided in
+Section 10.2, no one other than the license steward has the right
+to modify this License.
+
+10.2. Effect of New Versions
+
+You may always continue to use the terms of a version of this License
+that was published prior to the publication of a new version. If the
+license steward publishes a new version of this License, You may
+continue to use the terms of the old version, or You may upgrade to
+the new version.
+
+10.3. Modified Versions
+
+You may create a modified version of this License if You literally
+reproduce the entire text of this License and modify it to the extent
+that You clearly mark the modifications as modified. Such modified
+versions of this License may be used only by the Contributor that
+created them.
+
+Exhibit A - Source Code Form License Notice
+--------------------------------------------
+
+<HOLDERS>
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the License was not distributed with
+this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+Exhibit B - "Incompatible With Secondary Licenses" Notice
+----------------------------------------------------------
+
+This Source Code Form is "Incompatible With Secondary Licenses", as
+defined by the Mozilla Public License, v. 2.0.

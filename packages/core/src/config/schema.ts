@@ -64,6 +64,27 @@ export const AutonomySchema = z.object({
 });
 export type Autonomy = z.infer<typeof AutonomySchema>;
 
+/**
+ * P-158 `[agent]` block: limits on what a tool may hand back to the model.
+ *
+ * Both fields default, so a config written before P-158 still validates and
+ * the effective limits are always present. `maxToolResultBytes` exists because
+ * a large-repo tool (`select_files` over a monorepo, `detect_gaps` across a
+ * whole ecosystem) can legitimately exceed 1MB, and the correct fix for that is
+ * a larger budget — not silently truncating the result.
+ */
+export const AgentConfigSchema = z.object({
+  maxToolResultBytes: z.number().int().positive().default(1_000_000),
+  maxToolArgsDepth: z.number().int().positive().max(256).default(16),
+  // P-164: the hard spend/iteration guard. 0 means "off" for the two budgets,
+  // which is why they are `nonnegative` rather than `positive` - a zero default
+  // that meant "spend nothing" would kill every run on its first iteration.
+  maxIterations: z.number().int().positive().default(20),
+  maxTokens: z.number().int().nonnegative().default(0),
+  maxCostUsd: z.number().nonnegative().default(0),
+});
+export type AgentConfig = z.infer<typeof AgentConfigSchema>;
+
 export const ConfigSchema = z.object({
   github: GitHubConfigSchema,
   openrouter: OpenRouterConfigSchema,
@@ -73,6 +94,13 @@ export const ConfigSchema = z.object({
   paths: PathsConfigSchema,
   licensePolicy: LicensePolicySchema,
   autonomy: AutonomySchema,
+  agent: AgentConfigSchema.default({
+    maxToolResultBytes: 1_000_000,
+    maxToolArgsDepth: 16,
+    maxIterations: 20,
+    maxTokens: 0,
+    maxCostUsd: 0,
+  }),
 });
 export type Config = z.infer<typeof ConfigSchema>;
 
@@ -91,6 +119,13 @@ export const defaultConfig: Config = {
   },
   licensePolicy: { allow: [], warn: [], deny: [] },
   autonomy: { auto: [], gated: [] },
+  agent: {
+    maxToolResultBytes: 1_000_000,
+    maxToolArgsDepth: 16,
+    maxIterations: 20,
+    maxTokens: 0,
+    maxCostUsd: 0,
+  },
 };
 
 export type ConfigLayer = {

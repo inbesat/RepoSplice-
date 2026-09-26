@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>repo-stitcher — The 3D Plan</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { width: 100%; background: #06060a; color: #e8e8f0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow-x: hidden; }
+  body { padding-top: 70px; }
+
+  /* 3D canvas fixed in background */
+  #canvas3d { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+
+  /* Top navigation bar */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 70px;
+    background: rgba(6, 6, 10, 0.85); backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px; z-index: 100;
+  }
+  .topbar .logo-section { display: flex; align-items: center; gap: 12px; }
+  .topbar .logo {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #fff; font-size: 20px;
+  }
+  .topbar .brand { color: #fff; font-weight: 700; font-size: 16px; }
+  .topbar .tagline { color: #a1a1aa; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .topbar .nav-links { display: flex; gap: 28px; }
+  .topbar .nav-links a {
+    color: #a1a1aa; text-decoration: none; font-size: 14px; font-weight: 500;
+    transition: color 0.2s;
+  }
+  .topbar .nav-links a:hover { color: #fff; }
+
+  /* Reading progress */
+  .read-progress {
+    position: fixed; top: 70px; left: 0; height: 3px;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa, #ec4899);
+    z-index: 99; transition: width 0.1s;
+    box-shadow: 0 0 12px #7c3aed;
+  }
+
+  /* Content sections */
+  section {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto;
+    padding: 100px 40px;
+  }
+  section.hero { padding-top: 60px; }
+
+  /* Typography */
+  h1, h2, h3, h4 { font-family: 'Inter', sans-serif; letter-spacing: -0.02em; }
+  h1 {
+    font-size: clamp(48px, 8vw, 96px); font-weight: 800; line-height: 1.05;
+    background: linear-gradient(135deg, #ffffff 0%, #7c3aed 50%, #a78bfa 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 24px;
+  }
+  h2 {
+    font-size: clamp(36px, 5vw, 56px); font-weight: 800; line-height: 1.1;
+    background: linear-gradient(135deg, #ffffff 0%, #7c3aed 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 24px;
+  }
+  h3 {
+    font-size: clamp(24px, 3vw, 32px); font-weight: 700; color: #fff; margin-bottom: 16px;
+  }
+  h4 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  p { font-size: 17px; line-height: 1.7; color: #c4c4d0; margin-bottom: 16px; }
+  p.lead { font-size: 22px; color: #a1a1aa; max-width: 800px; line-height: 1.6; }
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.9em;
+    background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(124, 58, 237, 0.3);
+    padding: 2px 8px; border-radius: 4px; color: #c4b5fd;
+  }
+  a { color: #a78bfa; }
+  a:hover { color: #fff; }
+
+  .eyebrow {
+    display: inline-block; padding: 8px 16px;
+    background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 100px; color: #a78bfa; font-size: 13px;
+    letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .eyebrow.warn { background: rgba(245, 158, 11, 0.1); border-color: #f59e0b; color: #fbbf24; }
+  .eyebrow.ok { background: rgba(16, 185, 129, 0.1); border-color: #10b981; color: #34d399; }
+  .eyebrow.info { background: rgba(6, 182, 212, 0.1); border-color: #06b6d4; color: #67e8f9; }
+
+  /* Hero */
+  .hero-meta {
+    display: flex; gap: 48px; flex-wrap: wrap; margin-top: 40px;
+    padding-top: 32px; border-top: 1px solid rgba(124, 58, 237, 0.2);
+  }
+  .hero-meta .stat-value {
+    font-size: 40px; font-weight: 800; color: #7c3aed; line-height: 1; font-family: 'JetBrains Mono', monospace;
+  }
+  .hero-meta .stat-label { font-size: 13px; color: #71717a; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Cards */
+  .grid { display: grid; gap: 24px; margin-top: 32px; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: rgba(24, 24, 32, 0.7); backdrop-filter: blur(20px);
+    border: 1px solid rgba(124, 58, 237, 0.2); border-radius: 16px;
+    padding: 28px; transition: all 0.3s ease;
+  }
+  .card:hover { border-color: #7c3aed; transform: translateY(-4px); box-shadow: 0 20px 40px rgba(124, 58, 237, 0.2); }
+  .card h4 { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #fff; }
+  .card p { font-size: 15px; color: #a1a1aa; line-height: 1.6; margin-bottom: 0; }
+  .card .icon { font-size: 36px; margin-bottom: 16px; }
+  .card.cyan { border-color: rgba(6, 182, 212, 0.3); }
+  .card.cyan:hover { border-color: #06b6d4; box-shadow: 0 20px 40px rgba(6, 182, 212, 0.2); }
+  .card.pink { border-color: rgba(236, 72, 153, 0.3); }
+  .card.pink:hover { border-color: #ec4899; box-shadow: 0 20px 40px rgba(236, 72, 153, 0.2); }
+  .card.amber { border-color: rgba(245, 158, 11, 0.3); }
+  .card.amber:hover { border-color: #f59e0b; box-shadow: 0 20px 40px rgba(245, 158, 11, 0.2); }
+  .card.green { border-color: rgba(16, 185, 129, 0.3); }
+  .card.green:hover { border-color: #10b981; box-shadow: 0 20px 40px rgba(16, 185, 129, 0.2); }
+
+  /* Section dividers */
+  .divider {
+    height: 1px; background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.3), transparent);
+    margin: 0 auto; max-width: 800px;
+  }
+
+  /* Tech grid */
+  .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 32px; }
+  .tech {
+    background: rgba(24, 24, 32, 0.7); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 12px; padding: 20px; text-align: center; transition: all 0.3s;
+  }
+  .tech:hover { transform: translateY(-4px) scale(1.02); border-color: #7c3aed; }
+  .tech .tname { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .tech .tdesc { font-size: 12px; color: #a1a1aa; }
+
+  /* Architecture diagram */
+  .arch-diagram {
+    background: rgba(24, 24, 32, 0.5); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 16px; padding: 60px 40px; margin: 40px 0;
+    display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap;
+  }
+  .arch-block {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(124, 58, 237, 0.05));
+    border: 2px solid #7c3aed; border-radius: 12px; padding: 28px; text-align: center; min-width: 160px;
+  }
+  .arch-block.cli { border-color: #06b6d4; background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.05)); }
+  .arch-block.web { border-color: #ec4899; background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05)); }
+  .arch-block.shared { border-color: #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.05)); }
+  .arch-block h6 { font-size: 16px; color: #fff; font-weight: 700; margin-bottom: 6px; }
+  .arch-block p { font-size: 13px; color: #a1a1aa; margin: 0; }
+  .arch-arrow { font-size: 32px; color: #7c3aed; font-weight: 300; }
+
+  /* Code blocks */
+  pre {
+    background: rgba(6, 6, 10, 0.8); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 12px; padding: 20px 24px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.6;
+    color: #c4b5fd; margin: 24px 0;
+  }
+  pre .comment { color: #71717a; }
+  pre .key { color: #ec4899; }
+  pre .str { color: #34d399; }
+
+  /* Wave sections */
+  .wave-section {
+    background: rgba(24, 24, 32, 0.5); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 20px; padding: 48px; margin: 32px 0;
+  }
+  .wave-section.wave-0 { border-color: rgba(124, 58, 237, 0.4); }
+  .wave-section.wave-1 { border-color: rgba(6, 182, 212, 0.4); }
+  .wave-section.wave-15 { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03); }
+  .wave-section.wave-2 { border-color: rgba(16, 185, 129, 0.4); }
+  .wave-section.wave-3 { border-color: rgba(236, 72, 153, 0.4); }
+  .wave-section .wave-header { display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap; margin-bottom: 24px; }
+  .wave-section .wave-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    color: #71717a; letter-spacing: 0.2em; font-weight: 600;
+  }
+  .wave-section .wave-dates { font-size: 14px; color: #a1a1aa; font-family: 'JetBrains Mono', monospace; }
+
+  /* Big number */
+  .big-number {
+    font-size: clamp(80px, 12vw, 160px); font-weight: 900;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa, #ec4899);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    line-height: 1; margin: 8px 0; font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Milestones */
+  .milestone-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+  .milestone {
+    display: flex; align-items: center; gap: 16px;
+    background: rgba(24, 24, 32, 0.7); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 8px; padding: 16px;
+  }
+  .milestone .mid {
+    font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 800;
+    color: #7c3aed; min-width: 48px;
+  }
+  .milestone .mname { color: #fff; font-weight: 600; font-size: 15px; }
+  .milestone .mdesc { color: #a1a1aa; font-size: 12px; margin-top: 2px; }
+
+  /* Epic pills */
+  .epic-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px; background: rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(124, 58, 237, 0.3); border-radius: 100px;
+    font-size: 14px; color: #e8e8f0; margin: 4px;
+  }
+  .epic-pill .enum { color: #7c3aed; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+  /* Risk table */
+  .risk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+  .risk {
+    background: rgba(24, 24, 32, 0.7); border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 12px; padding: 24px; border-left: 4px solid #7c3aed;
+  }
+  .risk.med { border-left-color: #f59e0b; }
+  .risk.high { border-left-color: #ef4444; }
+  .risk.critical { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+  .risk .rtitle { color: #fff; font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+  .risk .rlevel { font-size: 12px; color: #a1a1aa; margin-bottom: 12px; }
+  .risk .rlevel .lvl { font-weight: 700; }
+  .risk .rlevel .med { color: #f59e0b; }
+  .risk .rlevel .high { color: #ef4444; }
+  .risk .rlevel .critical { color: #ef4444; }
+  .risk .rlevel .low { color: #10b981; }
+  .risk p { font-size: 14px; color: #a1a1aa; line-height: 1.5; margin: 0; }
+
+  /* CTA */
+  .cta-section {
+    text-align: center; padding: 120px 40px;
+    background: linear-gradient(180deg, transparent, rgba(124, 58, 237, 0.05));
+  }
+  .cta {
+    display: inline-block; margin-top: 32px; padding: 18px 40px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    color: #fff; font-weight: 700; text-decoration: none; border-radius: 100px;
+    font-size: 18px; transition: all 0.3s;
+  }
+  .cta:hover { transform: scale(1.05); box-shadow: 0 10px 40px rgba(124, 58, 237, 0.4); color: #fff; }
+
+  /* Back to top */
+  .back-to-top {
+    position: fixed; bottom: 30px; right: 30px;
+    width: 50px; height: 50px;
+    background: rgba(124, 58, 237, 0.9); border: none; border-radius: 50%;
+    color: #fff; font-size: 20px; cursor: pointer; z-index: 50;
+    display: none; align-items: center; justify-content: center;
+    transition: all 0.3s; backdrop-filter: blur(20px);
+  }
+  .back-to-top:hover { background: #7c3aed; transform: translateY(-4px); }
+  .back-to-top.visible { display: flex; }
+
+  /* Two-column layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start; margin-top: 32px; }
+  .two-col h3 { color: #fff; }
+  .two-col ul { list-style: none; padding: 0; }
+  .two-col ul li {
+    padding: 12px 0 12px 24px; position: relative;
+    color: #c4c4d0; line-height: 1.6; border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+  }
+  .two-col ul li:before {
+    content: '\2192'; position: absolute; left: 0; color: #7c3aed; font-weight: 700;
+  }
+
+  /* Quote */
+  blockquote {
+    background: rgba(124, 58, 237, 0.05); border-left: 4px solid #7c3aed;
+    padding: 20px 28px; margin: 32px 0; border-radius: 0 12px 12px 0;
+    font-size: 18px; color: #c4b5fd; line-height: 1.6; font-style: italic;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid rgba(124, 58, 237, 0.2);
+    padding: 60px 40px; text-align: center; color: #71717a; font-size: 14px;
+    position: relative; z-index: 1;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-2, .milestone-list, .risk-grid, .two-col { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: 1fr 1fr; }
+    .arch-diagram { flex-direction: column; padding: 30px 20px; }
+    .topbar { padding: 0 20px; }
+    .topbar .nav-links { display: none; }
+    section { padding: 60px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas3d"></canvas>
+
+<div class="topbar">
+  <div class="logo-section">
+    <div class="logo">s</div>
+    <div>
+      <div class="brand">repo-stitcher</div>
+      <div class="tagline">the 3D plan</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#solution">Solution</a>
+    <a href="#stack">Stack</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#waves">Waves</a>
+    <a href="#milestones">Milestones</a>
+    <a href="#risks">Risks</a>
+  </div>
+</div>
+
+<div class="read-progress" id="readProgress"></div>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero" id="top">
+    <div class="eyebrow">v1.0.0 plan &middot; 366 phases &middot; 19 epics &middot; frozen</div>
+    <h1>repo-stitcher</h1>
+    <p class="lead">AI-powered code stitching that merges two repos into one clean, credited, license-safe codebase. From <code>git-filter-repo</code> to a published PR in one command.</p>
+    <p>This is the entire plan &mdash; every phase, every wave, every risk &mdash; presented as a scrollable narrative with a live 3D background. Read it top to bottom in five minutes, or jump to whatever section you need.</p>
+    <div class="hero-meta">
+      <div><div class="stat-value">366</div><div class="stat-label">Phases</div></div>
+      <div><div class="stat-value">19</div><div class="stat-label">Epics</div></div>
+      <div><div class="stat-value">9/9</div><div class="stat-label">Detail depth</div></div>
+      <div><div class="stat-value">9</div><div class="stat-label">Weeks to MVP</div></div>
+      <div><div class="stat-value">2</div><div class="stat-label">Owners</div></div>
+      <div><div class="stat-value">1</div><div class="stat-label">Goal</div></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- THE PROBLEM -->
+  <section id="problem">
+    <div class="eyebrow">The problem</div>
+    <h2>Two repos. One product. A weekend lost to merge hell.</h2>
+    <p>You found a killer library on GitHub. You want its feature in your app. You start by copy-pasting files. Within an hour, you're neck-deep in broken imports, conflicting dependencies, and license files you can't legally ignore. The "just merge them" answer is naive.</p>
+    <p>Every team that combines two open-source projects writes the same brittle glue. They write it differently, badly, and over and over. There is no good tool for this. Until now.</p>
+
+    <div class="grid grid-3">
+      <div class="card">
+        <div class="icon">&#9888;&#65039;</div>
+        <h4>Lost provenance</h4>
+        <p>Files get rewritten. Original authors and licenses go uncredited. MIT and Apache require attribution; GPL and AGPL carry obligations most teams don't even know they have.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#128165;</div>
+        <h4>Dependency chaos</h4>
+        <p>Two <code>package.json</code>s. Three lockfile formats. Semver ranges that don't agree. The version of <code>lodash</code> in repo A is two majors behind the one in repo B, and neither can be downgraded safely.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#128057;</div>
+        <h4>Manual grind</h4>
+        <p>Filter-repo, subtree, cherry-pick, refactor, retest, document. The whole loop takes two days of careful, error-prone work. One typo and you have a regression no one notices for three months.</p>
+      </div>
+    </div>
+
+    <blockquote>The hardest part of open source isn't writing the code. It's combining two projects without breaking either one.</blockquote>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- THE SOLUTION -->
+  <section id="solution">
+    <div class="eyebrow ok">The solution</div>
+    <h2>One command. Repo A + Repo B &rarr; Repo C with a PR.</h2>
+    <p>You point <code>repo-stitcher</code> at two repos. It uses <code>git-filter-repo</code> to extract the paths you want from each, fuses them into a third repo, resolves the dependency union, runs a license compatibility check, builds the result in a sandbox, and opens a PR on GitHub with a generated <code>CREDITS.md</code> and SBOM.</p>
+    <p>Every step is observable. Every step is gated. The AI agent proposes edits and your terminal shows them; nothing lands in <code>main</code> without your say-so.</p>
+
+    <div class="grid grid-3">
+      <div class="card cyan">
+        <div class="icon">&#129516;</div>
+        <h4>Git-native extraction</h4>
+        <p><code>git-filter-repo</code> with provenance tags. Every file keeps its origin commit, its original author, and its original license. The history isn't lost &mdash; it's preserved as a <code>notes/refs</code> graph in the new repo.</p>
+      </div>
+      <div class="card pink">
+        <div class="icon">&#129302;</div>
+        <h4>AI agent loop</h4>
+        <p>LLM with 10 tools: <code>select_files</code>, <code>resolve_dependency_closure</code>, <code>detect_ecosystem</code>, <code>apply_fix</code>, <code>edit_file</code>, <code>propose_component</code>, <code>run_build</code>, and more. Self-critique confidence scoring decides what to auto-apply vs. what to gate for human review.</p>
+      </div>
+      <div class="card green">
+        <div class="icon">&#128737;&#65039;</div>
+        <h4>Safe by default</h4>
+        <p>Sandboxed Docker builds. SPDX license scan with a configurable compatibility policy. Per-ecosystem test runners. The result has to pass the test suite before it touches your PR.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TECH STACK -->
+  <section id="stack">
+    <div class="eyebrow info">Tech stack</div>
+    <h2>Modern, type-safe, monorepo.</h2>
+    <p>No guessing. Every dependency is fixed in <code>package.json</code>. Bun + TypeScript strict + React 18 + Ink. The whole thing ships as a single binary compiled by <code>bun build --compile</code>. You can run it without Node installed.</p>
+    <p>The full tech stack:</p>
+
+    <div class="tech-grid">
+      <div class="tech"><div class="tname">Bun</div><div class="tdesc">Runtime + monorepo</div></div>
+      <div class="tech"><div class="tname">TypeScript</div><div class="tdesc">Strict mode</div></div>
+      <div class="tech"><div class="tname">React 18</div><div class="tdesc">Web UI</div></div>
+      <div class="tech"><div class="tname">Vite</div><div class="tdesc">Web bundler</div></div>
+      <div class="tech"><div class="tname">Tailwind</div><div class="tdesc">Web styling</div></div>
+      <div class="tech"><div class="tname">Zustand</div><div class="tdesc">Web state</div></div>
+      <div class="tech"><div class="tname">TanStack Query</div><div class="tdesc">Web data layer</div></div>
+      <div class="tech"><div class="tname">Ink</div><div class="tdesc">CLI TUI</div></div>
+      <div class="tech"><div class="tname">Commander</div><div class="tdesc">CLI commands</div></div>
+      <div class="tech"><div class="tname">Elysia</div><div class="tdesc">Web server</div></div>
+      <div class="tech"><div class="tname">simple-git</div><div class="tdesc">Git operations</div></div>
+      <div class="tech"><div class="tname">git-filter-repo</div><div class="tdesc">Path extraction</div></div>
+      <div class="tech"><div class="tname">Octokit</div><div class="tdesc">GitHub API</div></div>
+      <div class="tech"><div class="tname">OpenRouter</div><div class="tdesc">Primary AI</div></div>
+      <div class="tech"><div class="tname">Anthropic</div><div class="tdesc">Claude fallback</div></div>
+      <div class="tech"><div class="tname">Ollama</div><div class="tdesc">Offline AI</div></div>
+      <div class="tech"><div class="tname">dockerode</div><div class="tdesc">Sandbox runner</div></div>
+      <div class="tech"><div class="tname">bun:sqlite</div><div class="tdesc">Job queue</div></div>
+      <div class="tech"><div class="tname">semver</div><div class="tdesc">Deps resolution</div></div>
+      <div class="tech"><div class="tname">spdx-*</div><div class="tdesc">License toolkit</div></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture">
+    <div class="eyebrow">Architecture</div>
+    <h2>Three packages. One frozen contract.</h2>
+    <p>The CLI and Web are thin user interfaces over a single <code>core</code> package that holds all the business logic. After Wave 0, the <code>core</code> public API is frozen &mdash; no breaking changes without a version bump. This contract is what lets two developers work in parallel without stepping on each other.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-block cli">
+        <h6>packages/cli</h6>
+        <p>Commander + Ink TUI</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block shared">
+        <h6>packages/shared</h6>
+        <p>Frozen types</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block">
+        <h6>packages/core</h6>
+        <p>All business logic</p>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-block web">
+        <h6>packages/web</h6>
+        <p>React + Vite</p>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3>Owner model</h3>
+        <p>Two developers, two ownership lanes, zero merge conflict on the contract.</p>
+        <ul>
+          <li><strong>inbesat</strong> owns <code>core</code>, root config, and all <code>project-plans/</code> documentation</li>
+          <li><strong>aradhy</strong> owns <code>cli</code> and <code>web</code>, consuming the frozen API</li>
+          <li>Both can add features to <code>core</code> via PR, but only inbesat merges breaking changes</li>
+          <li>Dependency requests flow aradhy &rarr; inbesat through a tracked issue</li>
+          <li>The <code>packages/shared</code> types are the only file the two owners both read but neither edits unilaterally</li>
+        </ul>
+      </div>
+      <div>
+        <h3>What lives where</h3>
+        <p>The package boundary mirrors the dependency direction. Nothing in <code>core</code> imports from <code>cli</code> or <code>web</code>. The CLI and Web packages never talk to each other except through the contract.</p>
+        <ul>
+          <li><code>core</code> knows about git, GitHub, dependencies, licenses, AI providers, sandboxes, and provenance</li>
+          <li><code>cli</code> knows about terminal interaction, command parsing, and the local HTTP/WS server</li>
+          <li><code>web</code> knows about React, routing, real-time WebSocket streams, and accessibility</li>
+          <li>Configuration is loaded in <code>core</code> via a Zod-validated <code>ConfigSchema</code>; both UIs pass user input to it</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- WAVES -->
+  <section id="waves">
+    <div class="eyebrow">The roadmap</div>
+    <h2>Four waves. Nine weeks to MVP.</h2>
+    <p>The work is split into four waves plus a research gap. Each wave has a clear owner lane, a clear exit criterion, and a clear handoff to the next.</p>
+
+    <!-- WAVE 0 -->
+    <div class="wave-section wave-0">
+      <div class="wave-header">
+        <span class="wave-num">WAVE 0</span>
+        <h3 style="margin: 0;">Foundation &amp; all dependencies</h3>
+        <span class="wave-dates">Weeks 1&ndash;2 &middot; inbesat only</span>
+      </div>
+      <p>Zero-conflict scaffold. Every dependency in the entire plan is installed and verified. The monorepo compiles. <code>stitch doctor</code> passes on a clean machine. The contract is frozen. A handoff package is written.</p>
+      <p><strong>What gets built:</strong> the Bun monorepo, TypeScript strict config, ESLint + Prettier, Vitest setup, Husky pre-commit hooks, Changesets for versioning, a CI skeleton, a Dockerfile, the Pino logger, the neverthrow Result type, the Zod-validated <code>ConfigSchema</code>, and 68 phases of individual dependency installation &mdash; every npm package and every system tool documented and verified by <code>stitch doctor</code>.</p>
+      <p><strong>What gets written:</strong> <code>ARCHITECTURE.md</code>, <code>CONTRIBUTING.md</code>, a git branching model doc, a contract-freeze gate script, a <code>packages/shared</code> module for cross-cutting types, a <code>HANDOFF.md</code> for aradhy, and a dep-request flow that lets aradhy file issues for missing packages without touching <code>package.json</code>.</p>
+      <p><strong>Exit criterion:</strong> aradhy can clone the repo, run <code>bun install</code>, run <code>stitch doctor</code>, and start Wave 1 without modifying any root file.</p>
+    </div>
+
+    <!-- WAVE 1 -->
+    <div class="wave-section wave-1">
+      <div class="wave-header">
+        <span class="wave-num">WAVE 1</span>
+        <h3 style="margin: 0;">Parallel core + CLI/Web</h3>
+        <span class="wave-dates">Weeks 3&ndash;6 &middot; both tracks in parallel</span>
+      </div>
+      <p>inbesat builds all the <code>core</code> logic. aradhy builds the CLI and Web UI against the frozen API. They never block each other. The WebSocket protocol between the Web UI and the CLI is the only place their code is aware of each other, and that's already frozen.</p>
+      <p><strong>inbesat track (Epics 2&ndash;9, P-069&ndash;P-188):</strong> Git core operations (clone, filter-repo, merge, push), GitHub integration (auth, create repo, open PR), dependency union and semver resolution, SPDX license scanning with a compatibility matrix, the OpenRouter primary AI provider with Anthropic and Ollama fallbacks, a ten-tool agent loop with a state machine, a Docker-based sandbox runner with GitHub Actions fallback, and a complete provenance system that emits <code>CREDITS.md</code>, an SBOM, and git notes for every file in the target repo.</p>
+      <p><strong>aradhy track (Epics 10&ndash;11, P-189&ndash;P-237):</strong> A Commander-based CLI with eight top-level commands (<code>init</code>, <code>add</code>, <code>merge</code>, <code>serve</code>, <code>status</code>, <code>doctor</code>, <code>license</code>, <code>deps</code>), an Ink-based TUI with theme support, an Elysia-based local HTTP and WebSocket server, and a React 18 web app with five pages (Source picker, File tree, Live review, Results, Settings), a file tree component, a diff viewer with syntax highlighting, and a real-time WebSocket stream that surfaces AI proposals for human-in-the-loop gating.</p>
+      <p><strong>Exit criterion:</strong> <code>stitch merge</code> works end-to-end via the CLI on at least one real repo pair, and the same merge can be driven from the Web UI with the live stream rendering the same events.</p>
+    </div>
+
+    <!-- WAVE 1.5 -->
+    <div class="wave-section wave-15">
+      <div class="wave-header">
+        <span class="wave-num" style="color: #f59e0b;">WAVE 1.5</span>
+        <h3 style="margin: 0;">Research gap closure</h3>
+        <span class="wave-dates" style="color: #fbbf24;">Weeks 6&ndash;7 &middot; mixed owners &middot; gates &amp; conditions</span>
+      </div>
+      <p>Before the MVP tag lands, we run a structured research program to validate the AI-stitcher against real-world repo pairs, conditionally extend its resolution capabilities, add confidence scoring so the human can trust the AI's auto-applied edits, and ship a first-class MCP server so AI hosts like Claude Code and OpenCode can drive stitcher directly.</p>
+
+      <div class="grid grid-2">
+        <div>
+          <h4>Epic 16 &mdash; Eval Harness (P-320&ndash;P-333)</h4>
+          <p>A corpus of 20 real-world repo pairs (5 per ecosystem: JavaScript/TypeScript, Python, Go, Rust) with pinned fixture SHAs for reproducibility. A <code>stitch eval run</code> command that runs the full pipeline on the corpus, scores build-pass via the existing sandbox, and scores a 1&ndash;5 human rubric via a rater review tool. The baseline run (P-327) is the <strong>go/no-go gate</strong> for the MVP: build-pass rate, average rubric score, and resolve rate are documented in <code>EVAL.md</code>. After baseline, a CI regression gate runs a subset on every PR and the full corpus on every release tag. A failure taxonomy (import-resolution, semver, license, loop-cap, sandbox-timeout, semantic-wrong) drives the conditional Epic 17.</p>
+        </div>
+        <div>
+          <h4>Epic 17 &mdash; Cross-Language Resolution (P-334&ndash;P-345)</h4>
+          <p>A generic LSP client (JSON-RPC over stdio) wrapping tsserver, pyright, gopls, and rust-analyzer. Per-language resolver modules. A heuristic tree-sitter fallback for when the LSP is slow or unavailable. A unified <code>DependencyResolver</code> interface that tags every resolution with confidence (LSP-high, heuristic-medium, unresolved). The whole epic is <strong>conditional on P-331</strong>: if the failure taxonomy shows import-resolution is a top-2 failure category, the LSP work is funded. Otherwise, the heuristic fallback alone ships.</p>
+        </div>
+        <div>
+          <h4>Epic 18 &mdash; Confidence Scoring (P-346&ndash;P-356)</h4>
+          <p>A <code>SemanticConfidence</code> schema (composite 0&ndash;100 with component breakdown, rationale, and flag list). A self-critique prompt design where the agent re-reads its own diff before scoring. A composite model: sandbox 30%, self-critique 25%, resolver confidence 20%, license scan 15%, test pass 10%. A threshold policy (default auto-approve at 75, force human-in-the-loop below). Confidence is visible in the CLI output, the Web UI badges, and the <code>CREDITS.md</code> per-file section. The P-354 calibration check measures correlation between self-confidence and human rubric; if rho &lt; 0.5, P-355 runs a recalibration loop. <code>CONFIDENCE.md</code> documents that this is a heuristic, not a guarantee.</p>
+        </div>
+        <div>
+          <h4>Epic 19 &mdash; MCP-First Distribution (P-357&ndash;P-366)</h4>
+          <p>An MCP server in <code>packages/mcp/</code> that exposes three tools (<code>stitch_select_files</code>, <code>stitch_merge</code>, <code>stitch_check_license</code>) over the Elysia HTTP transport. Progress streaming via <code>notifications/progress</code>. Auth and config pass-through that reuses <code>~/.stitch/config.json</code>. A compatibility pass against Claude Code, OpenCode, and Cursor. Submission to the MCP registry so the server is discoverable by name. <code>MCP_QUICKSTART.md</code> shows how to go from a blank Claude Code conversation to a merged PR in one turn. Opt-in telemetry compares MCP vs CLI vs Web usage. <strong>This epic supersedes P-299</strong> (the older "MCP server for OpenCode" wave-3 phase), which is now marked superseded in <code>PROGRESS.md</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- WAVE 2 -->
+    <div class="wave-section wave-2">
+      <div class="wave-header">
+        <span class="wave-num">WAVE 2</span>
+        <h3 style="margin: 0;">Integration, quality, docs</h3>
+        <span class="wave-dates">Weeks 8&ndash;9 &middot; coordinated, file-isolated</span>
+      </div>
+      <p>This is the MVP release wave. The pipeline orchestration, the test matrix, the CI, the docs, and the packaging all land here. The <code>v1.0.0</code> tag is cut at the end of this wave.</p>
+      <p><strong>Orchestration (Epic 12, P-238&ndash;P-252):</strong> A pipeline state machine that drives a job through every stage. A <code>bun:sqlite</code> job queue with retry and rollback. A WebSocket event bus that the Web UI subscribes to. A contract test that fails CI if the frozen <code>core</code> API drifts.</p>
+      <p><strong>Testing + CI (Epic 13, P-253&ndash;P-267):</strong> Unit tests, integration tests against fixture repos, and Playwright e2e tests for the Web UI. A CI matrix on Linux, macOS, and Windows. Per-package coverage thresholds (80% core, 70% CLI, 80% web, 80% shared). A <code>bun audit</code> pass and a manual security review of the sandbox and license policy gate.</p>
+      <p><strong>Docs + packaging (Epic 14, P-268&ndash;P-282):</strong> A <code>README.md</code> with quickstart and screenshots. A <code>QUICKSTART.md</code> with copy-paste-runnable examples. An API reference generated by TypeDoc. A CLI reference generated from the Commander metadata. A web docs site. Publish to npm (both the <code>stitch</code> CLI package and the <code>@repo-stitcher/core</code> library), publish a Docker image, and cut GitHub Releases for all three platforms.</p>
+      <p><strong>Exit criterion:</strong> <code>stitch merge</code> works end-to-end on 5 diverse repo pairs. The eval corpus composite score is at the agreed target. CI is green. Binary releases are downloadable. All docs are published.</p>
+    </div>
+
+    <!-- WAVE 3 -->
+    <div class="wave-section wave-3">
+      <div class="wave-header">
+        <span class="wave-num">WAVE 3</span>
+        <h3 style="margin: 0;">Advanced &amp; extensibility</h3>
+        <span class="wave-dates">Post-MVP &middot; split by component &middot; demand-driven</span>
+      </div>
+      <p>After the MVP ships, the plan pivots to demand-driven prioritization. The phases in Epic 15 are pre-planned but not pre-scheduled. The team picks what to build based on what users actually ask for, what the analytics show, and what the marketplace signals.</p>
+      <p>19 sub-epics cover the platform features: a plugin system, ecosystem plugins for Go/Rust/Python, an AI connector plugin, a template library, smart presets, batch stitch, scheduled merges, multi-user server mode, RBAC, analytics dashboard, outgoing webhooks, REST and GraphQL APIs, a VS Code extension, offline model support, cost budgets, a repo-metadata cache, K8s sandbox, opt-in telemetry, SSO, compliance export, a plugin marketplace, benchmark suite, config migration, and i18n.</p>
+      <p>Plus the four research-gap epics (16&ndash;19) as ongoing work: the eval corpus grows, the LSP coverage extends, the confidence model recalibrates against new rubric data, and the MCP server gains tools and host integrations.</p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 366 PHASES -->
+  <section id="phases">
+    <div style="text-align: center;">
+      <div class="eyebrow">The plan</div>
+      <div class="big-number">366</div>
+      <h2 style="margin-top: 16px;">Phases, every one deep-elaborated to 9/9.</h2>
+      <p class="lead" style="margin: 16px auto 32px;">P-000 to P-366, with P-319 as a documented gap. Each phase has full context, acceptance criteria, dependencies, MCP requirements, and handoff notes. The plan is the source of truth &mdash; implementations are checked off in <code>PROGRESS.md</code> as they ship.</p>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="card">
+        <div class="icon">&#129521;</div>
+        <h4>Wave 0</h4>
+        <p style="color: #7c3aed; font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">86 phases</p>
+        <p>Foundation + all dependencies + handoff package. No business logic yet &mdash; just a compiling, linting, testing, doctor-passing monorepo with a frozen contract.</p>
+      </div>
+      <div class="card cyan">
+        <div class="icon">&#9881;&#65039;</div>
+        <h4>Wave 1</h4>
+        <p style="color: #06b6d4; font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">169 phases</p>
+        <p>Core logic (inbesat, 8 epics) plus CLI + Web UI (aradhy, 2 epics). The big bang &mdash; most of the engineering effort lives here.</p>
+      </div>
+      <div class="card amber">
+        <div class="icon">&#128300;</div>
+        <h4>Wave 1.5</h4>
+        <p style="color: #f59e0b; font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">47 phases</p>
+        <p>Eval harness, cross-language resolution (conditional), confidence scoring, MCP-first distribution. Validate before committing to the MVP tag.</p>
+      </div>
+      <div class="card green">
+        <div class="icon">&#128640;</div>
+        <h4>Wave 2+3</h4>
+        <p style="color: #10b981; font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">64 phases</p>
+        <p>Integration, MVP release packaging, and the post-MVP platform features. Orchestration, testing, CI, docs, and the extensible foundation.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- MILESTONES -->
+  <section id="milestones">
+    <div class="eyebrow">Milestones</div>
+    <h2>Measurable checkpoints from week 1 to release.</h2>
+    <p>Every milestone has a single, falsifiable exit criterion. There is no "almost done" in this plan. Either the criterion is met or the milestone isn't shipped.</p>
+
+    <div class="milestone-list">
+      <div class="milestone"><div class="mid">M0</div><div><div class="mname">Repo scaffolded</div><div class="mdesc">Monorepo compiles; CI green; <code>stitch doctor</code> passes on a clean machine</div></div></div>
+      <div class="milestone"><div class="mid">M1</div><div><div class="mname">Git core works</div><div class="mdesc">Extract paths from A, B; merge to C; push &mdash; all via <code>core</code> functions, no UI</div></div></div>
+      <div class="milestone"><div class="mid">M2</div><div><div class="mname">GitHub integration</div><div class="mdesc">Create repo C via API; open a PR with CREDITS attached</div></div></div>
+      <div class="milestone"><div class="mid">M3</div><div><div class="mname">Deps + license</div><div class="mdesc">Manifest merge with collision report; SPDX scan + policy gate</div></div></div>
+      <div class="milestone"><div class="mid">M4</div><div><div class="mname">AI agent loop</div><div class="mdesc">Auto-applied fixes; gated proposals appear in the UI; the loop completes a merge</div></div></div>
+      <div class="milestone"><div class="mid">M5</div><div><div class="mname">Sandbox verified</div><div class="mdesc">Docker build+test passes for Node, Python, Go, Rust; GH Actions fallback verified</div></div></div>
+      <div class="milestone"><div class="mid">M6</div><div><div class="mname">Provenance complete</div><div class="mdesc">CREDITS.md, SBOM, and git notes for every file in the target repo</div></div></div>
+      <div class="milestone"><div class="mid">M7</div><div><div class="mname">CLI ready</div><div class="mdesc">All 8 commands work; binary builds; <code>stitch serve</code> hosts the Web UI</div></div></div>
+      <div class="milestone"><div class="mid">M8</div><div><div class="mname">Web UI ready</div><div class="mdesc">5-page wizard + detail view; real-time WebSocket; a11y pass</div></div></div>
+      <div class="milestone"><div class="mid">M9</div><div><div class="mname">MVP release</div><div class="mdesc"><code>v1.0.0</code> tagged; all Wave 2 exit criteria met; binary downloadable</div></div></div>
+      <div class="milestone"><div class="mid">M10</div><div><div class="mname">Eval baseline</div><div class="mdesc">P-327 composite score + failure taxonomy documented; go/no-go decision recorded</div></div></div>
+      <div class="milestone"><div class="mid">M11</div><div><div class="mname">Resolution upgrade</div><div class="mdesc">Conditional &mdash; only triggered if Epic 17 conditions are met</div></div></div>
+      <div class="milestone"><div class="mid">M12</div><div><div class="mname">Confidence live</div><div class="mdesc">P-354 calibration complete; confidence visible in CLI, Web, and CREDITS</div></div></div>
+      <div class="milestone"><div class="mid">M13</div><div><div class="mname">MCP channel live</div><div class="mdesc">Server discoverable in MCP registry; usable from at least one real host</div></div></div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SUCCESS METRICS -->
+  <section id="metrics">
+    <div class="eyebrow ok">How we know it works</div>
+    <h2>Success metrics for the MVP.</h2>
+    <p>Each metric is measured, not estimated. If a metric is missed at the MVP tag, it triggers an ADR and a course correction &mdash; the team doesn't ship a metric the team can't defend.</p>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="icon">&#9201;&#65039;</div>
+        <h4>Time-to-green-C</h4>
+        <p><strong>&lt; 5 min</strong> from <code>stitch merge</code> invocation to a sandbox-passed target repo. This is the user's perceived speed. The breakdown: filter-repo ~30s, dep resolution ~10s, AI loop ~90s, sandbox build ~120s.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#9989;</div>
+        <h4>Merge success rate</h4>
+        <p><strong>&gt; 80%</strong> of eval-corpus merges land in a sandbox-green state on the first attempt. The remaining 20% are gated for human review and counted separately.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#128737;&#65039;</div>
+        <h4>License detection</h4>
+        <p><strong>0%</strong> false negatives. GPL, AGPL, and any custom policy-denied license must always be flagged. False positives are acceptable; false negatives are not.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#128203;</div>
+        <h4>Provenance completeness</h4>
+        <p><strong>100%</strong>. Every file in the target repo must map back to exactly one source commit, with original author and license preserved. No orphan files.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#9889;</div>
+        <h4>CLI cold start</h4>
+        <p><strong>&lt; 2s</strong> for <code>stitch --version</code> on a fresh binary. Bun-compiled binaries are fast, but lazy-loaded modules matter.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#127760;</div>
+        <h4>Web UI TTI</h4>
+        <p><strong>&lt; 3s</strong> time-to-interactive on the Web UI's main wizard page, measured by Lighthouse on a local server.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#129514;</div>
+        <h4>Test coverage</h4>
+        <p><strong>80%/70%/80%/80%</strong> Vitest thresholds &mdash; core, CLI, web, shared. Below the threshold, the build fails.</p>
+      </div>
+      <div class="card">
+        <div class="icon">&#128202;</div>
+        <h4>Eval resolve rate</h4>
+        <p><strong>&ge; [target]%</strong> &mdash; the composite score from the eval harness. The exact target is set after P-327 baseline, and is the basis of the MVP go/no-go decision.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- RISKS -->
+  <section id="risks">
+    <div class="eyebrow warn">Risk register</div>
+    <h2>What could go wrong, and what we do about it.</h2>
+    <p>An honest list. Every risk has a mitigation, not a hope. Some risks are accepted on purpose &mdash; the plan names them so the team doesn't pretend they don't exist.</p>
+
+    <div class="risk-grid">
+      <div class="risk high">
+        <div class="rtitle"><code>git-filter-repo</code> on Windows</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Med</span> &middot; <span class="lvl">Impact:</span> <span class="high">High</span></div>
+        <p>Test on Windows early (P-087). Document Python install + pip install git-filter-repo workarounds. Have a fallback to <code>git subtree</code> for the most common cases.</p>
+      </div>
+      <div class="risk">
+        <div class="rtitle">OpenRouter Gemini 3 bug</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Known</span> &middot; <span class="lvl">Impact:</span> <span class="med">Med</span></div>
+        <p>Documented in the model registry. Default to Claude via OpenRouter; test the other models against the eval corpus before promoting them to defaults.</p>
+      </div>
+      <div class="risk">
+        <div class="rtitle">Docker not on CI</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="low">Low</span> &middot; <span class="lvl">Impact:</span> <span class="med">Med</span></div>
+        <p>GitHub Actions fallback is implemented in P-175. The sandbox always has a non-Docker path on CI runners.</p>
+      </div>
+      <div class="risk">
+        <div class="rtitle">AI token cost overrun</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Med</span> &middot; <span class="lvl">Impact:</span> <span class="med">Med</span></div>
+        <p>Per-job 500k token budget. Alert at 80%. Cost-per-merge tracked per run in the eval harness (P-330). Auto-swap to a cheaper model when budget is tight.</p>
+      </div>
+      <div class="risk critical">
+        <div class="rtitle">Eval corpus reveals low resolve rate</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Med</span> &middot; <span class="lvl">Impact:</span> <span class="critical">Critical</span></div>
+        <p>P-327 baseline is the go/no-go gate for the MVP. If the composite score is below the target, the MVP tag is delayed. Epic 17 (LSP resolution) is the conditional response. Worst case: shift to "human review required" as the default mode.</p>
+      </div>
+      <div class="risk med">
+        <div class="rtitle">LSP startup cost</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Med</span> &middot; <span class="lvl">Impact:</span> <span class="med">Med</span></div>
+        <p>Heuristic tree-sitter fallback (P-340) is the primary path. LSP warm-server caching (P-344) is the optimization. Worst case: ship heuristic-only and document the LSP path as experimental.</p>
+      </div>
+      <div class="risk med">
+        <div class="rtitle">Self-confidence uncorrelated with human rubric</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="med">Med</span> &middot; <span class="lvl">Impact:</span> <span class="high">High</span></div>
+        <p>P-354 calibration is the gate. P-355 recalibration loop iterates on prompt and weights until rho &ge; 0.5. <code>CONFIDENCE.md</code> documents the heuristic honestly &mdash; confidence is a hint, not a guarantee.</p>
+      </div>
+      <div class="risk">
+        <div class="rtitle">Merge conflicts between dev owners</div>
+        <div class="rlevel"><span class="lvl">Likelihood:</span> <span class="low">Low</span> &middot; <span class="lvl">Impact:</span> <span class="high">High</span></div>
+        <p>Package isolation by directory ownership. The contract is frozen in <code>packages/shared</code> via the P-314 contract-freeze gate. CI fails on contract drift.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- THE PITCH -->
+  <section class="cta-section" id="pitch">
+    <div class="eyebrow">The pitch</div>
+    <h2>Stop merging. Start stitching.</h2>
+    <p class="lead" style="margin: 0 auto 24px;">Open-source has a composition problem. Every team that wants to combine two libraries writes the same brittle glue. <code>repo-stitcher</code> turns that into a one-line command &mdash; with provenance, license safety, and a working sandbox build, not just a zip of files.</p>
+    <p style="max-width: 700px; margin: 0 auto 16px;">You point it at two repos. It uses <code>git-filter-repo</code> to extract the paths you want. It resolves the dependency union, runs a license compatibility check, and produces a target repo with full <code>CREDITS.md</code>, an SBOM, and a passed sandbox build. It opens a PR. You approve. Done.</p>
+    <p style="font-size: 22px; margin: 32px 0; color: #fff; font-weight: 700;">9 weeks. 366 phases. 1 MVP.</p>
+    <a class="cta" href="PHASES_DETAILED.md">Open the full plan &rarr;</a>
+    <p style="margin-top: 48px; font-size: 14px; color: #71717a;">Generated from the deep-elaborated <code>PHASES_DETAILED.md</code>. Every phase at 9/9 FULL. Plan frozen at v1.0.0.</p>
+  </section>
+
+</main>
+
+<footer>
+  <p>repo-stitcher &middot; the 3D plan &middot; 366 phases &middot; 19 epics &middot; 9 weeks to MVP</p>
+  <p style="margin-top: 8px; color: #52525b;">&copy; 2026 &middot; this is a living document, updated via ADR only</p>
+</footer>
+
+<button class="back-to-top" id="backToTop" aria-label="Back to top">&#8593;</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x06060a, 8, 35);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 8);
+
+const particleCount = 2000;
+const particleGeometry = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const colors = new Float32Array(particleCount * 3);
+const sizes = new Float32Array(particleCount);
+
+const colorPalette = [
+  new THREE.Color('#7c3aed'),
+  new THREE.Color('#a78bfa'),
+  new THREE.Color('#06b6d4'),
+  new THREE.Color('#ec4899'),
+  new THREE.Color('#f59e0b'),
+];
+
+for (let i = 0; i < particleCount; i++) {
+  const i3 = i * 3;
+  positions[i3] = (Math.random() - 0.5) * 50;
+  positions[i3 + 1] = (Math.random() - 0.5) * 50;
+  positions[i3 + 2] = (Math.random() - 0.5) * 35;
+  const c = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+  colors[i3] = c.r; colors[i3 + 1] = c.g; colors[i3 + 2] = c.b;
+  sizes[i] = Math.random() * 0.07 + 0.02;
+}
+
+particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+const particleMaterial = new THREE.ShaderMaterial({
+  vertexShader: `
+    attribute float size;
+    varying vec3 vColor;
+    uniform float uTime;
+    uniform float uScroll;
+    void main() {
+      vColor = color;
+      vec3 pos = position;
+      pos.y += sin(uTime * 0.3 + position.x * 0.1) * 0.3;
+      pos.x += cos(uTime * 0.2 + position.y * 0.1) * 0.2;
+      pos.y += uScroll * 0.5;
+      vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+      gl_PointSize = size * 300.0 / -mvPosition.z;
+      gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vColor;
+    void main() {
+      float d = length(gl_PointCoord - vec2(0.5));
+      if (d > 0.5) discard;
+      float alpha = 1.0 - smoothstep(0.0, 0.5, d);
+      gl_FragColor = vec4(vColor, alpha * 0.8);
+    }
+  `,
+  vertexColors: true,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  uniforms: { uTime: { value: 0 }, uScroll: { value: 0 } }
+});
+
+const particles = new THREE.Points(particleGeometry, particleMaterial);
+scene.add(particles);
+
+const icoGeo = new THREE.IcosahedronGeometry(1.2, 1);
+const icoMat = new THREE.MeshBasicMaterial({ color: 0x7c3aed, wireframe: true, transparent: true, opacity: 0.4 });
+const ico1 = new THREE.Mesh(icoGeo, icoMat);
+ico1.position.set(-3, 0, -2);
+scene.add(ico1);
+
+const icoMat2 = new THREE.MeshBasicMaterial({ color: 0x06b6d4, wireframe: true, transparent: true, opacity: 0.4 });
+const ico2 = new THREE.Mesh(icoGeo.clone(), icoMat2);
+ico2.position.set(3, 0, -2);
+scene.add(ico2);
+
+const ico3Geo = new THREE.IcosahedronGeometry(1.8, 1);
+const ico3Mat = new THREE.MeshBasicMaterial({ color: 0xec4899, wireframe: true, transparent: true, opacity: 0.25 });
+const ico3 = new THREE.Mesh(ico3Geo, ico3Mat);
+ico3.position.set(0, 0, -4);
+scene.add(ico3);
+
+const ringGroup = new THREE.Group();
+for (let i = 0; i < 3; i++) {
+  const ringGeo = new THREE.TorusGeometry(3 + i * 0.4, 0.012, 8, 100);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: i === 0 ? 0x7c3aed : (i === 1 ? 0xa78bfa : 0x06b6d4),
+    transparent: true, opacity: 0.35
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.x = Math.PI / 2 + i * 0.3;
+  ring.rotation.y = i * 0.5;
+  ringGroup.add(ring);
+}
+scene.add(ringGroup);
+
+const lineGroup = new THREE.Group();
+for (let i = 0; i < 25; i++) {
+  const points = [];
+  const t = i / 25;
+  const startX = -3 + (Math.random() - 0.5) * 1.2;
+  const startY = (Math.random() - 0.5) * 1.5;
+  const startZ = (Math.random() - 0.5) * 1.5;
+  const endX = 3 + (Math.random() - 0.5) * 1.2;
+  const endY = (Math.random() - 0.5) * 1.5;
+  const endZ = (Math.random() - 0.5) * 1.5;
+  for (let s = 0; s <= 20; s++) {
+    const u = s / 20;
+    points.push(new THREE.Vector3(
+      startX + (endX - startX) * u,
+      startY + (endY - startY) * u,
+      startZ + (endZ - startZ) * u
+    ));
+  }
+  const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+  const lineMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color().setHSL(t, 0.8, 0.6),
+    transparent: true, opacity: 0.18
+  });
+  const line = new THREE.Line(lineGeo, lineMat);
+  lineGroup.add(line);
+}
+scene.add(lineGroup);
+
+let mouseX = 0, mouseY = 0;
+let scrollY = 0;
+let targetScrollY = 0;
+
+window.addEventListener('mousemove', e => {
+  mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+});
+
+window.addEventListener('scroll', () => {
+  targetScrollY = window.scrollY;
+  if (window.scrollY > 300) {
+    document.getElementById('backToTop').classList.add('visible');
+  } else {
+    document.getElementById('backToTop').classList.remove('visible');
+  }
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = (window.scrollY / max) * 100;
+  document.getElementById('readProgress').style.width = pct + '%';
+});
+
+document.getElementById('backToTop').addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+const clock = new THREE.Clock();
+function animate() {
+  const t = clock.getElapsedTime();
+  scrollY += (targetScrollY - scrollY) * 0.05;
+
+  particleMaterial.uniforms.uTime.value = t;
+  particleMaterial.uniforms.uScroll.value = scrollY * 0.001;
+
+  ico1.rotation.x = t * 0.3;
+  ico1.rotation.y = t * 0.2;
+  ico2.rotation.x = -t * 0.2;
+  ico2.rotation.y = t * 0.3;
+  ico3.rotation.x = t * 0.1;
+  ico3.rotation.y = t * 0.15;
+
+  const scale = 1 + Math.sin(t * 0.8) * 0.1;
+  ico3.scale.set(scale, scale, scale);
+
+  ringGroup.rotation.x = t * 0.05;
+  ringGroup.rotation.y = t * 0.1;
+  ringGroup.rotation.z = t * 0.03;
+
+  camera.position.x += (mouseX * 1.2 - camera.position.x) * 0.05;
+  camera.position.y += (-mouseY * 1.2 - camera.position.y) * 0.05;
+  camera.lookAt(0, 0, 0);
+
+  particles.rotation.y = t * 0.02 + scrollY * 0.0002;
+  particles.rotation.x = t * 0.01;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>

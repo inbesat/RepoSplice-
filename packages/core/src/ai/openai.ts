@@ -37,8 +37,14 @@ import OpenAI, {
 import { ok, err, type Result } from 'neverthrow';
 import { type StitchError } from '../result/index.js';
 
-/** Known OpenAI-compatible provider ids with default base URLs. */
-export type OpenAICompatibleProvider = 'openrouter' | 'openai' | 'ollama';
+/** Known OpenAI-compatible provider ids with default base URLs.
+ *
+ * Renamed in P-132: the `OpenAICompatibleProvider` name now belongs to the
+ * `ChatProvider` class in `openaiCompatible.js` (blueprint-mandated).
+ * Import the class from `./openaiCompatible.js` (or `@repo-stitcher/core`)
+ * when you mean the provider implementation.
+ */
+export type OpenAICompatibleProviderId = 'openrouter' | 'openai' | 'ollama';
 
 /**
  * Options for the OpenAI-compatible client factory.
@@ -53,7 +59,7 @@ export type OpenAICompatibleProvider = 'openrouter' | 'openai' | 'ollama';
  * without the wrapper hardcoding them.
  */
 export interface OpenAICompatibleOptions {
-  provider: OpenAICompatibleProvider | string;
+  provider: OpenAICompatibleProviderId | string;
   apiKey: string;
   model: string;
   baseURL?: string;
@@ -82,7 +88,7 @@ export interface OpenAICompatibleClient {
 }
 
 /** Default base URL per known provider. Exported for P-134 registry wiring. */
-export const DEFAULT_BASE_URLS: Readonly<Record<OpenAICompatibleProvider, string>> = {
+export const DEFAULT_BASE_URLS: Readonly<Record<OpenAICompatibleProviderId, string>> = {
   openrouter: 'https://openrouter.ai/api/v1',
   openai: 'https://api.openai.com/v1',
   ollama: 'http://localhost:11434/v1',
@@ -97,7 +103,7 @@ export const DEFAULT_BASE_URLS: Readonly<Record<OpenAICompatibleProvider, string
 export function resolveBaseURL(provider: string, baseURL?: string): string | undefined {
   if (baseURL !== undefined && baseURL.length > 0) return baseURL;
   if (provider in DEFAULT_BASE_URLS) {
-    return DEFAULT_BASE_URLS[provider as OpenAICompatibleProvider];
+    return DEFAULT_BASE_URLS[provider as OpenAICompatibleProviderId];
   }
   return undefined;
 }

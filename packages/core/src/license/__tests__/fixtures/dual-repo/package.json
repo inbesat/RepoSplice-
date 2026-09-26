@@ -1,0 +1,11 @@
+{
+  "name": "dual-repo-fixture",
+  "version": "1.0.0",
+  "license": [
+    "MIT",
+    "Apache-2.0"
+  ],
+  "dependencies": {
+    "dual-lib": "2.0.0"
+  }
+}

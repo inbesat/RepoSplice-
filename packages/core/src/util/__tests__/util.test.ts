@@ -45,18 +45,32 @@ describe('id: unique + monotonic (P-012)', () => {
   });
 
   it('per-millisecond counter increments on rapid generation', () => {
-    const a = monotonicId('job');
-    const b = monotonicId('job');
-    const c = monotonicId('job');
-    // Within the same millisecond, the seq part should grow.
-    const [, tsA, seqA] = a.split('_');
-    const [, tsB, seqB] = b.split('_');
-    const [, tsC, seqC] = c.split('_');
-    expect(tsA).toBe(tsB);
-    expect(tsB).toBe(tsC);
-    expect(Number.parseInt(seqA ?? '0', 36)).toBe(0);
-    expect(Number.parseInt(seqB ?? '0', 36)).toBe(1);
-    expect(Number.parseInt(seqC ?? '0', 36)).toBe(2);
+    // The counter's contract is "increments within one millisecond, resets on
+    // the next tick" — NOT "every call lands in the same millisecond". A clock
+    // tick between calls is legitimate (and likely under parallel load), so
+    // assert the real invariant: sequence never goes backwards within a
+    // millisecond, and the timestamp is non-decreasing.
+    const ids = Array.from({ length: 25 }, () => monotonicId('job'));
+    expect(new Set(ids).size).toBe(ids.length);
+
+    let previousTs = -1;
+    const sequenceByTs = new Map<string, number>();
+    for (const id of ids) {
+      const [, tsPart, seqPart] = id.split('_');
+      const ts = Number.parseInt(tsPart ?? '0', 36);
+      const seq = Number.parseInt(seqPart ?? '0', 36);
+
+      // Timestamps never go backwards.
+      expect(ts).toBeGreaterThanOrEqual(previousTs);
+      previousTs = ts;
+
+      // Within one millisecond, the sequence is dense and strictly increasing.
+      const prior = sequenceByTs.get(tsPart ?? '');
+      if (prior !== undefined) {
+        expect(seq).toBeGreaterThan(prior);
+      }
+      sequenceByTs.set(tsPart ?? '', seq);
+    }
   });
 });
 

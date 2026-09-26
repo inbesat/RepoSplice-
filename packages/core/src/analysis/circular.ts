@@ -48,6 +48,10 @@ export async function findCycles(
       madge(root, {
         fileExtensions: options.fileExtensions ?? ['ts', 'tsx', 'js', 'jsx'],
         includeNpm: options.includeNpm ?? false,
+        detectiveOptions: {
+          ts: { skipTypeImports: true },
+          tsx: { skipTypeImports: true },
+        },
         ...(options.tsConfig !== undefined ? { tsConfig: options.tsConfig } : {}),
         ...(options.excludeRegExp !== undefined ? { excludeRegExp: options.excludeRegExp } : {}),
       } satisfies MadgeConfig)

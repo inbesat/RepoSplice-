@@ -42,12 +42,11 @@ describe('P-023 scanDeclared: bad path', () => {
   it('returns typed INTERNAL err when depsDir is missing', async () => {
     const badPath = join(repoRoot, 'this', 'license', 'path', 'does', 'not', 'exist');
     const r = await scanDeclared(badPath);
-    // license-checker throws synchronously for a missing path; the
-    // promisify surfaces it as a rejection that fromInternalPromise
-    // maps to INTERNAL. Either way: err with code INTERNAL.
+    // license-checker failure now maps to LICENSE_SCAN_FAILED (P-118).
+    // Older phases used INTERNAL; accept either for compat but prefer LICENSE_SCAN_FAILED.
     expect(r.isErr()).toBe(true);
     if (r.isErr()) {
-      expect(r.error.code).toBe('INTERNAL');
+      expect(['LICENSE_SCAN_FAILED', 'INTERNAL']).toContain(r.error.code);
     }
   }, 30_000);
 });

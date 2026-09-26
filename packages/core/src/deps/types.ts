@@ -147,6 +147,7 @@ export interface Conflict {
   package: string;
   values: Record<string, string>;
   suggestedResolution?: string;
+  dedupeStrategy?: 'hoist' | 'nest' | 'error';
   severity: 'error' | 'warning';
 }
 
@@ -164,4 +165,34 @@ export interface MergeResult {
   merged: UnifiedManifest;
   conflicts: Conflict[];
   warnings: string[];
+}
+
+export interface LockfileResult {
+  ecosystem: 'npm' | 'python' | 'cargo' | 'go';
+  lockfilePath: string;
+  command: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  createdAt: string;
+}
+
+export type ConflictStatus = 'auto-resolved' | 'needs-attention' | 'warning';
+
+export interface DependencyReport {
+  generatedAt: string;
+  ecosystem: 'npm' | 'python' | 'cargo' | 'go';
+  inputSources: { repoName: string; manifestPath: string }[];
+  merged: UnifiedManifest;
+  dependencyCount: { direct: number; dev: number; peer: number; total: number };
+  conflicts: (Conflict & { status: ConflictStatus; resolution?: string })[];
+  dedupe: import('./dedupe.js').DedupeResult[];
+  scripts: { merged: Record<string, string>; collisions: Conflict[] };
+  lockfile: {
+    status: 'generated' | 'failed' | 'skipped';
+    path?: string;
+    command?: string;
+    error?: string;
+  } | null;
+  summary: { mergeable: boolean; needsHuman: boolean; blockedBy: string[] };
 }

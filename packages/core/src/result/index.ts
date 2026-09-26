@@ -73,11 +73,16 @@ export type StitchError =
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }
   | { code: 'SANDBOX_FAILED'; step: 'install' | 'build' | 'test'; logs: string }
+  // P-155 agent tool `run_build`: no build backend was available, so the
+  // verification could not run. Distinct from `SANDBOX_FAILED`, which means a
+  // build ran and failed — here nothing ran at all, and the agent loop must not
+  // treat the absence of a verdict as a failing verdict.
+  | { code: 'SANDBOX_UNAVAILABLE'; message: string; backend?: string }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
   | { code: 'AUTH_ERROR'; provider: string; message: string }
-  | { code: 'COST_LIMIT'; provider: string; spentUsd: number; limitUsd: number }
+  | { code: 'COST_LIMIT'; provider: string; spentUsd: number; limitUsd: number; message?: string }
   | { code: 'COMPLIANCE_VIOLATION'; rule: string; message: string }
   | { code: 'UNKNOWN_LICENSE'; id: string }
   | {
@@ -115,7 +120,79 @@ export type StitchError =
   | { code: 'NETWORK'; message: string; hint: string; repo?: string; scope?: string }
   | { code: 'DEPS_PARSE_ERROR'; file: string; message: string }
   | { code: 'FILE_NOT_FOUND'; path: string; message: string }
-  | { code: 'ECOSYSTEM_MISMATCH'; message: string; ecosystems: string[] };
+  | { code: 'ECOSYSTEM_MISMATCH'; message: string; ecosystems: string[] }
+  | { code: 'LOCKFILE_GENERATION_FAILED'; command: string; exitCode: number; stderr: string }
+  | { code: 'LOCKFILE_NOT_CREATED'; lockfilePath: string; command: string; stderr: string }
+  | { code: 'UNSUPPORTED_ECOSYSTEM'; ecosystem: string; message: string }
+  | { code: 'LICENSE_SCAN_FAILED'; message: string }
+  | { code: 'SCANCODE_MISSING'; message: string; action: string; optInPath?: string }
+  | { code: 'SCANCODE_FAILED'; message: string; stderr?: string; exitCode?: number }
+  // P-136/P-138/P-140/P-141/P-143 AI runtime codes: policy, tool loop,
+  // retry, provider construction, tool-argument parsing, and prompts.
+  | { code: 'TOOL_CALLING_BLOCKED'; message: string; model: string; remedy: string }
+  | { code: 'LOOP_LIMIT'; message: string }
+  // P-164: the loop's token budget, distinct from COST_LIMIT. Tokens and dollars
+  // are different budgets - a cheap model can exhaust a token cap with no dollar
+  // consequence, and an expensive one can hit the dollar cap first - so a run
+  // that stopped for one reason must not be reported as the other.
+  | {
+      code: 'TOKEN_LIMIT';
+      spentTokens: number;
+      limitTokens: number;
+      message: string;
+    }
+  | { code: 'UNKNOWN_TOOL'; message: string }
+  | { code: 'TOOL_DENIED'; message: string }
+  | { code: 'TOOL_ARGS_INVALID_JSON'; message: string }
+  | { code: 'TOOL_ARGS_VALIDATION'; message: string }
+  | { code: 'INVALID_PROVIDER'; message: string }
+  | { code: 'UNKNOWN_MODEL'; message: string }
+  | { code: 'MODEL_INCAPABLE'; message: string }
+  | { code: 'ABORTED'; message: string }
+  // P-156 agent tool `ask_user`: no human answered before the configured bound.
+  // Distinct from `ABORTED` (the human actively cancelled) and from
+  // `USER_CANCELLED`, because "no reply" and "declined" are different events
+  // the agent loop must react to differently.
+  | { code: 'USER_TIMEOUT'; message: string; timeoutMs: number }
+  | { code: 'RETRY_EXHAUSTED'; message: string }
+  | { code: 'PROMPT_NOT_FOUND'; message: string }
+  | { code: 'PROMPT_MISSING_VAR'; message: string }
+  // P-146 runtime provider switch: every failover candidate was exhausted or
+  // rejected by the model/tool policy, so the job cannot continue.
+  | { code: 'NO_FAILOVER'; message: string; exhausted: string[] }
+  // P-148 agent tool `select_files`: a requested path is not present in the
+  // scanned listing of the source repo it was asked to come from (or the
+  // supplied glob matched nothing). `missing` lists the unresolvable
+  // selectors — explicit paths absent from the listing, plus the glob string
+  // itself when it matched nothing — so the UI can show precisely what the
+  // model got wrong instead of a generic failure.
+  | {
+      code: 'SELECT_PATH_NOT_FOUND';
+      message: string;
+      repo: 'A' | 'B';
+      missing: string[];
+      glob?: string;
+    }
+  // P-158 agent tool-result validation: the tool reported SUCCESS but returned
+  // a payload too large to hand back to the model. Distinct from every other
+  // tool code because the tool itself did not fail — a caller cannot fix this
+  // by changing the tool's arguments, only by raising
+  // `MAX_TOOL_RESULT_BYTES` (P-009 `[agent]` block) or narrowing the request.
+  | { code: 'TOOL_RESULT_TOO_LARGE'; message: string; size: number; max: number }
+  // P-159 agent state machine: the orchestrator was asked to make a move the
+  // lifecycle does not permit. Distinct from every other code because nothing
+  // failed — the agent is in a state from which the requested one is
+  // unreachable, which is a programming/contract error rather than a runtime
+  // fault. `from`/`to` are plain strings (not the `AgentState` union) so this
+  // contract module never has to import from the agent module, which imports
+  // from here.
+  | { code: 'ILLEGAL_TRANSITION'; message: string; from: string; to: string }
+  // P-161 undo stack: asked to roll back the most recent action when there is
+  // no action to roll back. Distinct from every other code because nothing
+  // failed and nothing is wrong — the caller asked for a no-op that cannot be
+  // performed, and the loop must be able to tell that apart from a revert that
+  // was attempted and failed.
+  | { code: 'NOTHING_TO_UNDO'; message: string };
 
 export type StitchErrorCode = StitchError['code'];
 
@@ -128,6 +205,7 @@ export const STITCH_ERROR_CODES = [
   'LICENSE_VIOLATION',
   'DEPENDENCY_CONFLICT',
   'SANDBOX_FAILED',
+  'SANDBOX_UNAVAILABLE',
   'CONFIG_ERROR',
   'USER_CANCELLED',
   'INTERNAL',
@@ -143,7 +221,47 @@ export const STITCH_ERROR_CODES = [
   'DEPS_PARSE_ERROR',
   'FILE_NOT_FOUND',
   'ECOSYSTEM_MISMATCH',
+  'LOCKFILE_GENERATION_FAILED',
+  'LOCKFILE_NOT_CREATED',
+  'UNSUPPORTED_ECOSYSTEM',
+  'LICENSE_SCAN_FAILED',
+  'SCANCODE_MISSING',
+  'SCANCODE_FAILED',
+  'TOOL_CALLING_BLOCKED',
+  'LOOP_LIMIT',
+  'TOKEN_LIMIT',
+  'UNKNOWN_TOOL',
+  'TOOL_DENIED',
+  'TOOL_ARGS_INVALID_JSON',
+  'TOOL_ARGS_VALIDATION',
+  'INVALID_PROVIDER',
+  'UNKNOWN_MODEL',
+  'MODEL_INCAPABLE',
+  'ABORTED',
+  'USER_TIMEOUT',
+  'RETRY_EXHAUSTED',
+  'PROMPT_NOT_FOUND',
+  'PROMPT_MISSING_VAR',
+  'NO_FAILOVER',
+  'SELECT_PATH_NOT_FOUND',
+  'TOOL_RESULT_TOO_LARGE',
+  'ILLEGAL_TRANSITION',
+  'NOTHING_TO_UNDO',
 ] as const satisfies readonly StitchErrorCode[];
+
+/**
+ * Human-readable message for any StitchError variant.
+ *
+ * Not every variant carries `message` (USER_CANCELLED carries `reason`,
+ * COST_LIMIT carries amounts, UNKNOWN_LICENSE carries an id), so reading
+ * `error.message` off the union is a type error. This accessor returns the
+ * variant's own message when it has one and falls back to the code, so
+ * callers never reach for a property the variant lacks.
+ */
+export function stitchErrorMessage(error: StitchError): string {
+  const withMessage = error as { readonly message?: unknown };
+  return typeof withMessage.message === 'string' ? withMessage.message : error.code;
+}
 
 /** Factory: ok with a known stitch error type. */
 export function stitchOk<T>(value: T): ResultType<T, StitchError> {

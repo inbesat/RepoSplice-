@@ -506,6 +506,26 @@ export {
 } from './deps/parse/index.js';
 export { recordMerge, sourceLabel, unionManifests } from './deps/merge.js';
 export type { RecordMergeOptions, RecordMergeResult } from './deps/merge.js';
+export { detectPeerConflicts, suggestPeerFix } from './deps/peer.js';
+export type { PeerConflict } from './deps/peer.js';
+export { chooseDedupeStrategy } from './deps/dedupe.js';
+export type { DedupeStrategy, DedupeResult, DedupeOptions } from './deps/dedupe.js';
+export { mergeScripts } from './deps/scripts.js';
+export {
+  mergeTsConfig,
+  mergeViteConfig,
+  mergeEslintConfig,
+  mergeGenericJson,
+} from './deps/config.js';
+export type { ConfigMergeResult } from './deps/config.js';
+export { regenerateLockfile, buildLockfileCommand } from './deps/lockfile.js';
+export type {
+  LockfileResult,
+  RegenerateLockfileOptions,
+  LockfileCommand,
+} from './deps/lockfile.js';
+export { generateDepReport, renderReportJson } from './deps/report.js';
+export type { DependencyReport, ConflictStatus } from './deps/types.js';
 export { detectEcosystems, classifyManifest, DEFAULT_ECOSYSTEM_IGNORE } from './deps/ecosystem.js';
 export type {
   Ecosystem,
@@ -523,6 +543,45 @@ export type { FindCyclesOptions } from './analysis/circular.js';
 export { scanDeclared, writeFixturePkg } from './license/scan.js';
 export type { DeclaredLicense, ScanDeclaredOptions } from './license/scan.js';
 
+// License compliance surface (P-119-P-124) through the license barrel.
+// The compliance `LicensePolicy` is aliased to avoid colliding with the
+// config schema's `LicensePolicy` already exported above.
+export {
+  normalizeToSPDX,
+  isValidSPDX,
+  normalizeExpression,
+  parseLicenses,
+  LICENSE_CATEGORIES,
+  checkCompatibility,
+  parseOrExpression,
+  chooseDualLicense,
+  checkGpl,
+  GPL_REMEDIATIONS,
+  detectUnknown,
+  recordLicenseDecision,
+  getPendingUnknown,
+  clearLicenseDecisionsForTests,
+  getAllUnknownForTests,
+  aggregateLicenseReport,
+  aggregateLicenseReportWithGplOpts,
+  runScanCode,
+  setDeepScanConfigForTests,
+  clearDeepScanConfigForTests,
+  setDeepScanExecForTests,
+} from './license/index.js';
+export type {
+  DualDecision,
+  GplWarning,
+  GplSeverity,
+  UnknownLicense,
+  LicenseReport,
+  LicenseCategory,
+  CompatibilityResult,
+  LicensePolicy as LicenseCompliancePolicy,
+  DeepScanFile,
+  DeepScanResult,
+} from './license/index.js';
+
 export { parseExpr, collectLicenses } from './license/expr.js';
 export type { LicenseExpr } from './license/expr.js';
 
@@ -532,7 +591,7 @@ export type { LicenseInfo } from './license/spdxIndex.js';
 
 export { createOpenAICompatible, resolveBaseURL, DEFAULT_BASE_URLS, OpenAI } from './ai/openai.js';
 export type {
-  OpenAICompatibleProvider,
+  OpenAICompatibleProviderId,
   OpenAICompatibleOptions,
   OpenAICompatibleClient,
   ClientOptions,
@@ -551,6 +610,361 @@ export type {
   AnthropicClientOptions,
   AnthropicClient,
 } from './ai/anthropic.js';
+export { conformsToChatProvider, isRetryableError } from './ai/provider.js';
+export type { ChatProvider } from './ai/provider.js';
+export type { OpenAICompatibleConfig } from './ai/config.js';
+export { OpenAICompatibleProvider, mapSdkError } from './ai/openaiCompatible.js';
+export type { ChatCompletionsPort, PortCreateArgs } from './ai/openaiCompatible.js';
+export { AnthropicProvider } from './ai/anthropicProvider.js';
+export {
+  createProvider,
+  registerProvider,
+  getProviderFactory,
+  providerRegistry,
+  resolveApiKey,
+  setActiveProvider,
+  getActiveProvider,
+  clearActiveProviderForTests,
+} from './ai/registry.js';
+export type { ProviderConfig, ProviderFactory } from './ai/registry.js';
+export { ProviderConfigSchema, PROVIDER_ENV_KEYS } from './ai/config.js';
+export { getModel, getRecommendedFor, assertModelCapable, MODELS } from './ai/models.js';
+export type { ModelSpec } from './ai/models.js';
+export { MockProvider, createMockProvider, mockScriptFromText } from './ai/mock.js';
+export type { MockConfig, MockStep } from './ai/mock.js';
+export {
+  AiAuditLog,
+  redactAuditText,
+  redactProviderError,
+  newAuditId,
+  nowIso,
+  AI_CALLS_TABLE_SQL,
+  DEFAULT_FLUSH_EVERY,
+  DEFAULT_QUERY_LIMIT,
+  MAX_QUERY_LIMIT,
+} from './ai/audit.js';
+export type {
+  AiCallAudit,
+  AiCallQuery,
+  AiAuditLogOptions,
+  AiUserQuestion,
+  AiUserQuestionRecord,
+  AiPolicyDecision,
+  AiPolicyDecisionRecord,
+  AiValidationFailure,
+  AiValidationFailureRecord,
+} from './ai/audit.js';
+export {
+  ProviderManager,
+  switchProvider,
+  buildFailoverOrder,
+  isFailoverCandidate,
+  shouldFailover,
+  DEFAULT_MAX_FAILOVER_SWITCHES,
+} from './ai/switch.js';
+export type { ProviderSwitchInfo, SwitchProviderOptions } from './ai/switch.js';
+export { PROVIDER_SWITCH_TASK, ASK_USER_TASK, POLICY_TASK, VALIDATION_TASK } from './ai/audit.js';
+export type { AiProviderSwitch, AiProviderSwitchRecord } from './ai/audit.js';
+export { promptVersion } from './ai/prompts.js';
+export { openSqlite, STITCH_DB_FILENAME } from './db/sqlite.js';
+export type { SqliteHandle, OpenSqliteOptions } from './db/sqlite.js';
+export { streamChat, streamChatToString } from './ai/stream.js';
+export type { ReasoningChunk } from './ai/types.js';
+export {
+  countTokens,
+  countTokensAccurate,
+  estimateCost,
+  CostTracker,
+  estimateCallCost,
+  shouldRequestApproval,
+} from './ai/cost.js';
+export type { CostBudget } from './ai/cost.js';
+export {
+  backoffDelay,
+  withRetry,
+  retryProviderCall,
+  isProviderErrorRetryable,
+} from './ai/retry.js';
+export type { RetryOpts, RetryInfo as RetryAttemptInfo } from './ai/retry.js';
+export { zodToJsonSchema, parseToolArgs, toolSchemaToProvider } from './ai/toolAdapter.js';
+export { runToolLoop } from './ai/loop.js';
+export type {
+  ToolDefinition,
+  ToolContext,
+  LoopConfig,
+  LoopResult,
+  GitFacade,
+  DepsFacade,
+  LicenseFacade,
+  StagingFacade,
+  SandboxRunner,
+  SandboxRunRequest,
+  SandboxRunResult,
+  HumanQuestion,
+  HumanResponse,
+  HumanResponder,
+  PolicyVerdict,
+  ToolPolicyEvaluator,
+  ToolValidator,
+  AgentStateController,
+  HilGate,
+  HilGateRequest,
+  HilGateOutcome,
+  UndoRecorder,
+  ReasoningEventLike,
+  AgentErrorRouter,
+  LoopCapLike,
+} from './ai/types.js';
+export type { AgentStateName } from './ai/types.js';
+export {
+  render,
+  systemPrompt,
+  resolveDepsPrompt,
+  generateComponentPrompt,
+  detectGapsPrompt,
+} from './ai/prompts.js';
+export { estimateWindowUsage, trimMessages, manageContext, addRepoContext } from './ai/context.js';
+export type { TrimOptions, ContextBlock } from './ai/context.js';
+export { isToolCallingBlocked, enforceToolCallPolicy } from './ai/block.js';
+export type { ToolCallPolicyConfig, ToolCallingPolicy } from './ai/block.js';
+export type {
+  ChatMessage,
+  ChatOptions,
+  ChatResponse,
+  ChatRole,
+  FinishReason,
+  ProviderError,
+  TokenUsage,
+  ToolCall,
+  ToolSchema,
+} from './ai/types.js';
+
+// P-148 agent tools (Epic 7). Re-exported through the public barrel so
+// cli/web import from `@repo-stitcher/core`, never from `core/src/agent/*`.
+export {
+  selectFilesTool,
+  selectFilesSchema,
+  resolveDepsTool,
+  resolveDepsSchema,
+  resolveDependenciesForFiles,
+  detectGapsTool,
+  detectGapsSchema,
+  detectGaps,
+  envUsages,
+  declaredEnvVars,
+  sortGaps,
+  fixDependencyTool,
+  fixDependencySchema,
+  runFixDependency,
+  applyDependencyFix,
+  planDependencyFix,
+  resolveFixRange,
+  serializeFixedManifest,
+  rangesEquivalent,
+  editConfigTool,
+  editConfigSchema,
+  applyConfigEdit,
+  revertConfigEdit,
+  assertWithinRoot,
+  getUndoEntry,
+  listUndoEntries,
+  clearUndoStackForTests,
+  moveFileTool,
+  moveFileSchema,
+  planMove,
+  executeMove,
+  rewriteSpecifier,
+  rewriteImportRefs,
+  proposeComponentTool,
+  proposeComponentSchema,
+  draftComponent,
+  applyProposal,
+  normalizeComponentName,
+  sourceExtension,
+  siblingTestPath,
+  scaffoldCode,
+  scaffoldTests,
+  registrationSnippet,
+  appendSnippet,
+  runBuildTool,
+  runBuildSchema,
+  runBuildForStage,
+  inferEcosystem,
+  commandsFor,
+  boundLogs,
+  detectEcosystemFromListing,
+  describeOutcome,
+  ECOSYSTEM_COMMANDS,
+  askUserTool,
+  askUserSchema,
+  askUser,
+  resolveAskTimeout,
+  validateAnswer,
+  unifiedDiff,
+  detectConfigFormat,
+  parseConfig,
+  serializeConfig,
+  stripJsonComments,
+  parseKeyPath,
+  assertSafeKeyPath,
+  getAtPath,
+  setAtPath,
+  removeAtPath,
+  deepMerge,
+  registerAgentTool,
+  getAgentTool,
+  listAgentTools,
+  hasAgentTool,
+  clearAgentToolsForTests,
+  MAX_SELECTED_FILES,
+  emptyDepClosure,
+  GAP_KINDS,
+  MAX_BUILD_LOG_LINES,
+  DEFAULT_MAX_ASK_TIMEOUT_MS,
+  // P-157 autonomy policy. The agent module's per-tool `Autonomy` is
+  // re-exported as `ToolAutonomy` because the P-009 config block above already
+  // owns the plain `Autonomy` name (same disambiguation as LicenseCompliancePolicy).
+  AutonomyPolicy,
+  defaultAutonomyPolicy,
+  policyFromAgentConfig,
+  DEFAULT_GATED_TOOLS,
+  ALWAYS_ALLOWED_TOOLS,
+  // P-158 tool args/result validation.
+  validateToolResult,
+  sanitizeToolArgs,
+  validateToolCall,
+  createToolValidator,
+  auditValidationFailure,
+  MAX_TOOL_RESULT_BYTES,
+  MAX_TOOL_ARGS_DEPTH,
+  FORBIDDEN_ARG_KEYS,
+  STRICT_PATH_SAFE,
+  // P-159 agent state machine.
+  AgentStateMachine,
+  AGENT_STATES,
+  LEGAL_TRANSITIONS,
+  canTransition,
+  isTerminalState,
+  isWaitingState,
+  canStartToolFrom,
+  isAgentState,
+  memoryStateStore,
+  MAX_STATE_HISTORY,
+  // P-160 HIL approval queue.
+  HilQueue,
+  HIL_TABLES_SQL,
+  // P-161 undo stack.
+  UndoStack,
+  REVERTERS,
+  UNDO_DERIVERS,
+  MAX_UNDO_DEPTH,
+  deriveUndoRecord,
+  revertLastToolAction,
+  createRevertLastTool,
+  revertLastSchema,
+  // P-162 reasoning stream.
+  ReasoningStream,
+  MAX_REASONING_HISTORY,
+  reasoningText,
+  // P-163 error classification.
+  classifyError,
+  handleError,
+  friendlyError,
+  fromUnknownThrow,
+  CLASSIFIED_CODES,
+  // P-164 loop cap.
+  LoopCapGuard,
+  resolveCap,
+  readCapConfig,
+  DEFAULT_MAX_ITERATIONS,
+  parseJsImports,
+  parsePythonImports,
+  jsPackageName,
+  pythonPackageName,
+  classifyJsSpecifier,
+  resolveRelativeImport,
+} from './agent/index.js';
+export type {
+  SourceRepo,
+  SelectedFile,
+  SelectionFilter,
+  FileSelection,
+  SelectFilesArgs,
+  SelectFilesResult,
+  DepClosure,
+  DepSeverity,
+  Gap,
+  GapKind,
+  DetectGapsOptions,
+  DepSection,
+  FixResult,
+  LatestVersionResolver,
+  ApplyDependencyFixOptions,
+  DependencyFixPlan,
+  FixDependencyOutcome,
+  FixDependencyOptions,
+  ConfigEdit,
+  ConfigEditResult,
+  ConfigFormat,
+  MovePlan,
+  ImportRewrite,
+  ComponentProposal,
+  ComponentSpec,
+  BuildOutcome,
+  BuildCmd,
+  BuildEcosystem,
+  UserQuestion,
+  UserAnswer,
+  ToolAutonomy,
+  AutonomyOverride,
+  PolicyDecision,
+  AutonomyPolicyConfig,
+  PolicyContext,
+  ValidationLimits,
+  ValidationStage,
+  ValidationKind,
+  ValidationFailureDetail,
+  ToolValidatorOptions,
+  AgentState,
+  StateChange,
+  AgentStateStore,
+  AgentStateMachineOptions,
+  HilKind,
+  HilStatus,
+  HilRequest,
+  HilResolution,
+  HilEnqueue,
+  HilQueueOptions,
+  HilWaitOptions,
+  UndoKind,
+  UndoRecord,
+  FileSnapshot,
+  Reverter,
+  UndoClock,
+  UndoDeriver,
+  UndoStackOptions,
+  ReasoningEvent,
+  ReasoningListener,
+  ErrorClass,
+  RecoveryAction,
+  ErrorClassification,
+  ErrorBudget,
+  RecoveryDecision,
+  LoopCap,
+  LoopContext,
+  CapKind,
+  CapStop,
+  CapConfigInput,
+  AskUserOptions,
+  RunBuildOptions,
+  PlanMoveOptions,
+  ApplyConfigEditOptions,
+  ConfigValidator,
+  UndoEntry,
+  DiffHunk,
+  DiffLine,
+  SpecifierKind,
+} from './agent/index.js';
 
 export { createDockerClient, pingDocker, defaultDockerSocket } from './sandbox/docker.js';
 export type {

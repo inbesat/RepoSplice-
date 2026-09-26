@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "src/index.ts",
+      "licenses": [{ "spdx_license_key": "MIT" }],
+      "copyrights": [{ "value": "Copyright (c) 2024 Fixture Author" }]
+    },
+    {
+      "path": "src/vendor/gpl-util.js",
+      "licenses": [{ "spdx_license_key": "GPL-3.0-only" }],
+      "copyrights": [{ "value": "Copyright (c) 2023 GPL Author" }]
+    },
+    {
+      "path": "README.md",
+      "licenses": [],
+      "copyrights": []
+    },
+    {
+      "path": ".git/HEAD",
+      "licenses": [{ "spdx_license_key": "MIT" }],
+      "copyrights": []
+    }
+  ]
+}

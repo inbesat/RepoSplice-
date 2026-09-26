@@ -1,6 +1,10 @@
 import pino, { type Logger, type LoggerOptions } from 'pino';
 import { redactPaths } from './redact.js';
 
+// Re-export pino's Logger type so consumers (ai/types.ts ToolContext, etc.)
+// can name it without depending on pino directly.
+export type { Logger };
+
 const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
 const isPretty =
   !isTest && process.env.NODE_ENV !== 'production' && process.env.LOG_PRETTY !== 'false';

@@ -24,11 +24,47 @@ describe('P-015 zod smoke (ConfigSchema)', () => {
       paths: { cacheDir: '.cache', worktreeDir: '.wt' },
       licensePolicy: { allow: ['MIT'], warn: [], deny: [] },
       autonomy: { auto: ['fetch'], gated: ['merge'] },
+      // P-158 added the `[agent]` limits block and P-164 added the loop-cap
+      // budgets. Their defaults mean a config written before either still
+      // validates — asserted below.
+      agent: {
+        maxToolResultBytes: 1_000_000,
+        maxToolArgsDepth: 16,
+        maxIterations: 20,
+        maxTokens: 0,
+        maxCostUsd: 0,
+      },
     };
     const parsed = ConfigSchema.parse(valid);
     expect(parsed.github.authType).toBe('pat');
     expect(parsed.sandbox.backend).toBe('docker');
     expect(parsed.licensePolicy.allow).toEqual(['MIT']);
+    expect(parsed.agent.maxToolResultBytes).toBe(1_000_000);
+    expect(parsed.agent.maxToolArgsDepth).toBe(16);
+
+    // A pre-P-158 config with no `[agent]` block still parses, and gets the
+    // documented defaults rather than failing.
+    const withoutAgent: Record<string, unknown> = { ...valid };
+    delete withoutAgent['agent'];
+    const defaulted = ConfigSchema.parse(withoutAgent);
+    expect(defaulted.agent).toEqual({
+      maxToolResultBytes: 1_000_000,
+      maxToolArgsDepth: 16,
+      maxIterations: 20,
+      maxTokens: 0,
+      maxCostUsd: 0,
+    });
+    // P-164: a pre-P-164 `[agent]` block that predates the cap budgets also
+    // still parses, and gets 20/0/0 — the budgets default to OFF, not to a
+    // limit that would stop a run the operator never asked to bound.
+    const preCap: Record<string, unknown> = {
+      ...valid,
+      agent: { maxToolResultBytes: 1_000_000, maxToolArgsDepth: 16 },
+    };
+    const withCapDefaults = ConfigSchema.parse(preCap);
+    expect(withCapDefaults.agent.maxIterations).toBe(20);
+    expect(withCapDefaults.agent.maxTokens).toBe(0);
+    expect(withCapDefaults.agent.maxCostUsd).toBe(0);
   });
 
   it('rejects invalid config (unknown authType)', () => {

@@ -10,6 +10,7 @@ declare module 'madge' {
     webpackConfig?: string | null;
     tsConfig?: string | null;
     excludeRegExp?: string | boolean;
+    detectiveOptions?: Record<string, unknown>;
   }
 
   // The `madge` default export is a *factory function* (not a class):

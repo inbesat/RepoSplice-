@@ -85,6 +85,14 @@ function renderRunnerError(error: StitchError): string {
       return `doctor failed to run: ${error.code}: ${error.provider}`;
     case 'UNKNOWN_LICENSE':
       return `doctor failed to run: ${error.code}: ${error.id}`;
+    case 'LOCKFILE_GENERATION_FAILED':
+      return `doctor failed to run: ${error.code}: ${error.command} exit ${error.exitCode}`;
+    case 'LOCKFILE_NOT_CREATED':
+      return `doctor failed to run: ${error.code}: ${error.lockfilePath}`;
+    case 'LICENSE_SCAN_FAILED':
+      return `doctor failed to run: ${error.code}: ${error.message}`;
+    case 'UNSUPPORTED_ECOSYSTEM':
+      return `doctor failed to run: ${error.code}: ${error.ecosystem}`;
     default:
       return `doctor failed to run: ${error.code}: ${error.message}`;
   }

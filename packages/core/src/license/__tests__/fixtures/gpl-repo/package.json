@@ -1,0 +1,8 @@
+{
+  "name": "gpl-repo-fixture",
+  "version": "1.0.0",
+  "license": "GPL-3.0-only",
+  "dependencies": {
+    "gpl-lib": "1.0.0"
+  }
+}

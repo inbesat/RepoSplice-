@@ -6,6 +6,9 @@ export default defineProject({
     name: '@repo-stitcher/cli',
     include: ['src/**/*.{test,spec}.ts', 'src/**/*.{test,spec}.tsx'],
     environment: 'node',
+    // Restated from the root config — child projects do not inherit it.
+    testTimeout: 30000,
+    hookTimeout: 180000,
   },
   resolve: {
     alias: {

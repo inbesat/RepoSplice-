@@ -150,10 +150,63 @@ function describeError(error: StitchError): string {
     case 'SANDBOX_FAILED':
       return `${error.code}: ${error.step}: ${error.logs}`;
     case 'COST_LIMIT':
-      return `${error.code}: ${error.provider} spent $${error.spentUsd} of $${error.limitUsd}`;
+      return `${error.code}: ${error.provider} spent $${error.spentUsd} of $${error.limitUsd}${
+        error.message === undefined ? '' : ` (${error.message})`
+      }`;
     case 'UNKNOWN_LICENSE':
       return `${error.code}: ${error.id}`;
+    case 'LOCKFILE_GENERATION_FAILED':
+      return `${error.code}: ${error.command} exit ${error.exitCode}: ${error.stderr}`;
+    case 'LOCKFILE_NOT_CREATED':
+      return `${error.code}: ${error.lockfilePath} not created via ${error.command}: ${error.stderr}`;
+    case 'LICENSE_SCAN_FAILED':
+      return `${error.code}: ${error.message}`;
+    case 'UNSUPPORTED_ECOSYSTEM':
+      return `${error.code}: ${error.ecosystem}: ${error.message}`;
+    case 'SCANCODE_MISSING':
+      return `${error.code}: ${error.message} (${error.action})`;
+    case 'SCANCODE_FAILED':
+      return `${error.code}: ${error.message}`;
+    case 'TOOL_CALLING_BLOCKED':
+    case 'LOOP_LIMIT':
+    case 'TOKEN_LIMIT':
+    case 'UNKNOWN_TOOL':
+    case 'TOOL_DENIED':
+    case 'TOOL_ARGS_INVALID_JSON':
+    case 'TOOL_ARGS_VALIDATION':
+    case 'INVALID_PROVIDER':
+    case 'UNKNOWN_MODEL':
+    case 'MODEL_INCAPABLE':
+    case 'ABORTED':
+    case 'RETRY_EXHAUSTED':
+    case 'PROMPT_NOT_FOUND':
+    case 'PROMPT_MISSING_VAR':
+      return `${error.code}: ${error.message}`;
+    case 'NO_FAILOVER':
+      return `${error.code}: ${error.message} (candidates rejected: ${error.exhausted.length})`;
+    case 'SANDBOX_UNAVAILABLE':
+      return `${error.code}: ${error.message}`;
+    case 'USER_TIMEOUT':
+      return `${error.code}: ${error.message} (waited ${error.timeoutMs}ms)`;
+    case 'SELECT_PATH_NOT_FOUND':
+      return `${error.code}: ${error.message}`;
+    case 'TOOL_RESULT_TOO_LARGE':
+      return (
+        `${error.code}: ${error.message} ` +
+        `(${formatBytes(error.size)} returned, ${formatBytes(error.max)} allowed)`
+      );
+    case 'ILLEGAL_TRANSITION':
+      return `${error.code}: ${error.message} (${error.from} -> ${error.to})`;
+    case 'NOTHING_TO_UNDO':
+      return `${error.code}: ${error.message}`;
   }
+}
+
+/** Human-readable byte count for the oversized-result renderer. */
+function formatBytes(bytes: number): string {
+  if (bytes >= 1_000_000) return `${(bytes / 1_000_000).toFixed(1)}MB`;
+  if (bytes >= 1_000) return `${(bytes / 1_000).toFixed(1)}kB`;
+  return `${bytes}B`;
 }
 
 /** Degrade a broken probe to a failed outcome (never a throw). */
