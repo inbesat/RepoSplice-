@@ -95,6 +95,18 @@ export const SandboxConfigSchema = z.object({
    * lockfile key already invalidates on the changes that matter.
    */
   cacheKeyFullTree: z.boolean().optional(),
+  /**
+   * P-179: the `allow-list` environment policy's key set. Only consulted when
+   * `envPolicy` is `'allow-list'`; absent means an EMPTY allow-list (nothing is
+   * passed), which fails safe.
+   */
+  allowedEnv: z.array(z.string().min(1)).optional(),
+  /**
+   * P-179: scan a bounded prefix of each captured artifact for credential
+   * shapes. Default OFF — artifacts are otherwise checked by NAME only, so the
+   * common accident is still caught without reading 100 MB tars.
+   */
+  secretScanArtifacts: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

@@ -183,6 +183,25 @@ export type {
   SandboxCacheOptions,
 } from './cache.js';
 
+// P-179 — secret-safe sandbox.
+export {
+  isSecretKey,
+  isSecretToken,
+  safeEnv,
+  safeEnvPlan,
+  scrubSecrets,
+  scanArtifactName,
+  scanArtifactContent,
+  scanArtifactFile,
+  suspectedSecretReason,
+  loggerSensitiveFields,
+  REDACTED,
+  SECRET_KEY_PATTERN,
+  SECRET_KEY_SUFFIX_PATTERN,
+  SENSITIVE_ARTIFACT_NAMES,
+} from './secrets.js';
+export type { EnvPolicy, SafeEnvOptions, SafeEnvPlan, SecretScanWarning } from './secrets.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

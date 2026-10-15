@@ -39,6 +39,7 @@ import { pipeline } from 'node:stream/promises';
 import type Docker from 'dockerode';
 import { type StitchError } from '../result/index.js';
 import { createDockerClient, pingDocker, type DockerClientOptions } from './docker.js';
+import { safeEnvPlan, scrubSecrets, type EnvPolicy } from './secrets.js';
 
 /** How many log lines per stream are kept (the phase handoff's bound). */
 export const MAX_CONTAINER_LOG_LINES = 500;
@@ -277,12 +278,24 @@ export interface SandboxClientOptions {
   networkAllowed?: boolean;
   /** Per-stream log-line cap. Default {@link MAX_CONTAINER_LOG_LINES}. */
   maxLogLines?: number;
+  /**
+   * P-179: how environment variables are treated before a container sees them.
+   * Default `'block'` — every secret-keyed variable is removed. There is no
+   * "pass through" value, because host env is never passed wholesale.
+   */
+  envPolicy?: EnvPolicy;
+  /** P-179: `config.sandbox.allowedEnv` — the `allow-list` policy's key set. */
+  allowedEnv?: readonly string[];
 }
 
 /** Options for {@link SandboxClient.create}: a real dockerode client + policy. */
 export interface SandboxClientFactoryOptions extends DockerClientOptions {
   networkAllowed?: boolean;
   maxLogLines?: number;
+  /** P-179: the environment policy. Default `'block'`. */
+  envPolicy?: EnvPolicy;
+  /** P-179: the `allow-list` policy's key set. */
+  allowedEnv?: readonly string[];
   /** Platform for the daemon's own image pulls (rarely needed). */
   platform?: string;
 }
@@ -388,11 +401,15 @@ export class SandboxClient {
   readonly #docker: DockerLike;
   readonly #networkAllowed: boolean;
   readonly #maxLogLines: number;
+  readonly #envPolicy: EnvPolicy;
+  readonly #allowedEnv: readonly string[];
 
   constructor(options: SandboxClientOptions) {
     this.#docker = options.docker;
     this.#networkAllowed = options.networkAllowed ?? true;
     this.#maxLogLines = Math.max(1, options.maxLogLines ?? MAX_CONTAINER_LOG_LINES);
+    this.#envPolicy = options.envPolicy ?? 'block';
+    this.#allowedEnv = options.allowedEnv ?? [];
   }
 
   /**
@@ -409,6 +426,8 @@ export class SandboxClient {
         docker: adaptDocker(created.value.docker),
         ...(options.networkAllowed !== undefined ? { networkAllowed: options.networkAllowed } : {}),
         ...(options.maxLogLines !== undefined ? { maxLogLines: options.maxLogLines } : {}),
+        ...(options.envPolicy !== undefined ? { envPolicy: options.envPolicy } : {}),
+        ...(options.allowedEnv !== undefined ? { allowedEnv: options.allowedEnv } : {}),
       })
     );
   }
@@ -568,9 +587,16 @@ export class SandboxClient {
     }
     const timeoutMs = opts.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
 
+    // P-179: the container only ever sees the SANITISED environment. `spec.env`
+    // is the caller's object, so a new spec is built rather than mutating it,
+    // and the plan's value list is what scrubs the logs collected below. Host
+    // `process.env` is never read here — `spec.env` is the only source.
+    const plan = safeEnvPlan(spec.env ?? {}, this.#envPolicy, { allowedEnv: this.#allowedEnv });
+    const safeSpec: ContainerSpec = spec.env === undefined ? spec : { ...spec, env: plan.env };
+
     let container: ContainerLike;
     try {
-      container = await this.#docker.createContainer(this.#createOptions(spec));
+      container = await this.#docker.createContainer(this.#createOptions(safeSpec));
     } catch (cause: unknown) {
       return err({ code: 'DOCKER_ERROR', message: `createContainer failed: ${detailOf(cause)}` });
     }
@@ -591,7 +617,14 @@ export class SandboxClient {
       const waited = await this.#waitForExit(container, containerId, timeoutMs, opts.signal);
       if (waited.isErr()) return err(waited.error);
 
-      const logs = await this.#collectLogs(container);
+      const raw = await this.#collectLogs(container);
+      // P-179: scrub at the source, before `onLog` or the returned arrays can
+      // observe the bytes — the same "nothing unscrubbed leaves the run" rule
+      // P-173's capture applies at ingress.
+      const logs = {
+        stdout: raw.stdout.map(line => scrubSecrets(line, plan.secretValues)),
+        stderr: raw.stderr.map(line => scrubSecrets(line, plan.secretValues)),
+      };
       // P-173: hand the collected lines to the capture sink.
       if (opts.onLog !== undefined) {
         for (const line of logs.stdout) opts.onLog(line);

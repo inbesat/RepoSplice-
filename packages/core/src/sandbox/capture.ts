@@ -24,6 +24,12 @@ import { ok, err, type Result } from 'neverthrow';
 import { stat } from 'node:fs/promises';
 import { type StitchError } from '../result/index.js';
 import { dbAll, dbRun, type DbLike, type SQLiteValue } from '../store/schema.js';
+import {
+  scanArtifactFile,
+  scanArtifactName,
+  scrubSecrets,
+  type SecretScanWarning,
+} from './secrets.js';
 
 /** Default ring-buffer capacity, in lines. */
 export const DEFAULT_LOG_CAPACITY = 10_000;
@@ -93,6 +99,24 @@ export interface CaptureOptions {
   db?: DbLike;
   /** Clock, injectable so tests are deterministic. */
   now?: () => string;
+  /**
+   * P-179: secret VALUES in scope for every run, scrubbed from each line at
+   * ingress. Per-run values can be added via {@link CaptureManager.bindRun}.
+   */
+  secrets?: readonly string[];
+  /**
+   * P-179: receives an artifact warning when a name (or, when enabled, a
+   * content prefix) looks secret-bearing. A callback rather than a return
+   * value, so `extractArtifacts` keeps its signature and a warning can never
+   * fail a capture that otherwise succeeded.
+   */
+  onWarning?: (warning: SecretScanWarning) => void;
+  /**
+   * P-179: `config.sandbox.secretScanArtifacts`. When `true`, a BOUNDED prefix
+   * of each copied artifact is scanned for credential shapes. Default `false`:
+   * artifacts are otherwise checked by NAME only.
+   */
+  scanArtifactContent?: boolean;
 }
 
 /** Options for {@link CaptureManager.capture}. */
@@ -169,14 +193,21 @@ export class CaptureManager {
   readonly #maxArtifactBytes: number;
   readonly #db: DbLike | undefined;
   readonly #now: () => string;
+  readonly #secrets: readonly string[];
+  readonly #onWarning: ((warning: SecretScanWarning) => void) | undefined;
+  readonly #scanArtifactContent: boolean;
   readonly #buffers = new Map<string, LogEntry[]>();
   readonly #dropped = new Map<string, number>();
+  readonly #runSecrets = new Map<string, readonly string[]>();
 
   constructor(options: CaptureOptions = {}) {
     this.#capacity = Math.max(1, options.logCapacity ?? DEFAULT_LOG_CAPACITY);
     this.#maxArtifactBytes = Math.max(0, options.maxArtifactBytes ?? DEFAULT_MAX_ARTIFACT_BYTES);
     this.#db = options.db;
     this.#now = options.now ?? (() => new Date().toISOString());
+    this.#secrets = options.secrets ?? [];
+    this.#onWarning = options.onWarning;
+    this.#scanArtifactContent = options.scanArtifactContent === true;
   }
 
   /**
@@ -184,17 +215,31 @@ export class CaptureManager {
    *
    * The returned sink is what `client.run`'s `onLog` (or a live
    * `followLogs` reader) feeds, so a run's output lands in one bounded buffer.
+   * `secrets` are the values in scope for THIS run; they are merged with the
+   * instance-wide list and scrubbed from every line at ingress.
    */
-  bindRun(runId: string): LogSink {
+  bindRun(runId: string, secrets: readonly string[] = []): LogSink {
     this.#buffers.set(runId, []);
     this.#dropped.set(runId, 0);
+    this.#runSecrets.set(runId, secrets);
     return { stream: (line: string): void => this.append(runId, line) };
   }
 
-  /** Append one line, dropping the oldest entries past the cap. */
+  /** The secret values in scope for one run. */
+  #secretsFor(runId: string): readonly string[] {
+    const perRun = this.#runSecrets.get(runId) ?? [];
+    return perRun.length === 0 ? this.#secrets : [...this.#secrets, ...perRun];
+  }
+
+  /**
+   * Append one line, dropping the oldest entries past the cap.
+   *
+   * P-179: the line is scrubbed BEFORE it enters the buffer, so no unscrubbed
+   * text is ever retained, returned by {@link logs}, or persisted.
+   */
   append(runId: string, line: string): void {
     const buffer = this.#buffers.get(runId) ?? [];
-    buffer.push({ ts: this.#now(), line });
+    buffer.push({ ts: this.#now(), line: scrubSecrets(line, this.#secretsFor(runId)) });
     while (buffer.length > this.#capacity) {
       buffer.shift();
       this.#dropped.set(runId, (this.#dropped.get(runId) ?? 0) + 1);
@@ -221,6 +266,7 @@ export class CaptureManager {
   clear(): void {
     this.#buffers.clear();
     this.#dropped.clear();
+    this.#runSecrets.clear();
   }
 
   /**
@@ -328,6 +374,12 @@ export class CaptureManager {
           .pop() ?? '';
       const target = hostArtifactPath(hostDir, safeRun.value, name);
       if (target.isErr()) return err(target.error);
+
+      // P-179: a suspicious NAME is worth a warning before a single byte is
+      // copied — cheap, and it catches `cp ~/.ssh/id_rsa .` outright.
+      const nameWarning = scanArtifactName(name);
+      if (nameWarning !== undefined) this.#onWarning?.(nameWarning);
+
       // `copyFrom` writes `<dir>/<basename>.tar`; give it the run-scoped dir.
       const copied = await client.copyFrom(
         containerId,
@@ -335,6 +387,14 @@ export class CaptureManager {
         runDirFor(hostDir, safeRun.value)
       );
       if (copied.isErr()) return err(copied.error);
+
+      // P-179: content scanning is opt-in and BOUNDED, so a 100 MB tar cannot
+      // turn a safety feature into a memory hazard. Warnings never fail the copy.
+      if (this.#scanArtifactContent) {
+        const scanned = await scanArtifactFile(copied.value);
+        if (scanned.isOk()) for (const warning of scanned.value) this.#onWarning?.(warning);
+      }
+
       const size = await fileSize(copied.value);
       bytes += size;
       if (bytes > this.#maxArtifactBytes) {

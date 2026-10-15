@@ -1142,6 +1142,28 @@ export type {
   CacheEntryRecord,
   SandboxCacheOptions,
 } from './sandbox/cache.js';
+export {
+  isSecretKey,
+  isSecretToken,
+  safeEnv,
+  safeEnvPlan,
+  scrubSecrets,
+  scanArtifactName,
+  scanArtifactContent,
+  scanArtifactFile,
+  suspectedSecretReason,
+  loggerSensitiveFields,
+  REDACTED,
+  SECRET_KEY_PATTERN,
+  SECRET_KEY_SUFFIX_PATTERN,
+  SENSITIVE_ARTIFACT_NAMES,
+} from './sandbox/secrets.js';
+export type {
+  EnvPolicy,
+  SafeEnvOptions,
+  SafeEnvPlan,
+  SecretScanWarning,
+} from './sandbox/secrets.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
