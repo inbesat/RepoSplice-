@@ -101,6 +101,7 @@ export {
   UNDO_DERIVERS,
   MAX_UNDO_DEPTH,
   deriveUndoRecord,
+  createUndoRecorder,
   revertLastToolAction,
 } from './revert.js';
 export type { Reverter, UndoClock, UndoDeriver, UndoStackOptions } from './revert.js';

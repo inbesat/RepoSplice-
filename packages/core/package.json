@@ -28,7 +28,8 @@
     "lint:deps": "depcruise src --config dependency-cruiser.config.cjs",
     "test:deps-fix": "bunx vitest run src/deps --coverage --coverage.include=\"src/deps/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/__fixtures__/**\"",
     "test:license": "bunx vitest run src/license --coverage --coverage.include=\"src/license/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
-    "test:ai": "bunx vitest run src/ai --coverage --coverage.include=\"src/ai/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.exclude=\"**/__fixtures__/**\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80"
+    "test:ai": "bunx vitest run src/ai --coverage --coverage.include=\"src/ai/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.exclude=\"**/__fixtures__/**\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
+    "test:agent:e2e": "bunx vitest run src/agent --coverage --coverage.include=\"src/agent/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.124.0",

@@ -859,6 +859,7 @@ export {
   UNDO_DERIVERS,
   MAX_UNDO_DEPTH,
   deriveUndoRecord,
+  createUndoRecorder,
   revertLastToolAction,
   createRevertLastTool,
   revertLastSchema,

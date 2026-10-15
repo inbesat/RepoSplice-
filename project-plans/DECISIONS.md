@@ -1919,4 +1919,31 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-040: The E2E Harness Owns Orchestration, the Fixtures Are Generated From Committed Specs, and `fix_dependency` Persistence Is the Caller's Job
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-167 (`PHASES_DETAILED.md:8437-8481`) is the gate that declares Epic 7 done: two real fixture repos → a real agent loop with tools → a buildable child repo C → the licence/compliance gate, end to end and offline. Its Files list names a committed `agent/__tests__/fixtures/` tree, and its steps describe a `runAgentE2E` "orchestration harness". Running the real stack surfaced several places where the E2E must supply what the tools deliberately do NOT own.
+
+**Decisions:**
+
+- **Fixtures are generated from COMMITTED specs, not a committed `fixtures/` tree.** Step 1 allows "the P-064 generator **or** committed [repos]". A committed tree of `.js` files under `src/` would be linted by the repo-wide `eslint .` (there is no fixtures ignore, and every other fixture dir in this repo is non-JS), and would have to carry nested `.git` directories. So the `FixtureSpec` constants are committed in `agent.e2e.test.ts` and the generator builds the repos per run — the same "committed spec, generated repo" arrangement `gitFacade.test.ts` (P-165) and the P-087 git suites use, which is deterministic without either problem.
+- **The harness is the orchestrator for the steps tools deliberately do not own.** `select_files` only *proposes* a selection (P-148 is read-only), so the harness writes the selected files into C before the loop, exactly as the merge pipeline does.
+- **`fix_dependency` persistence is the caller's job, and it is a MERGE, not a replace.** P-151 is compute-only and says so ("the caller serializes/writes it, not this tool"), and `runFixDependency` models a synthetic `{name, dependencies}` manifest. Writing that verbatim drops `license`/`version`/`scripts` — and the compliance gate (P-120) then reads the root package as `UNKNOWN` and blocks a stage that is actually MIT. The harness therefore merges the fix's `{package, version}` into the stage manifest's `fix.section`, preserving every other field. The `selection` is threaded through `runFixDependency`'s options because `ToolDefinition.execute` has no options channel (P-151 designed it that way for exactly this caller).
+- **The HIL test uses the REAL `HilQueue`**, over a local in-memory `DbLike` (the `node:sqlite` adapter every P-145/P-160 test file defines), not a mock gate. A short `hilTimeoutMs` lets the parked request be asserted *after* `USER_TIMEOUT` without hanging the suite — `waitForResolution` leaves the row `pending`, so `queue.pending()` proves both the park and its `waiting_approval` state, and the stage's commit log (baseline only) proves C was not finalised.
+- **No production `StagingFacade` exists**, so the harness supplies a small read-only one over the stage (P-150 specified only the interface; the orchestrator, P-238, owns the production one, exactly as it owns the other facades' construction).
+- **The sandbox is the P-155 seam, stubbed.** The injected `SandboxRunner` returns exit 0 and records every request, so the build/test half runs offline; the test asserts the recorded sequence `['build','test','test']`, which is P-155's build-once/test-twice policy.
+- **`test:agent:e2e` runs the repo's runner, not `bun test`.** The script mirrors the existing `test:ai`/`test:license` shape (`bunx vitest run src/agent --coverage … --coverage.thresholds…`): `bun test` cannot run in this repo (its `bunfig.toml` `preload` is rejected by Bun's native runner), and running the whole `src/agent` suite is what makes the 80/70/80/80 gate honest — one E2E file cannot cover the module.
+- **Barrel completeness (step 6) uncovered a real omission.** `createUndoRecorder` — the `UndoRecorder` the loop consumes (P-161) — was implemented and used but never exported from `agent/index.ts` or the public barrel. Added to both.
+
+**Consequences:**
+
+- The suite proves the whole stack wires together: selection → real `resolve_dependency_closure` finding `left-pad` missing → real P-151 fix → manifest updated on disk → `run_build` through the sandbox seam → `complianceGate` `allow`.
+- The blocking path is proven with real modules: an installed GPL dependency makes `complianceGate().blocking === true`, the gated `ask_user` parks a durable `waiting_approval` request, and the stage keeps only its baseline commit.
+- `LOOP_LIMIT` and `revert_last` are covered end to end, so the cap (P-164) and the undo stack (P-161) are proven against the real loop rather than in isolation.
+- `test:agent:e2e` is green (21 files / 160 tests, coverage 84.27/71.98/93.02/88.73 vs the 80/70/80/80 gate), and the full suite is green (161 files / 2014 tests).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
