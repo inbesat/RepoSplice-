@@ -2045,4 +2045,36 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-045: Test Counts Come From Each Runner's Own Summary, Because No Runner Emits a Machine-Readable Report on Stdout
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-172 (`PHASES_DETAILED.md:8683-8725`) must turn a test run into a STRUCTURED `TestResult` — counts plus a bounded failure list — because the pipeline gate and P-176's flaky detection need more than a boolean, and `failures[].file` is what ties a red test back to a source file for P-181 provenance. Step 2 asks for "a `JUNIT`/`json` reporter flag where supported … else parse stdout regex".
+
+**The measurement that shaped the phase:** none of the four runners can emit a machine-readable report on **stdout**:
+
+| runner | flag | reality |
+|--------|------|---------|
+| `bun test` | `--reporter=junit` | **requires `--reporter-outfile=<path>`** — verified directly via `bun test --help`; it writes a FILE |
+| `pytest` | `--junit-xml` | writes a FILE |
+| `cargo test` | `--format json` | needs nightly |
+| `go test` | `-json` | exists, but go is not installed on this machine, so it could not be verified |
+
+So adding a reporter flag to the captured stdout would have produced nothing to parse — a phantom flag. The decision is therefore:
+
+1. **Counts come from each runner's own summary line**, parsed by `parseSummary`: `bun test` → `N pass / N fail / N skip`; `pytest -q` → `N passed, N failed, N skipped`; `cargo test` → `test result: … N passed; N failed; N ignored`; `go test` → intentionally **no counts** (it enumerates only failures, and counting `ok <pkg>` lines as tests would overstate), so the exit code carries the verdict — which is exactly step 3's "0 when unparseable but exit 0 → trust exit code".
+2. **A JUnit parser IS implemented and honoured when the output is XML** (`looksLikeJunit` → `parseJunitXml`). Nothing produces that today, but P-173's artifact capture lifts reporter files out of the container, at which point the same parser consumes them — so the support the handoff asks to "keep documented per ecosystem" is real code, not a promise. Malformed XML falls back to the text path rather than reporting zeros.
+3. **A real parser gap was caught by the tests:** the first version's failure regex only matched `<failure message="m">stack</failure>` and silently dropped the **self-closing** `<failure message="m"/>`, which is valid JUnit and is what a reporter emits for a message-only failure. Fixed, with the capped-failures test asserting 5 of 90.
+4. **Verdict semantics mirror P-171:** `pass = exitCode === 0`; a red suite is `ok(pass:false)` (the loop and the pipeline iterate on it), and only an infrastructure failure — a container error, a blank `repoPath` — is a typed `err`. No new error codes were needed.
+5. **Bounds are explicit and separate:** log lines are capped by P-171's `boundLogLines` (500, reused rather than re-declared) and the failure list by `MAX_TEST_FAILURES` (50), because a 90-failure suite would otherwise flood the UI P-220 renders.
+6. **The container seam is shared with P-171** (`TestClient = BuildClient`): same `run(spec, opts)` shape, same `/workspace` mount, plus `/buildout` when the caller supplies a dir, and `networkDisabled` when `networkAllowed === false`.
+
+**Consequences:**
+
+- The suite is exercisable offline with a fake client: the 6 mandated tests plus 3 extras feed sampled bun / pytest / cargo / go output and JUnit XML through the real parsers and assert counts, failure identity (name, message, file), the fallback, both verdict directions, the offline switch, and both bounds.
+- Every parser is a pure exported function, so a future runner's format is a data change with a test, not a rewrite of `runTests`.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

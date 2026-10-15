@@ -1042,6 +1042,16 @@ export {
   BUILDOUT_MOUNT,
 } from './sandbox/build.js';
 export type { BuildResult, BuildClient } from './sandbox/build.js';
+export {
+  runTests,
+  parseTestOutput,
+  parseJunitXml,
+  looksLikeJunit,
+  TEST_COMMANDS,
+  DEFAULT_TEST_TIMEOUT_MS,
+  MAX_TEST_FAILURES,
+} from './sandbox/test.js';
+export type { TestResult, TestFailure, TestClient, ParsedTestCounts } from './sandbox/test.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

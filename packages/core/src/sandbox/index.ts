@@ -62,6 +62,24 @@ export {
 } from './build.js';
 export type { BuildResult, RunBuildOptions, BuildClient } from './build.js';
 
+// P-172 — run the ecosystem test suite inside the sandbox.
+export {
+  runTests,
+  parseTestOutput,
+  parseJunitXml,
+  looksLikeJunit,
+  TEST_COMMANDS,
+  DEFAULT_TEST_TIMEOUT_MS,
+  MAX_TEST_FAILURES,
+} from './test.js';
+export type {
+  TestResult,
+  TestFailure,
+  RunTestsOptions,
+  TestClient,
+  ParsedTestCounts,
+} from './test.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,
