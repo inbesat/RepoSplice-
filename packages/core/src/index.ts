@@ -989,6 +989,25 @@ export type {
   DockerSandboxClient,
   DockerReachability,
 } from './sandbox/docker.js';
+export {
+  SandboxClient,
+  demuxDockerLogs,
+  MAX_CONTAINER_LOG_LINES,
+  DEFAULT_RUN_TIMEOUT_MS,
+} from './sandbox/client.js';
+export type {
+  ContainerSpec,
+  ContainerRun,
+  SandboxStats,
+  SandboxClientOptions,
+  SandboxClientFactoryOptions,
+  PullOptions,
+  RunOptions,
+  DockerLike,
+  ContainerLike,
+  ContainerCreateOptionsLike,
+  HostConfigLike,
+} from './sandbox/client.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

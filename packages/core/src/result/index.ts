@@ -69,6 +69,11 @@ export type StitchError =
       scope?: string;
     }
   | { code: 'DOCKER_ERROR'; message: string; containerId?: string }
+  // P-168: an image pull failed. Distinct from `DOCKER_ERROR` (a container
+  // operation failed) because the remedies differ — a pull failure is about
+  // the registry/image/tag or daemon auth, and P-175's GH Actions fallback
+  // keys off it, while a container failure is about the run itself.
+  | { code: 'DOCKER_PULL_FAILED'; message: string; image?: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }
@@ -201,6 +206,7 @@ export const STITCH_ERROR_CODES = [
   'GIT_ERROR',
   'GITHUB_API_ERROR',
   'DOCKER_ERROR',
+  'DOCKER_PULL_FAILED',
   'AI_PROVIDER_ERROR',
   'LICENSE_VIOLATION',
   'DEPENDENCY_CONFLICT',

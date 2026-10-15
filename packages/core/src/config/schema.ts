@@ -42,6 +42,13 @@ export const SandboxConfigSchema = z.object({
   backend: SandboxBackendSchema,
   dockerHost: z.string().min(1).optional(),
   limits: SandboxLimitsSchema,
+  /**
+   * P-168: whether containers may reach the network. `false` starts every
+   * container with `NetworkMode: 'none'` (the offline posture P-174 owns).
+   * Optional so existing configs are unchanged; `undefined` means "allowed",
+   * which is the behaviour that predates this field.
+   */
+  networkAllow: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

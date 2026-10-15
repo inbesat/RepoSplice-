@@ -1946,4 +1946,28 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-041: The Docker Client Adds `DOCKER_PULL_FAILED` and `networkAllow`, Wraps the P-067 Probe, and Adapts dockerode's Overloads
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-168 (`PHASES_DETAILED.md:8488-8532`) opens Epic 8 with the container-lifecycle client the whole Sandbox epic builds on. Four of its requirements did not match the codebase, and one was a TypeScript trap.
+
+**Decisions:**
+
+1. **`DOCKER_PULL_FAILED` is a new code.** The spec mandates `err('DOCKER_PULL_FAILED')` (step 2 + acceptance), but `result/index.ts` only had `DOCKER_ERROR` (a container operation failed) and `SANDBOX_FAILED`/`SANDBOX_UNAVAILABLE`. The distinction is real: a pull failure is about the image/tag/registry or daemon auth and is what P-175's GH Actions fallback keys off, while a container failure is about the run. Added as **code 50** with the same six coordinated edits P-164 used for `TOKEN_LIMIT`: the union, `STITCH_ERROR_CODES`, `doctor.ts`'s exhaustive `describeError`, **P-163's `Record<StitchErrorCode, ErrorRule>` in `agent/errors.ts`** (the mechanism P-163 built — the compile error fired exactly as designed), `build.smoke.test.ts`'s hardcoded count (49 → 50), and `INTEGRATIONS.md` §9.1.
+2. **`config.sandbox.networkAllow` is added as an OPTIONAL boolean.** Step 4 and the acceptance criterion both name it, but `SandboxConfigSchema` had only `backend`/`dockerHost?`/`limits`. It is `.optional()` rather than defaulted so `defaultConfig` needs no change and an existing config is untouched; `undefined` means "network allowed", which is the pre-P-168 behaviour. `SandboxClient` takes the flag as a constructor option (so it is testable without a `Config`) and the orchestrator passes `config.sandbox.networkAllow` through. P-174 owns the product default.
+3. **The client WRAPS the P-067 surface instead of reimplementing it.** `sandbox/docker.ts` already exports `createDockerClient` (factory, no I/O), `pingDocker` (reachability as data, never an err) and `defaultDockerSocket`. `SandboxClient.isAvailable()` therefore delegates to `pingDocker` rather than calling `docker.ping()` itself, and `SandboxClient.create()` builds its instance via `createDockerClient` — so there is one reachability policy in the codebase, not two.
+4. **The dockerode seam is a NARROW structural interface plus explicit adapters.** `Docker.createContainer`/`Container.wait`/`logs`/`remove`/`stats` are **overload sets** (`(options, callback)` + `(options)`), and TypeScript checks a single-signature target against the first overload only — assigning a real `Docker` to a one-argument `DockerLike` fails with `Expected 2 or more arguments, but got 1`, and mirroring the overload pair on the target does not fix it. `adaptDocker`/`adaptContainer` name each member explicitly, which sidesteps the structural-overload comparison with **no cast** and documents exactly which dockerode calls this client may make. (The container-overload was measured, not guessed: the identical error recurred on `Container.wait` after `createContainer` was fixed.)
+5. **Timeout and abort use existing codes.** A `timeoutMs` expiry returns `DOCKER_ERROR` (a daemon-level failure, carrying the `containerId`) and an abort returns `ABORTED` (the P-140 code for `AbortSignal`); only the spec-named pull failure needed a new code. Also: a `StitchError` union member without `message` (`SANDBOX_FAILED`) is why the tests narrow on `.code` before reading `.message` — the P-124 lesson, applied here.
+6. **Logs are demultiplexed and bounded.** Docker multiplexes stdout/stderr into one stream with 8-byte frame headers when TTY is off; `demuxDockerLogs` splits them, falls back to "everything is stdout" for a raw/TTY stream, and keeps the newest `MAX_CONTAINER_LOG_LINES` (500) per stream — the phase handoff's explicit memory bound. `ContainerRun` mirrors P-155's `SandboxRunResult` line-array shape so P-171/P-172 can hand it straight to `run_build`.
+
+**Consequences:**
+
+- Everything the Sandbox epic needs (pull, run, stats, rm) is exercised offline: the 7 mandated tests plus 5 extras run against a fake dockerode with no daemon, and the `NetworkMode` / cleanup properties are asserted against the options the client actually sent, not against a spy's return value.
+- Adding code 51 cannot ship unclassified: P-163's `Record` and the smoke-test count both fail the build, which is the guard working.
+- `isAvailable()` is the single guard P-175 keys its GH Actions fallback on, and it never throws — an unreachable daemon is an expected state, not an error.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

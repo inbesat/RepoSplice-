@@ -127,6 +127,7 @@ function describeError(error: StitchError): string {
     case 'GIT_ERROR':
     case 'GITHUB_API_ERROR':
     case 'DOCKER_ERROR':
+    case 'DOCKER_PULL_FAILED':
     case 'AI_PROVIDER_ERROR':
     case 'CONFIG_ERROR':
     case 'INTERNAL':

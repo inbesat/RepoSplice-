@@ -163,6 +163,11 @@ const RULES = {
     action: 'abort',
     hint: 'Docker could not run the build. Check that Docker is installed, running, and permitted.',
   },
+  DOCKER_PULL_FAILED: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'The sandbox image could not be pulled. Check the image tag and registry access, or configure the GitHub Actions fallback.',
+  },
 
   // --- tool: the loop continues and the model adapts (P-158) ----------------
   TOOL_ARGS_INVALID_JSON: {
