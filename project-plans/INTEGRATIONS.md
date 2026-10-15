@@ -457,6 +457,8 @@ type StitchError =
   | { code: 'DOCKER_BUILD_FAILED'; message: string; image?: string }
   | { code: 'DEP_INSTALL_FAILED'; exitCode: number; stderr: string; message: string }
   | { code: 'DEP_INSTALL_OFFLINE_BLOCKED'; ecosystem: string; message: string }
+  | { code: 'SANDBOX_LOG_LIMIT'; runId: string; dropped: number; retained: number; message: string }
+  | { code: 'SANDBOX_ARTIFACT_LIMIT'; runId: string; bytes: number; limitBytes: number; message: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }

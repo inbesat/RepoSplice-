@@ -63,6 +63,12 @@ export const SandboxConfigSchema = z.object({
    * `ensureImage` (see ADR-042).
    */
   buildLocal: z.boolean().optional(),
+  /**
+   * P-173: total bytes of artifacts the capture step may extract per run.
+   * Bounds disk/memory when a runaway build produces a huge output tree.
+   * Optional; `undefined` uses the code default (100 MB).
+   */
+  maxArtifactBytes: z.number().int().positive().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

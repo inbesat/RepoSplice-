@@ -168,6 +168,16 @@ const RULES = {
     action: 'abort',
     hint: 'The install needs the network, which offline mode disabled. Enable sandbox.networkAllow, vendor the dependencies, or use the GitHub Actions fallback (which has network).',
   },
+  SANDBOX_LOG_LIMIT: {
+    cls: 'sandbox',
+    action: 'continue',
+    hint: 'The sandbox produced more log lines than the ring buffer keeps; the newest lines were retained. Raise sandbox capture limits if the full log matters.',
+  },
+  SANDBOX_ARTIFACT_LIMIT: {
+    cls: 'sandbox',
+    action: 'continue',
+    hint: 'The extracted artifacts exceeded the configured byte budget. Raise sandbox.maxArtifactBytes, or narrow the captured paths.',
+  },
   DOCKER_ERROR: {
     cls: 'sandbox',
     action: 'abort',

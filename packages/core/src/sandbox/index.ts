@@ -80,6 +80,25 @@ export type {
   ParsedTestCounts,
 } from './test.js';
 
+// P-173 — capture logs and artifacts, bounded and run-scoped.
+export {
+  CaptureManager,
+  hostArtifactPath,
+  sanitizeSegment,
+  DEFAULT_LOG_CAPACITY,
+  DEFAULT_MAX_ARTIFACT_BYTES,
+  CAPTURE_RUNS_TABLE_SQL,
+} from './capture.js';
+export type {
+  LogEntry,
+  LogSink,
+  CaptureResult,
+  CaptureRunRecord,
+  CaptureOptions,
+  CaptureRunOptions,
+  CaptureClient,
+} from './capture.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

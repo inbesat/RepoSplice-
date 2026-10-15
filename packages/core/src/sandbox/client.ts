@@ -93,6 +93,8 @@ export interface ContainerLike {
   stats(options?: { stream?: false }): Promise<unknown>;
   inspect(): Promise<unknown>;
   getArchive(options?: { path: string }): Promise<NodeJS.ReadableStream>;
+  /** The raw multiplexed log stream (P-173), for a live capture. */
+  followLogs(): Promise<NodeJS.ReadableStream>;
 }
 
 /** The dockerode surface the client uses. */
@@ -128,6 +130,7 @@ function adaptContainer(container: Docker.Container): ContainerLike {
     stats: options => container.stats(options ?? {}),
     inspect: () => container.inspect(),
     getArchive: options => container.getArchive(options ?? {}),
+    followLogs: () => container.logs({ stdout: true, stderr: true, follow: true }),
   };
 }
 
@@ -216,6 +219,15 @@ export interface RunOptions {
    * ran); the absence is reported by an undefined `capturedArchive`.
    */
   capture?: { containerPath: string; hostDir: string };
+  /**
+   * P-173: receive the container's output lines.
+   *
+   * Delivered from the collected log buffer when the run settles (the entries
+   * the client already reads), so a capture sink sees the same bytes without a
+   * second reader racing the daemon. Callers that want lines as they are
+   * emitted use {@link SandboxClient.followLogs} instead.
+   */
+  onLog?: (line: string) => void;
 }
 
 /** Construction options for {@link SandboxClient}. */
@@ -544,6 +556,11 @@ export class SandboxClient {
       if (waited.isErr()) return err(waited.error);
 
       const logs = await this.#collectLogs(container);
+      // P-173: hand the collected lines to the capture sink.
+      if (opts.onLog !== undefined) {
+        for (const line of logs.stdout) opts.onLog(line);
+        for (const line of logs.stderr) opts.onLog(line);
+      }
       // Capture BEFORE the `finally` removes the container: the handle is only
       // valid inside its lifetime. A failed capture is non-fatal.
       let capturedArchive: string | undefined;
@@ -744,6 +761,46 @@ export class SandboxClient {
       return demuxDockerLogs(buffer, this.#maxLogLines);
     } catch {
       return { stdout: [], stderr: [] };
+    }
+  }
+
+  /**
+   * Read a container's logs as demultiplexed stdout/stderr lines (P-173).
+   *
+   * Separate from `run` so a capture manager can drain logs for a container it
+   * did not start. `FILE_NOT_FOUND`-style failures are a typed `DOCKER_ERROR`.
+   */
+  async logs(
+    containerOrId: string | ContainerLike
+  ): Promise<Result<{ stdout: string[]; stderr: string[] }, StitchError>> {
+    const container =
+      typeof containerOrId === 'string' ? this.#docker.getContainer(containerOrId) : containerOrId;
+    try {
+      const raw = await container.logs({ stdout: true, stderr: true });
+      const buffer = typeof raw === 'string' ? Buffer.from(raw, 'utf8') : raw;
+      return ok(demuxDockerLogs(buffer, this.#maxLogLines));
+    } catch (cause: unknown) {
+      return err({ code: 'DOCKER_ERROR', message: `logs failed: ${detailOf(cause)}` });
+    }
+  }
+
+  /**
+   * Follow a container's logs as a raw multiplexed stream (P-173).
+   *
+   * The caller owns the stream: it is the raw docker payload, so a `json`
+   * capture splits it on newlines while the default `docker` capture uses
+   * {@link logs}'s demultiplexing.
+   */
+  async followLogs(
+    containerOrId: string | ContainerLike
+  ): Promise<Result<NodeJS.ReadableStream, StitchError>> {
+    const container =
+      typeof containerOrId === 'string' ? this.#docker.getContainer(containerOrId) : containerOrId;
+    try {
+      const stream = await container.followLogs();
+      return ok(stream);
+    } catch (cause: unknown) {
+      return err({ code: 'DOCKER_ERROR', message: `followLogs failed: ${detailOf(cause)}` });
     }
   }
 }

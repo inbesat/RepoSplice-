@@ -190,6 +190,8 @@ function describeError(error: StitchError): string {
       return `${error.code}: ${error.message} (candidates rejected: ${error.exhausted.length})`;
     case 'SANDBOX_UNAVAILABLE':
     case 'DEP_INSTALL_OFFLINE_BLOCKED':
+    case 'SANDBOX_LOG_LIMIT':
+    case 'SANDBOX_ARTIFACT_LIMIT':
       return `${error.code}: ${error.message}`;
     case 'USER_TIMEOUT':
       return `${error.code}: ${error.message} (waited ${error.timeoutMs}ms)`;

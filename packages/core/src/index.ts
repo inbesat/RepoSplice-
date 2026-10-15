@@ -1052,6 +1052,22 @@ export {
   MAX_TEST_FAILURES,
 } from './sandbox/test.js';
 export type { TestResult, TestFailure, TestClient, ParsedTestCounts } from './sandbox/test.js';
+export {
+  CaptureManager,
+  hostArtifactPath,
+  sanitizeSegment,
+  DEFAULT_LOG_CAPACITY,
+  DEFAULT_MAX_ARTIFACT_BYTES,
+  CAPTURE_RUNS_TABLE_SQL,
+} from './sandbox/capture.js';
+export type {
+  LogEntry,
+  LogSink,
+  CaptureResult,
+  CaptureRunRecord,
+  CaptureOptions,
+  CaptureClient,
+} from './sandbox/capture.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

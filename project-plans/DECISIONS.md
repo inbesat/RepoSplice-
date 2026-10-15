@@ -2077,4 +2077,27 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-046: Capture Owns Its Table, Overflow Is a Typed Result Not a Raise, and `onLog` Delivers Collected Lines
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-173 (`PHASES_DETAILED.md:8732-8771`) formalises capture so a failed stitch is reproducible post-hoc: a bounded ring buffer of logs, artifact extraction into a run-scoped host directory, and metadata persisted "in the job record". Four of its statements needed reconciling, and the no-throw rule forced a fifth.
+
+**Decisions:**
+
+1. **`capture()` returns a `Result`, and overflow is `SANDBOX_LOG_LIMIT` — not a raise.** Step 1 sketches `capture(...): Promise<{ logs; sizeBytes }>` and then says "raise `SANDBOX_LOG_LIMIT` if cap exceeded (but keep latest)". A method with no error channel cannot raise under the no-throw rule, and the parenthetical says the operation *partly* succeeded — so overflow returns `err(SANDBOX_LOG_LIMIT)` carrying `dropped`/`retained`, while the retained lines stay retrievable through `logs(runId)`. Success returns the spec's `{ logs, sizeBytes }` plus `dropped`. This is the P-165/P-168 precedent: the sketch is reconciled against the guardrails, and the code the spec names gets a real home rather than being dropped.
+2. **Timestamps live in the buffer, not the spec's shape.** The handoff requires "timestamps per line (ISO) so re-run diffing is possible", but the spec's `logs` is `string[]`. Both are honoured: the ring buffer stores `LogEntry { ts, line }`, `entries(runId)` exposes them, and `logs(runId)` returns the plain strings the spec asks for. The buffer keeps the NEWEST lines on overflow (bounded memory, not truncation, per the same handoff).
+3. **Metadata is persisted by a table this phase OWNS.** "Persist … as part of `JobRecord.artifacts` (P-239/248)" is a forward reference — P-239 is Wave 2 and `store/schema.ts`'s header reserves its migration slots for `P-181/187/230/239/241/303/309`. So `capture_runs` is created on first use over an injected `DbLike`, exactly as P-145 (`ai_calls`), P-160 (`hil_requests`) and P-169 (`sandbox_images`) do; P-239 reads it when it owns the real job record. Memory-only when no `db` is supplied.
+4. **`onLog` delivers the run's COLLECTED lines; `followLogs` is the live path.** Acceptance asks that `client.run` "accepts onLog and streams to capture". A concurrent follow stream would race the client's own log read (two readers on one container) for no benefit at this layer, so `run` invokes `onLog` for each collected line when it settles — bounded, single-reader, and the binding test drives the REAL `SandboxClient` end to end. Callers that genuinely need lines as they are emitted use the new `followLogs(containerId)`, which returns the raw multiplexed stream; `capture(..., { format: 'json' })` uses exactly that path to split newline-delimited records.
+5. **Two new codes, both carrying `message`.** `SANDBOX_LOG_LIMIT` (54) and `SANDBOX_ARTIFACT_LIMIT` (55), added with the six coordinated edits each. Both include a `message` deliberately: P-170 already proved that a code without one breaks the cli's `describeError` default branch, so the payload shape is chosen to keep every consumer compiling. `SANDBOX_LOG_LIMIT` is classified `continue` (the run happened; lines were lost), `SANDBOX_ARTIFACT_LIMIT` likewise — neither is a reason to abort a stitch.
+6. **Artifact safety is a pure, tested gate.** `sanitizeSegment` refuses separators, `..`, `.`, drive-prefixed and NUL-bearing segments, and it guards BOTH the run id and each artifact name before `hostArtifactPath` joins them; `extractArtifacts` refuses a traversing run id *before* copying anything (asserted with zero copy calls), and the cumulative written size is checked against `sandbox.maxArtifactBytes` (new optional config field; code default 100 MB). The run-scoped directory is built by an explicit separator-aware join rather than string slicing, which the first draft got wrong.
+
+**Consequences:**
+
+- The capture path is exercisable offline: 5 mandated tests (bounded streaming, the cap with latest-kept, artifact extraction with `capture_runs` metadata, sanitisation, and the real-client `onLog` binding) run against a fake client and a minimal fake docker, with no daemon.
+- A red run leaves a reproducible trail — timestamped logs plus a run-scoped artifact directory — which is exactly what P-181's provenance, P-183's SBOM and P-248's trace viewer need, and what P-176's flaky detection will diff.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

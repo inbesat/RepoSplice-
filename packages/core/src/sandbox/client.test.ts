@@ -104,6 +104,9 @@ function makeFakeContainer(calls: FakeCalls, config: FakeContainerConfig = {}): 
     async getArchive() {
       return Readable.from([Buffer.from('tar-bytes')]);
     },
+    async followLogs() {
+      return Readable.from([]) as unknown as NodeJS.ReadableStream;
+    },
   };
   if (config.id !== undefined) (container as { id?: string }).id = config.id;
   return container;

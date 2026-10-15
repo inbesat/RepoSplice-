@@ -96,6 +96,18 @@ export type StitchError =
   // workspace was not declared offline-ready. Surfaced instead of running a
   // container that would hang against `NetworkMode: 'none'`.
   | { code: 'DEP_INSTALL_OFFLINE_BLOCKED'; ecosystem: string; message: string }
+  // P-173: the live log stream exceeded the ring buffer's cap. The LATEST lines
+  // are retained (the buffer never grows without bound), so this is a warning
+  // carrying how much was dropped for the trace viewer (P-248).
+  | { code: 'SANDBOX_LOG_LIMIT'; runId: string; dropped: number; retained: number; message: string }
+  // P-173: extracted artifacts would exceed the configured byte budget.
+  | {
+      code: 'SANDBOX_ARTIFACT_LIMIT';
+      runId: string;
+      bytes: number;
+      limitBytes: number;
+      message: string;
+    }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
@@ -228,6 +240,8 @@ export const STITCH_ERROR_CODES = [
   'SANDBOX_UNAVAILABLE',
   'DEP_INSTALL_FAILED',
   'DEP_INSTALL_OFFLINE_BLOCKED',
+  'SANDBOX_LOG_LIMIT',
+  'SANDBOX_ARTIFACT_LIMIT',
   'CONFIG_ERROR',
   'USER_CANCELLED',
   'INTERNAL',
