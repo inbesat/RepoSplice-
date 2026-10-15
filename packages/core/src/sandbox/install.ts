@@ -28,6 +28,7 @@ import { ok, err, type Result } from 'neverthrow';
 import { type StitchError } from '../result/index.js';
 import { pathExists } from '../util/fs.js';
 import { imageFor } from './images.js';
+import { restoreCache, saveCache, type CacheKeyOptions, type SandboxCache } from './cache.js';
 import type { ContainerRun, ContainerSpec, RunOptions } from './client.js';
 import type { Ecosystem } from '../deps/index.js';
 
@@ -54,9 +55,10 @@ export interface InstallSpec extends ContainerSpec {
 /** What a completed install reports. */
 export interface InstallResult {
   ecosystem: Ecosystem;
-  /** The command line that ran, space-joined for logs. */
+  /** The command line that ran, space-joined for logs. `(cached)` on a hit. */
   command: string;
   exitCode: number;
+  /** `false` when a P-178 cache hit skipped the install entirely. */
   installed: boolean;
   /**
    * Always `false`: the install must only touch files inside the mounted
@@ -67,6 +69,12 @@ export interface InstallResult {
   packageCount?: number;
   logs: { stdout: string[]; stderr: string[] };
   durationMs: number;
+  /** P-178: `true` when the install was skipped because the cache hit. */
+  cached?: boolean;
+  /** P-178: the content key this install was looked up and recorded under. */
+  cacheKey?: string;
+  /** P-178: the image the install ran in, or the cached tag on a hit. */
+  image?: string;
 }
 
 /** Options for {@link installDeps}. */
@@ -92,6 +100,13 @@ export interface InstallOptions {
   timeoutMs?: number;
   /** Abort signal, forwarded to the container run. */
   signal?: AbortSignal;
+  /**
+   * P-178: reuse a recorded install for the same content key instead of
+   * re-installing. Optional — with no cache the behaviour is unchanged.
+   */
+  cache?: SandboxCache;
+  /** P-178: inputs for the cache key (`includeFiles`, the full-tree gate). */
+  cacheKeyOptions?: CacheKeyOptions;
 }
 
 /** What `installDeps` needs from a container client (P-168 `SandboxClient`). */
@@ -203,6 +218,35 @@ export async function installDeps(
     });
   }
 
+  const cache = opts.cache;
+  let cacheKey: string | undefined;
+  if (cache !== undefined) {
+    // P-178: a repeat install for the same dependency state is skipped outright —
+    // no container is created at all. `get` computes and returns the key, which
+    // the store write below reuses, so the workspace is hashed only once.
+    const lookup = await restoreCache(cache, ecosystem, repoPath, opts.cacheKeyOptions ?? {});
+    // A failed read is reported through the cache's `read-failed` event and
+    // degrades to a miss: a cache is an optimization and must never block an
+    // install that would otherwise succeed (P-177's degrade rule).
+    if (lookup.isOk()) {
+      cacheKey = lookup.value.cacheKey;
+      if (lookup.value.hit) {
+        return ok({
+          ecosystem,
+          command: '(cached)',
+          exitCode: 0,
+          installed: false,
+          cached: true,
+          cacheKey,
+          image: lookup.value.imageTag ?? opts.image ?? imageFor(ecosystem),
+          dirty: false,
+          logs: { stdout: [], stderr: [] },
+          durationMs: 0,
+        });
+      }
+    }
+  }
+
   const command = await installCommandFor(ecosystem, repoPath, opts);
   if (command.isErr()) return err(command.error);
 
@@ -233,12 +277,32 @@ export async function installDeps(
   }
 
   const packageCount = countInstalled(ecosystem, outcome.stdout);
+
+  // P-178: record the successful install so the next run for the same content
+  // skips it. Best-effort: a failed write is reported through the cache's
+  // `write-failed` event and must not turn a successful install into a failure.
+  if (cache !== undefined) {
+    await saveCache(
+      cache,
+      ecosystem,
+      repoPath,
+      { imageTag: spec.image, command: command.value.join(' ') },
+      {
+        ...(cacheKey !== undefined ? { cacheKey } : {}),
+        ...(opts.cacheKeyOptions !== undefined ? opts.cacheKeyOptions : {}),
+      }
+    );
+  }
+
   return ok({
     ecosystem,
     command: command.value.join(' '),
     exitCode: outcome.exitCode,
     installed: true,
+    cached: false,
     dirty: false,
+    ...(cacheKey !== undefined ? { cacheKey } : {}),
+    image: spec.image,
     ...(packageCount !== undefined ? { packageCount } : {}),
     logs: { stdout: outcome.stdout, stderr: outcome.stderr },
     durationMs: outcome.durationMs,

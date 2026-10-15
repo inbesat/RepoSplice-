@@ -89,6 +89,12 @@ export const SandboxConfigSchema = z.object({
    * developer's cached dev images.
    */
   pruneImages: z.boolean().optional(),
+  /**
+   * P-178: allow a cache key over the whole staged tree (`includeFiles: true`).
+   * Default OFF — a full walk is the expensive option, and the manifest +
+   * lockfile key already invalidates on the changes that matter.
+   */
+  cacheKeyFullTree: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

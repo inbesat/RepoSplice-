@@ -28,6 +28,7 @@ import {
 import { runBuild, type BuildClient, type BuildResult } from './build.js';
 import { runTests, type TestClient, type TestResult } from './test.js';
 import { checkFlaky, type Verdict } from './verdict.js';
+import type { SandboxCache, CacheKeyOptions } from './cache.js';
 import {
   withCleanup,
   type CleanupClient,
@@ -71,6 +72,15 @@ export interface RunVerificationOptions {
   /** P-176: extra attempts for a failing base. Clamped by P-176. */
   flakyRepeat?: number;
   /**
+   * P-178: resolve the run image from the install-layer cache. When the caller
+   * does not pass `image`, a cache hit supplies the tag a previous install
+   * recorded; a miss (or a cache error) leaves `image` alone.
+   */
+  cache?: {
+    cache: SandboxCache;
+    keyOptions?: CacheKeyOptions;
+  };
+  /**
    * P-177: cleanup wiring. When a tracker is supplied, the whole dispatch —
    * including P-176's repeats — runs inside `withCleanup`, so resources are
    * swept on success, failure AND abort. Without one, nothing is swept (the
@@ -101,11 +111,17 @@ export async function runVerification(
   repoPath: string,
   opts: RunVerificationOptions = {}
 ): Promise<Result<VerifiedRun, StitchError>> {
+  // P-178: take the run image from the install-layer cache when the caller named
+  // none. Resolved ONCE, before the body, so P-176's repeats reuse the same tag.
+  const cachedImage = await resolveCachedImage(ecosystem, repoPath, opts);
+  const effective: RunVerificationOptions =
+    cachedImage === undefined ? opts : { ...opts, image: cachedImage };
+
   const body = async (): Promise<Result<VerifiedRun, StitchError>> => {
-    const first = await dispatchOnce(kind, ecosystem, repoPath, opts);
+    const first = await dispatchOnce(kind, ecosystem, repoPath, effective);
     if (first.isErr()) return err(first.error);
 
-    if (opts.flakyCheck !== true) return ok(first.value);
+    if (effective.flakyCheck !== true) return ok(first.value);
 
     // The base run is reused as attempt 1; later attempts re-dispatch with the
     // repeat check cleared so a re-run can never recurse.
@@ -115,12 +131,12 @@ export async function runVerification(
       kind,
       {
         enabled: true,
-        ...(opts.flakyRepeat !== undefined ? { repeat: opts.flakyRepeat } : {}),
+        ...(effective.flakyRepeat !== undefined ? { repeat: effective.flakyRepeat } : {}),
       },
       attempt =>
         attempt === 1
           ? Promise.resolve(ok(first.value))
-          : dispatchOnce(kind, ecosystem, repoPath, { ...opts, flakyCheck: false })
+          : dispatchOnce(kind, ecosystem, repoPath, { ...effective, flakyCheck: false })
     );
     if (checked.isErr()) return err(checked.error);
     return ok({ ...first.value, verdict: checked.value });
@@ -128,17 +144,41 @@ export async function runVerification(
 
   // P-177: the `finally` guarantee. A tracker means "sweep whatever I recorded
   // as well", including when the body throws.
-  const tracker = opts.cleanup?.tracker;
+  const tracker = effective.cleanup?.tracker;
   if (tracker === undefined) return body();
   return withCleanup(
-    opts.cleanup?.client,
+    effective.cleanup?.client,
     tracker,
     {
-      ...(opts.cleanup?.pruneImages !== undefined ? { pruneImages: opts.cleanup.pruneImages } : {}),
-      ...(opts.cleanup?.onSummary !== undefined ? { onSummary: opts.cleanup.onSummary } : {}),
+      ...(effective.cleanup?.pruneImages !== undefined
+        ? { pruneImages: effective.cleanup.pruneImages }
+        : {}),
+      ...(effective.cleanup?.onSummary !== undefined
+        ? { onSummary: effective.cleanup.onSummary }
+        : {}),
     },
     body
   );
+}
+
+/**
+ * P-178: the image to run, taken from the install-layer cache when the caller
+ * named none.
+ *
+ * A cache error is deliberately NOT a run error: the run proceeds with whatever
+ * image the caller supplied (or the ecosystem default) and the cache reports the
+ * failure through its own event sink. Making a cache outage fail a verification
+ * would be a worse trade than a cold run.
+ */
+async function resolveCachedImage(
+  ecosystem: Ecosystem,
+  repoPath: string,
+  opts: RunVerificationOptions
+): Promise<string | undefined> {
+  const wiring = opts.cache;
+  if (wiring === undefined || opts.image !== undefined) return undefined;
+  const lookup = await wiring.cache.get(ecosystem, repoPath, wiring.keyOptions ?? {});
+  return lookup.isOk() && lookup.value.hit ? lookup.value.imageTag : undefined;
 }
 
 /** One dispatch, with no repeat logic (the recursion guard for P-176). */

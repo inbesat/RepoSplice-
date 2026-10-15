@@ -160,6 +160,29 @@ export type {
   CleanupOptions,
 } from './cleanup.js';
 
+// P-178 — install layer cache.
+export {
+  SandboxCache,
+  cacheKey,
+  restoreCache,
+  saveCache,
+  clearCacheForTests,
+  SANDBOX_CACHE_TABLE_SQL,
+  CACHE_KEY_VERSION,
+  ECOSYSTEM_MANIFESTS,
+  ECOSYSTEM_LOCKFILES,
+  FULL_TREE_IGNORES,
+} from './cache.js';
+export type {
+  CacheKeyOptions,
+  CacheAccessOptions,
+  CacheEvent,
+  CacheLookup,
+  CacheEntry,
+  CacheEntryRecord,
+  SandboxCacheOptions,
+} from './cache.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

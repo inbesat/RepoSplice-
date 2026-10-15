@@ -1121,6 +1121,27 @@ export type {
   CleanupClient,
   CleanupOptions,
 } from './sandbox/cleanup.js';
+export {
+  SandboxCache,
+  cacheKey,
+  restoreCache,
+  saveCache,
+  clearCacheForTests,
+  SANDBOX_CACHE_TABLE_SQL,
+  CACHE_KEY_VERSION,
+  ECOSYSTEM_MANIFESTS,
+  ECOSYSTEM_LOCKFILES,
+  FULL_TREE_IGNORES,
+} from './sandbox/cache.js';
+export type {
+  CacheKeyOptions,
+  CacheAccessOptions,
+  CacheEvent,
+  CacheLookup,
+  CacheEntry,
+  CacheEntryRecord,
+  SandboxCacheOptions,
+} from './sandbox/cache.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
