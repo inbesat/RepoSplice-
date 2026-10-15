@@ -2019,4 +2019,30 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-044: Artifact Capture Rides With the Run, `copyFrom` Writes an Archive, and a Build Verdict Is Never an Error
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-171 (`PHASES_DETAILED.md:8635-8676`) is the central verification — does merged C actually build — and its `BuildResult` is FROZEN because the web panel (P-220) and CLI progress (P-199) render it. Reading P-168's container contract before writing surfaced one requirement that could not work as specified.
+
+**Decisions:**
+
+1. **The artifact copy rides WITH the run, because P-168 removes the container in a `finally`.** The phase says "on completion … copy it out via `client.copyFrom(id, '/workspace/dist', target)`", but `SandboxClient.run` deletes its container before returning — so after `run` resolves there is nothing left to copy from, and keeping the container alive would break the cleanup guarantee that is P-168's acceptance criterion. `RunOptions.capture = { containerPath, hostDir }` therefore performs the copy inside the container's lifetime, and `ContainerRun.capturedArchive` reports the host path. A capture that finds nothing (many projects produce no output dir) is **not** an error. This was a structural conflict, not a preference.
+2. **`SandboxClient.copyFrom` is added** (dockerode's `getArchive`), writing the container path's TAR out **verbatim** as `<hostDir>/<basename>.tar`. No tar-extraction dependency is added — the same decision ADR-042 recorded for build contexts — so unpacking belongs to the artifact consumer (P-173). `ContainerLike` gained `getArchive` (through the existing explicit adapter, which is what avoids dockerode's overload-assignability trap).
+3. **A build verdict is never an `err`.** `pass = exitCode === 0`; a red build returns `ok(BuildResult{pass:false})` because the agent loop (P-163's recovery, P-155's `run_build`) must iterate on it. Only infrastructure problems — a container/client error, a blank `repoPath` — are typed errors. A test asserts both directions so the distinction cannot drift.
+4. **`/workspace` read-only is NOT implemented.** Step 2 asks for "read-only for source, with a writable `/buildout`", but the pinned commands write into the project (`bun run build` → `dist/`, `go build` → caches), and the current `bindMounts` shape cannot express a `:ro` mode safely (a `host:container:ro` string breaks on Windows drive letters). `/buildout` IS mounted read-write when the caller supplies `buildoutDir`, and the acceptance criteria — which say only "reads staged C from `/workspace`" — are met. Recorded rather than silently dropped.
+5. **The rust command diverges from P-155's map on purpose.** `ECOSYSTEM_COMMANDS.rust` (agent side) is `cargo build`; this phase specifies `cargo build --release`, and the phase's own dependency note says "the agent `run_build` P-155 stub now points here" — so `BUILD_COMMANDS` in `sandbox/build.ts` is the sandbox path's authority. The divergence is documented, not accidental.
+6. **Artifacts are reported only when THIS run asked for them and the build passed.** The first version trusted any `capturedArchive` on a passing run; the fake-driven test caught it (a client returning one unrequested produced a phantom `outputDir`), and the check is now `wantCapture && pass && capturedArchive !== undefined`.
+7. **Public-barrel collisions with P-155 are resolved by exporting once.** `MAX_BUILD_LOG_LINES` and `RunBuildOptions` already exist on the agent side (`run_build.ts`), so only the unique sandbox names (`runBuild`, `BUILD_COMMANDS`, `DEFAULT_OUTPUT_DIRS`, `DEFAULT_BUILDOUT`/`DEFAULT_BUILD_TIMEOUT_MS`, `BUILDOUT_MOUNT`, `BuildResult`, `BuildClient`) are re-exported publicly; the rest stay module-local in `sandbox/index.ts`.
+
+**Handoff:** the P-155 `SandboxRunner` seam (the agent tool's injected backend) is **not** rewired here — P-171's file list is `build.ts` + `build.test.ts`, and the adapter that binds `SandboxRunner` to this client belongs to the phase that owns the seam (P-175's fallback / the pipeline). Recorded in PROGRESS as the open item.
+
+**Consequences:**
+
+- The build verdict is exercisable offline: the 6 mandated tests plus 3 extras cover the command per ecosystem, the mount/workingDir, both verdict directions, the infrastructure error, the capture request (including that it rides with the run and honours a custom `outputDir`), and the 500-line log bound.
+- Logs are bounded twice — by the client's `MAX_CONTAINER_LOG_LINES` and again by this phase's `boundLogLines` — so a chatty build cannot exhaust memory even if a caller passes a custom client.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

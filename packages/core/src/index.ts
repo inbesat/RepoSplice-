@@ -1034,6 +1034,14 @@ export type {
   InstallOptions,
   InstallClient,
 } from './sandbox/install.js';
+export {
+  runBuild,
+  BUILD_COMMANDS,
+  DEFAULT_OUTPUT_DIRS,
+  DEFAULT_BUILD_TIMEOUT_MS,
+  BUILDOUT_MOUNT,
+} from './sandbox/build.js';
+export type { BuildResult, BuildClient } from './sandbox/build.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

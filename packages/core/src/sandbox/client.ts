@@ -32,6 +32,10 @@
 //   container with `NetworkMode: 'none'`.
 
 import { ok, err, type Result } from 'neverthrow';
+import { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import { basename, join } from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import type Docker from 'dockerode';
 import { type StitchError } from '../result/index.js';
 import { createDockerClient, pingDocker, type DockerClientOptions } from './docker.js';
@@ -88,6 +92,7 @@ export interface ContainerLike {
   remove(options?: { force?: boolean; v?: boolean }): Promise<unknown>;
   stats(options?: { stream?: false }): Promise<unknown>;
   inspect(): Promise<unknown>;
+  getArchive(options?: { path: string }): Promise<NodeJS.ReadableStream>;
 }
 
 /** The dockerode surface the client uses. */
@@ -122,6 +127,7 @@ function adaptContainer(container: Docker.Container): ContainerLike {
     remove: options => container.remove(options ?? {}),
     stats: options => container.stats(options ?? {}),
     inspect: () => container.inspect(),
+    getArchive: options => container.getArchive(options ?? {}),
   };
 }
 
@@ -159,6 +165,8 @@ export interface ContainerRun {
   /** Captured stderr, newest lines kept, bounded by `maxLogLines`. */
   stderr: string[];
   durationMs: number;
+  /** Host archive path, when `RunOptions.capture` succeeded. */
+  capturedArchive?: string;
 }
 
 /** A point-in-time resource sample (P-173 capture / P-174 limits). */
@@ -199,6 +207,15 @@ export interface RunOptions {
   timeoutMs?: number;
   /** Abort signal; aborting kills and removes the container. */
   signal?: AbortSignal;
+  /**
+   * Copy a container path out to the host before the container is removed.
+   *
+   * P-171 needs build artifacts, and P-168's `run` removes its container in a
+   * `finally` — so the copy must happen INSIDE the container's lifetime, which
+   * is what this requests. A failed capture never fails the run (the command
+   * ran); the absence is reported by an undefined `capturedArchive`.
+   */
+  capture?: { containerPath: string; hostDir: string };
 }
 
 /** Construction options for {@link SandboxClient}. */
@@ -527,14 +544,81 @@ export class SandboxClient {
       if (waited.isErr()) return err(waited.error);
 
       const logs = await this.#collectLogs(container);
+      // Capture BEFORE the `finally` removes the container: the handle is only
+      // valid inside its lifetime. A failed capture is non-fatal.
+      let capturedArchive: string | undefined;
+      if (opts.capture !== undefined) {
+        const captured = await this.#copyArchive(
+          container,
+          opts.capture.containerPath,
+          opts.capture.hostDir
+        );
+        if (captured.isOk()) capturedArchive = captured.value;
+      }
       return ok({
         exitCode: waited.value,
         stdout: logs.stdout,
         stderr: logs.stderr,
         durationMs: Date.now() - startedAt,
+        ...(capturedArchive !== undefined ? { capturedArchive } : {}),
       });
     } finally {
       await this.rm(container);
+    }
+  }
+
+  /**
+   * Copy a path out of a container onto the host, returned as an archive.
+   *
+   * dockerode's `getArchive` streams a TAR of the container path; with no
+   * tar-extraction dependency declared (the same decision ADR-042 recorded for
+   * build contexts) the archive is written VERBATIM to
+   * `<hostDir>/<basename>.tar`, and unpacking is the artifact consumer's step
+   * (P-173). Returns the host archive path.
+   */
+  async copyFrom(
+    containerOrId: string | ContainerLike,
+    containerPath: string,
+    hostDir: string
+  ): Promise<Result<string, StitchError>> {
+    const container =
+      typeof containerOrId === 'string' ? this.#docker.getContainer(containerOrId) : containerOrId;
+    return this.#copyArchive(container, containerPath, hostDir);
+  }
+
+  /** The archive write, shared by `copyFrom` and `run`'s in-lifetime capture. */
+  async #copyArchive(
+    container: ContainerLike,
+    containerPath: string,
+    hostDir: string
+  ): Promise<Result<string, StitchError>> {
+    if (containerPath.trim() === '') {
+      return err({
+        code: 'CONFIG_ERROR',
+        field: 'containerPath',
+        message: 'copyFrom: containerPath is required',
+      });
+    }
+    if (hostDir.trim() === '') {
+      return err({
+        code: 'CONFIG_ERROR',
+        field: 'hostDir',
+        message: 'copyFrom: hostDir is required',
+      });
+    }
+    try {
+      const archive = await container.getArchive({ path: containerPath });
+      await mkdir(hostDir, { recursive: true });
+      const trimmed = containerPath.replace(/[/\\]+$/, '');
+      const name = basename(trimmed);
+      const target = join(hostDir, `${name === '' ? 'archive' : name}.tar`);
+      await pipeline(archive, createWriteStream(target));
+      return ok(target);
+    } catch (cause: unknown) {
+      return err({
+        code: 'DOCKER_ERROR',
+        message: `copyFrom("${containerPath}") failed: ${detailOf(cause)}`,
+      });
     }
   }
 

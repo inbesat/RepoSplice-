@@ -13,6 +13,10 @@
 
 import { describe, it, expect } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { Readable } from 'node:stream';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   SandboxClient,
   demuxDockerLogs,
@@ -96,6 +100,9 @@ function makeFakeContainer(calls: FakeCalls, config: FakeContainerConfig = {}): 
     },
     async inspect() {
       return {};
+    },
+    async getArchive() {
+      return Readable.from([Buffer.from('tar-bytes')]);
     },
   };
   if (config.id !== undefined) (container as { id?: string }).id = config.id;
@@ -350,6 +357,46 @@ describe('P-168 SandboxClient', () => {
     const empty = await client.buildImage({ context: '/tmp/ctx.tar', tag: '  ' });
     expect(empty.isErr()).toBe(true);
     if (empty.isErr()) expect(empty.error.code).toBe('CONFIG_ERROR');
+  });
+
+  it('copies a container path out as an archive', async () => {
+    const { docker } = makeFakeDocker();
+    const client = new SandboxClient({ docker });
+    const hostDir = await mkdtemp(join(tmpdir(), 'stitch-copyout-'));
+    try {
+      const copied = await client.copyFrom('c1', '/workspace/dist', hostDir);
+      expect(copied.isOk()).toBe(true);
+      if (copied.isOk()) {
+        expect(copied.value).toBe(join(hostDir, 'dist.tar'));
+        expect(await readFile(copied.value, 'utf8')).toBe('tar-bytes');
+      }
+      // A blank path is a caller bug, not a copy.
+      const blank = await client.copyFrom('c1', '  ', hostDir);
+      expect(blank.isErr()).toBe(true);
+      if (blank.isErr()) expect(blank.error.code).toBe('CONFIG_ERROR');
+    } finally {
+      await rm(hostDir, { recursive: true, force: true });
+    }
+  });
+
+  it('captures artifacts inside the run, before cleanup', async () => {
+    const { docker, calls } = makeFakeDocker({
+      container: { wait: async () => ({ StatusCode: 0 }) },
+    });
+    const client = new SandboxClient({ docker });
+    const hostDir = await mkdtemp(join(tmpdir(), 'stitch-capture-'));
+    try {
+      const result = await client.run(SPEC, {
+        timeoutMs: 5_000,
+        capture: { containerPath: '/workspace/dist', hostDir },
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) expect(result.value.capturedArchive).toBe(join(hostDir, 'dist.tar'));
+      // The container was still removed afterwards.
+      expect(calls.removed).toHaveLength(1);
+    } finally {
+      await rm(hostDir, { recursive: true, force: true });
+    }
   });
 
   it('rejects an invalid spec without touching the daemon', async () => {

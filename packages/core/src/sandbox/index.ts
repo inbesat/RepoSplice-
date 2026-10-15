@@ -50,6 +50,18 @@ export {
 } from './install.js';
 export type { InstallSpec, InstallResult, InstallOptions, InstallClient } from './install.js';
 
+// P-171 — run the ecosystem build inside the sandbox.
+export {
+  runBuild,
+  boundLogLines,
+  BUILD_COMMANDS,
+  DEFAULT_OUTPUT_DIRS,
+  DEFAULT_BUILD_TIMEOUT_MS,
+  MAX_BUILD_LOG_LINES,
+  BUILDOUT_MOUNT,
+} from './build.js';
+export type { BuildResult, RunBuildOptions, BuildClient } from './build.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,
