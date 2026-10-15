@@ -151,6 +151,8 @@ function describeError(error: StitchError): string {
       return `${error.code}: ${error.details}`;
     case 'SANDBOX_FAILED':
       return `${error.code}: ${error.step}: ${error.logs}`;
+    case 'DEP_INSTALL_FAILED':
+      return `${error.code}: install exit ${error.exitCode}: ${error.stderr}`;
     case 'COST_LIMIT':
       return `${error.code}: ${error.provider} spent $${error.spentUsd} of $${error.limitUsd}${
         error.message === undefined ? '' : ` (${error.message})`
@@ -187,6 +189,7 @@ function describeError(error: StitchError): string {
     case 'NO_FAILOVER':
       return `${error.code}: ${error.message} (candidates rejected: ${error.exhausted.length})`;
     case 'SANDBOX_UNAVAILABLE':
+    case 'DEP_INSTALL_OFFLINE_BLOCKED':
       return `${error.code}: ${error.message}`;
     case 'USER_TIMEOUT':
       return `${error.code}: ${error.message} (waited ${error.timeoutMs}ms)`;

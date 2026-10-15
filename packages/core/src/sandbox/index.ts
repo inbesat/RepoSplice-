@@ -40,6 +40,16 @@ export {
 } from './images.js';
 export type { ImageClient, EnsureImageOptions } from './images.js';
 
+// P-170 — install deps inside the sandbox.
+export {
+  installDeps,
+  countInstalled,
+  WORKSPACE_MOUNT,
+  DEFAULT_INSTALL_TIMEOUT_MS,
+  NODE_LOCKFILES,
+} from './install.js';
+export type { InstallSpec, InstallResult, InstallOptions, InstallClient } from './install.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

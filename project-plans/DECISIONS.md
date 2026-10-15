@@ -1994,4 +1994,29 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-043: The Node Image Must Be Bun-Ready, Offline Is Declared Not Probed, and the New Install Code Carries a `message`
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-170 (`PHASES_DETAILED.md:8591-8628`) installs the staged repo's dependencies inside the sandbox, between resolving an image (P-169) and building (P-171). Its shape is sound, but executing it exposed a cross-phase inconsistency and two contract details.
+
+**Decisions:**
+
+1. **`ECOSYSTEM_IMAGES.node` is corrected to the bun-ready image (`oven/bun:1.1`), amending P-169.** P-169's step-1 note says *"For npm use the bun-ready node image"* — but its sketch value was `node:22-alpine`, which is what P-169 committed. That value cannot work: P-170's node install is `bun install`, and P-155's node build/test are `bun run build` / `bun test`; a node-only image carries no bun, so **P-171 would have failed at its first command**. `oven/bun:1.1` is the repo's own P-008 base and is already bun-ready. `npm ci` (the spec's alternative) was not used, because a bun-based image gives no npm guarantee and one package manager keeps one lockfile story (`bun install`, `--frozen-lockfile` when a lockfile is committed). The P-169 test's expectation was updated with it.
+2. **Two new codes: `DEP_INSTALL_FAILED` (52) and `DEP_INSTALL_OFFLINE_BLOCKED` (53)**, each with the six coordinated edits (union, `STITCH_ERROR_CODES`, `doctor.ts`'s exhaustive renderer, P-163's `Record<StitchErrorCode, ErrorRule>`, `build.smoke`'s count, `INTEGRATIONS.md` §9.1). They are distinct from `SANDBOX_FAILED` so a failure is attributed to the install step rather than the build — which is what lets P-171/P-175 react correctly.
+3. **`DEP_INSTALL_FAILED` carries a `message` in addition to the spec's `{ exitCode, stderr }`.** Not decoration: the cli's `describeError` has a `default` branch that reads `error.message`, so a code with no `message` **breaks that consumer** — the typecheck caught it immediately (`packages/cli/src/commands/doctor.ts:97`). The alternatives were to edit a package this phase does not own, or to make the payload additive; additive wins.
+4. **Offline is a DECLARATION, not a probe.** `NetworkMode: 'none'` means we cannot test the registry to discover whether a cache is warm, so `installDeps` does not pretend to. When `networkAllowed === false` the caller must declare `offlineReady` (deps vendored or a warm cache) — that is the only honest way to distinguish "offline and fine" from "offline and doomed" — and otherwise it returns `DEP_INSTALL_OFFLINE_BLOCKED` **without creating a container**, so a job can never hang against a network it was denied. P-175's GH-Actions path has network and is the natural fallback (the error's hint says so).
+5. **Ecosystem keys are the real `Ecosystem` union**, as in P-169: the spec's `npm`/`cargo` are parser ids; the command map switches on `node | python | rust | go`.
+6. **The client seam is the narrow structural `InstallClient`**, because `SandboxClient`'s `#private` fields make it nominally typed and no fake is assignable (the ADR-030 rule, third use in Epic 8).
+7. **`image` defaults to `imageFor(ecosystem)` but is overridable**, so the acceptance criterion ("uses `imageFor(ecosystem)`") holds while the pipeline can pass the resolved ref from P-169's `ensureImage` (which exists precisely for overrides and local builds). `packageCount` is a documented best-effort parse of the tool's own stdout, absent when it printed none; `dirty: false` is the P-181 anticipation the handoff calls out (the install must not leak host files).
+
+**Consequences:**
+
+- The install step is fully exercisable offline with a fake client: 5 mandated tests plus 4 extras assert the command per ecosystem, the `/workspace` read-write mount, the `NetworkMode` switch, the offline gate, and both typed failures.
+- A blocked-offline job fails fast with an actionable hint instead of hanging, and the same code path is what P-171/P-172 gate on.
+- Correcting the node image means Epic 8's build/test commands can actually run — the alternative was a latent P-171 failure discovered two phases late.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

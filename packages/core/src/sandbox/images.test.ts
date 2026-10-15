@@ -110,7 +110,7 @@ beforeEach(() => {
 
 describe('P-169 sandbox images', () => {
   it('defaults images per ecosystem', () => {
-    expect(imageFor('node')).toBe('node:22-alpine');
+    expect(imageFor('node')).toBe('oven/bun:1.1');
     expect(imageFor('python')).toBe('python:3.12-slim');
     expect(imageFor('rust')).toBe('rust:1.80-alpine');
     expect(imageFor('go')).toBe('golang:1.23-alpine');
@@ -152,7 +152,7 @@ describe('P-169 sandbox images', () => {
       platform: 'linux/amd64',
     });
     expect(resolved.isOk()).toBe(true);
-    const ephemeral = ephemeralTagFor('node', 'node:22-alpine', 'linux/amd64');
+    const ephemeral = ephemeralTagFor('node', 'oven/bun:1.1', 'linux/amd64');
     expect(resolved.isOk() && resolved.value).toBe(ephemeral);
     expect(isEphemeralTag(ephemeral)).toBe(true);
     expect(calls.pulls).toHaveLength(0);
@@ -241,13 +241,13 @@ describe('P-169 sandbox images', () => {
   });
 
   it('derives deterministic ephemeral tags', () => {
-    const a = ephemeralTagFor('node', 'node:22-alpine', 'linux/amd64');
-    expect(a).toBe(ephemeralTagFor('node', 'node:22-alpine', 'linux/amd64'));
+    const a = ephemeralTagFor('node', 'oven/bun:1.1', 'linux/amd64');
+    expect(a).toBe(ephemeralTagFor('node', 'oven/bun:1.1', 'linux/amd64'));
     expect(a).toContain(EPHEMERAL_PREFIX);
     // Platform and ecosystem both participate.
-    expect(a).not.toBe(ephemeralTagFor('node', 'node:22-alpine', 'linux/arm64'));
-    expect(a).not.toBe(ephemeralTagFor('python', 'node:22-alpine', 'linux/amd64'));
-    expect(isEphemeralTag('node:22-alpine')).toBe(false);
+    expect(a).not.toBe(ephemeralTagFor('node', 'oven/bun:1.1', 'linux/arm64'));
+    expect(a).not.toBe(ephemeralTagFor('python', 'oven/bun:1.1', 'linux/amd64'));
+    expect(isEphemeralTag('oven/bun:1.1')).toBe(false);
     expect(SANDBOX_IMAGES_TABLE_SQL).toContain('sandbox_images');
   });
 

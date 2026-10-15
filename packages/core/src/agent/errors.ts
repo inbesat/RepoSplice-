@@ -158,6 +158,16 @@ const RULES = {
     action: 'abort',
     hint: 'The sandboxed build crashed. Try the GitHub Actions fallback, or inspect the build log.',
   },
+  DEP_INSTALL_FAILED: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'Installing dependencies inside the sandbox failed. Check the manifest/lockfile, or inspect the install log.',
+  },
+  DEP_INSTALL_OFFLINE_BLOCKED: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'The install needs the network, which offline mode disabled. Enable sandbox.networkAllow, vendor the dependencies, or use the GitHub Actions fallback (which has network).',
+  },
   DOCKER_ERROR: {
     cls: 'sandbox',
     action: 'abort',

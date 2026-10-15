@@ -1021,6 +1021,19 @@ export {
   clearImageCacheForTests,
 } from './sandbox/images.js';
 export type { ImageClient, EnsureImageOptions } from './sandbox/images.js';
+export {
+  installDeps,
+  countInstalled,
+  WORKSPACE_MOUNT,
+  DEFAULT_INSTALL_TIMEOUT_MS,
+  NODE_LOCKFILES,
+} from './sandbox/install.js';
+export type {
+  InstallSpec,
+  InstallResult,
+  InstallOptions,
+  InstallClient,
+} from './sandbox/install.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

@@ -41,11 +41,14 @@ import type { BuildImageOptions } from './client.js';
  * this map (`BuildEcosystem` in P-155's `run_build`, `detectEcosystems` in
  * P-103) speaks the `Ecosystem` union. See ADR-042.
  *
- * The `node` entry is the bun-ready image because P-155's node build/test
- * commands are `bun run build` / `bun test`.
+ * The `node` entry is the BUN-READY image (the P-008 base, `oven/bun:1.1`),
+ * not `node:22-alpine`: P-169's own step-1 note requires it ("For npm use the
+ * bun-ready node image"), and both P-155's build/test (`bun run build`,
+ * `bun test`) and P-170's install (`bun install`) invoke bun, which
+ * `node:22-alpine` does not carry. See ADR-043.
  */
 export const ECOSYSTEM_IMAGES: Readonly<Record<Ecosystem, string>> = {
-  node: 'node:22-alpine',
+  node: 'oven/bun:1.1',
   python: 'python:3.12-slim',
   rust: 'rust:1.80-alpine',
   go: 'golang:1.23-alpine',

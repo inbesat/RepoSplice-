@@ -87,6 +87,15 @@ export type StitchError =
   // build ran and failed — here nothing ran at all, and the agent loop must not
   // treat the absence of a verdict as a failing verdict.
   | { code: 'SANDBOX_UNAVAILABLE'; message: string; backend?: string }
+  // P-170: the in-sandbox dependency install exited non-zero. Carries the exit
+  // code and captured stderr so the caller can show why, and is distinct from
+  // `SANDBOX_FAILED` (a build/test crash) so the pipeline can attribute the
+  // failure to the install step rather than the build.
+  | { code: 'DEP_INSTALL_FAILED'; exitCode: number; stderr: string; message: string }
+  // P-170: the install needs the network, but the caller disabled it and the
+  // workspace was not declared offline-ready. Surfaced instead of running a
+  // container that would hang against `NetworkMode: 'none'`.
+  | { code: 'DEP_INSTALL_OFFLINE_BLOCKED'; ecosystem: string; message: string }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
@@ -217,6 +226,8 @@ export const STITCH_ERROR_CODES = [
   'DEPENDENCY_CONFLICT',
   'SANDBOX_FAILED',
   'SANDBOX_UNAVAILABLE',
+  'DEP_INSTALL_FAILED',
+  'DEP_INSTALL_OFFLINE_BLOCKED',
   'CONFIG_ERROR',
   'USER_CANCELLED',
   'INTERNAL',
