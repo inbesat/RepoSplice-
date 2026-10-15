@@ -115,6 +115,10 @@ function makeFakeDocker(lines: string[]): DockerLike {
     buildImage: async () => new EventEmitter(),
     createContainer: async () => container,
     getContainer: () => container,
+    getImage: () => ({ remove: async () => undefined }),
+    getVolume: () => ({ remove: async () => undefined }),
+    getNetwork: () => ({ remove: async () => undefined }),
+    pruneImages: async () => ({}),
   };
 }
 

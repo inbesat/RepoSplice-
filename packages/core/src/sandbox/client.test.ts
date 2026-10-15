@@ -151,6 +151,10 @@ function makeFakeDocker(config: FakeDockerConfig = {}): { docker: DockerLike; ca
       calls.statsRequested.push(id);
       return makeFakeContainer(calls, config.containersById?.[id] ?? { id });
     },
+    getImage: () => ({ remove: async () => undefined }),
+    getVolume: () => ({ remove: async () => undefined }),
+    getNetwork: () => ({ remove: async () => undefined }),
+    pruneImages: async () => ({ ImagesDeleted: [{ Deleted: 'sha256:1' }] }),
   };
   return { docker, calls };
 }

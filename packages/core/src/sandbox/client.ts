@@ -107,6 +107,38 @@ export interface DockerLike {
   ): Promise<unknown>;
   createContainer(options: ContainerCreateOptionsLike): Promise<ContainerLike>;
   getContainer(id: string): ContainerLike;
+  /** P-177: cleanup handles. */
+  getImage(name: string): ImageLike;
+  getVolume(name: string): VolumeLike;
+  getNetwork(id: string): NetworkLike;
+  pruneImages(): Promise<unknown>;
+}
+
+/** P-177: an image handle (only `remove` is used). */
+export interface ImageLike {
+  remove(options?: { force?: boolean }): Promise<unknown>;
+}
+
+/** P-177: a volume handle. */
+export interface VolumeLike {
+  remove(options?: { force?: boolean }): Promise<unknown>;
+}
+
+/** P-177: a network handle. */
+export interface NetworkLike {
+  remove(): Promise<unknown>;
+}
+
+function adaptImage(image: Docker.Image): ImageLike {
+  return { remove: options => image.remove(options ?? {}) };
+}
+
+function adaptVolume(volume: Docker.Volume): VolumeLike {
+  return { remove: options => volume.remove(options ?? {}) };
+}
+
+function adaptNetwork(network: Docker.Network): NetworkLike {
+  return { remove: () => network.remove() };
 }
 
 /**
@@ -141,6 +173,10 @@ function adaptDocker(docker: Docker): DockerLike {
     buildImage: (file, options) => docker.buildImage(file, options),
     createContainer: async options => adaptContainer(await docker.createContainer(options)),
     getContainer: id => adaptContainer(docker.getContainer(id)),
+    getImage: name => adaptImage(docker.getImage(name)),
+    getVolume: name => adaptVolume(docker.getVolume(name)),
+    getNetwork: id => adaptNetwork(docker.getNetwork(id)),
+    pruneImages: () => docker.pruneImages(),
   };
 }
 
@@ -636,6 +672,75 @@ export class SandboxClient {
         code: 'DOCKER_ERROR',
         message: `copyFrom("${containerPath}") failed: ${detailOf(cause)}`,
       });
+    }
+  }
+
+  /** P-177: force-remove an image. */
+  async removeImage(ref: string, force = true): Promise<Result<void, StitchError>> {
+    if (ref.trim() === '') {
+      return err({ code: 'CONFIG_ERROR', field: 'ref', message: 'removeImage: ref is required' });
+    }
+    try {
+      await this.#docker.getImage(ref).remove({ force });
+      return ok(undefined);
+    } catch (cause: unknown) {
+      return err({
+        code: 'DOCKER_ERROR',
+        message: `removeImage("${ref}") failed: ${detailOf(cause)}`,
+      });
+    }
+  }
+
+  /** P-177: remove a volume. */
+  async removeVolume(name: string, force = true): Promise<Result<void, StitchError>> {
+    if (name.trim() === '') {
+      return err({
+        code: 'CONFIG_ERROR',
+        field: 'name',
+        message: 'removeVolume: name is required',
+      });
+    }
+    try {
+      await this.#docker.getVolume(name).remove({ force });
+      return ok(undefined);
+    } catch (cause: unknown) {
+      return err({
+        code: 'DOCKER_ERROR',
+        message: `removeVolume("${name}") failed: ${detailOf(cause)}`,
+      });
+    }
+  }
+
+  /** P-177: remove a network. */
+  async removeNetwork(id: string): Promise<Result<void, StitchError>> {
+    if (id.trim() === '') {
+      return err({ code: 'CONFIG_ERROR', field: 'id', message: 'removeNetwork: id is required' });
+    }
+    try {
+      await this.#docker.getNetwork(id).remove();
+      return ok(undefined);
+    } catch (cause: unknown) {
+      return err({
+        code: 'DOCKER_ERROR',
+        message: `removeNetwork("${id}") failed: ${detailOf(cause)}`,
+      });
+    }
+  }
+
+  /**
+   * P-177: prune dangling images.
+   *
+   * Deliberately NOT called by default anywhere: it removes images repo-stitcher
+   * did not create, including a developer's cached dev images, so only
+   * `config.sandbox.pruneImages` opts into it.
+   */
+  async pruneImages(): Promise<Result<number, StitchError>> {
+    try {
+      const info = await this.#docker.pruneImages();
+      const reclaimed = (info as { ImagesDeleted?: unknown[] } | null)?.ImagesDeleted;
+      return ok(Array.isArray(reclaimed) ? reclaimed.length : 0);
+    } catch (cause: unknown) {
+      return err({ code: 'DOCKER_ERROR', message: `pruneImages failed: ${detailOf(cause)}` });
     }
   }
 

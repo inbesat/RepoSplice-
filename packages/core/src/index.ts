@@ -1113,6 +1113,14 @@ export type {
   AttemptDetail,
   RunOutcome,
 } from './sandbox/verdict.js';
+export { CleanupTracker, cleanupSandbox, withCleanup } from './sandbox/cleanup.js';
+export type {
+  ResourceKind,
+  TrackedResource,
+  CleanupSummary,
+  CleanupClient,
+  CleanupOptions,
+} from './sandbox/cleanup.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

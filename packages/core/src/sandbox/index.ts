@@ -150,6 +150,16 @@ export type {
   RunOutcome,
 } from './verdict.js';
 
+// P-177 — deterministic cleanup.
+export { CleanupTracker, cleanupSandbox, withCleanup } from './cleanup.js';
+export type {
+  ResourceKind,
+  TrackedResource,
+  CleanupSummary,
+  CleanupClient,
+  CleanupOptions,
+} from './cleanup.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

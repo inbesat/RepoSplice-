@@ -53,6 +53,10 @@ function slowDocker(): { docker: DockerLike; removed: string[] } {
       buildImage: async () => new EventEmitter(),
       createContainer: async () => container,
       getContainer: () => container,
+      getImage: () => ({ remove: async () => undefined }),
+      getVolume: () => ({ remove: async () => undefined }),
+      getNetwork: () => ({ remove: async () => undefined }),
+      pruneImages: async () => ({}),
     },
   };
 }
@@ -215,6 +219,10 @@ describe('P-174 limits', () => {
         return container;
       },
       getContainer: () => container,
+      getImage: () => ({ remove: async () => undefined }),
+      getVolume: () => ({ remove: async () => undefined }),
+      getNetwork: () => ({ remove: async () => undefined }),
+      pruneImages: async () => ({}),
     };
     const client = new SandboxClient({ docker });
     const spec = applyLimits(SPEC, STRICT_LIMITS);

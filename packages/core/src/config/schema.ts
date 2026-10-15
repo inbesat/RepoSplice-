@@ -83,6 +83,12 @@ export const SandboxConfigSchema = z.object({
    * or — on the GitHub path — minutes of runner time.
    */
   flakyCheck: z.boolean().optional(),
+  /**
+   * P-177: allow a daemon-wide image prune during cleanup. Default OFF —
+   * pruning removes images repo-stitcher never created, including a
+   * developer's cached dev images.
+   */
+  pruneImages: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

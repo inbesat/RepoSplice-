@@ -28,6 +28,12 @@ import {
 import { runBuild, type BuildClient, type BuildResult } from './build.js';
 import { runTests, type TestClient, type TestResult } from './test.js';
 import { checkFlaky, type Verdict } from './verdict.js';
+import {
+  withCleanup,
+  type CleanupClient,
+  type CleanupSummary,
+  type CleanupTracker,
+} from './cleanup.js';
 import type { Ecosystem } from '../deps/index.js';
 
 /** Which verification to run. */
@@ -64,6 +70,20 @@ export interface RunVerificationOptions {
   flakyCheck?: boolean;
   /** P-176: extra attempts for a failing base. Clamped by P-176. */
   flakyRepeat?: number;
+  /**
+   * P-177: cleanup wiring. When a tracker is supplied, the whole dispatch —
+   * including P-176's repeats — runs inside `withCleanup`, so resources are
+   * swept on success, failure AND abort. Without one, nothing is swept (the
+   * per-run container removal P-168 already does inside `run` still applies).
+   */
+  cleanup?: {
+    client?: CleanupClient;
+    tracker?: CleanupTracker;
+    /** `config.sandbox.pruneImages` (default false). */
+    pruneImages?: boolean;
+    /** Receives the cleanup summary for logging/tracing. */
+    onSummary?: (summary: CleanupSummary) => void;
+  };
 }
 
 /** A run outcome plus the P-176 verdict, when the repeat check ran. */
@@ -81,28 +101,44 @@ export async function runVerification(
   repoPath: string,
   opts: RunVerificationOptions = {}
 ): Promise<Result<VerifiedRun, StitchError>> {
-  const first = await dispatchOnce(kind, ecosystem, repoPath, opts);
-  if (first.isErr()) return err(first.error);
+  const body = async (): Promise<Result<VerifiedRun, StitchError>> => {
+    const first = await dispatchOnce(kind, ecosystem, repoPath, opts);
+    if (first.isErr()) return err(first.error);
 
-  if (opts.flakyCheck !== true) return ok(first.value);
+    if (opts.flakyCheck !== true) return ok(first.value);
 
-  // The base run is reused as attempt 1; later attempts re-dispatch with the
-  // repeat check cleared so a re-run can never recurse.
-  const checked = await checkFlaky(
-    ecosystem,
-    repoPath,
-    kind,
+    // The base run is reused as attempt 1; later attempts re-dispatch with the
+    // repeat check cleared so a re-run can never recurse.
+    const checked = await checkFlaky(
+      ecosystem,
+      repoPath,
+      kind,
+      {
+        enabled: true,
+        ...(opts.flakyRepeat !== undefined ? { repeat: opts.flakyRepeat } : {}),
+      },
+      attempt =>
+        attempt === 1
+          ? Promise.resolve(ok(first.value))
+          : dispatchOnce(kind, ecosystem, repoPath, { ...opts, flakyCheck: false })
+    );
+    if (checked.isErr()) return err(checked.error);
+    return ok({ ...first.value, verdict: checked.value });
+  };
+
+  // P-177: the `finally` guarantee. A tracker means "sweep whatever I recorded
+  // as well", including when the body throws.
+  const tracker = opts.cleanup?.tracker;
+  if (tracker === undefined) return body();
+  return withCleanup(
+    opts.cleanup?.client,
+    tracker,
     {
-      enabled: true,
-      ...(opts.flakyRepeat !== undefined ? { repeat: opts.flakyRepeat } : {}),
+      ...(opts.cleanup?.pruneImages !== undefined ? { pruneImages: opts.cleanup.pruneImages } : {}),
+      ...(opts.cleanup?.onSummary !== undefined ? { onSummary: opts.cleanup.onSummary } : {}),
     },
-    attempt =>
-      attempt === 1
-        ? Promise.resolve(ok(first.value))
-        : dispatchOnce(kind, ecosystem, repoPath, { ...opts, flakyCheck: false })
+    body
   );
-  if (checked.isErr()) return err(checked.error);
-  return ok({ ...first.value, verdict: checked.value });
 }
 
 /** One dispatch, with no repeat logic (the recursion guard for P-176). */
