@@ -1891,4 +1891,32 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-039: The Deps/License Facades Implement the Thin Contract and Add the Rich Verbs as Concrete Methods
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-166 (`PHASES_DETAILED.md:8384-8430`) supplies the production `ToolContext['deps']` and `ToolContext['license']` so the loop's checks and fixes reuse the real P-104–P-117 / P-118–P-130 modules instead of re-implementing them. Its step 1 sketches a rich surface (`DepsFacade.union/resolve/dedupe/mergeScripts/lockfile/report`; `LicenseFacade.scan/normalize/compat/policy/reportData` + `complianceGate`), but the P-140 declarations the tools are actually written against are minimal — `DepsFacade { analyze(); install() }` and `LicenseFacade { scan(); check() }` (`ai/types.ts:155-163`), and `analyze()` is the *only* facade method any tool calls (`resolve_deps.ts:274`, `fix_dependency.ts:260`).
+
+**Decisions:**
+
+- **`ai/types.ts` is not widened.** The rich verbs are CONCRETE methods on the two classes, exactly as P-165 kept `commitStage`/`mergeSources`/`stageStatus` off the `GitFacade` interface. The declared members are implemented faithfully, so every pre-P-166 `ToolContext` still compiles and no tool's assumed surface changed.
+- **The agent classes are aliased at the public barrel.** `src/index.ts` already exports the `ai/types` `DepsFacade`/`LicenseFacade` interfaces, so `agent/index.ts`'s classes are re-exported there as `AgentDepsFacade`/`AgentLicenseFacade` — the same disambiguation the barrel already uses for `LicenseCompliancePolicy` and `DepsMergeResult`. `agent/index.ts` exports them under their spec names.
+- **`analyze()` reads the stage's own manifests.** It runs P-103 `detectEcosystems` over repo C, parses each hit with the phase-correct parser (P-104–P-107; note `parsePythonManifest` takes `(filePath, content)` — the opposite order to its siblings), and flattens every install section to one `name -> range` map. It REJECTS when the stage cannot be walked, because both call sites wrap it in `try/catch` and map the caught message to a typed `INTERNAL`; returning `{}` would silently report every imported package as missing — a false gap, worse than a loud failure. A single unparseable/stale manifest entry is skipped, never fatal.
+- **`install()` is realised as a documented refusal.** Dependency installation is the sandbox's job (P-170) and the host-side agent facade must never spawn a package manager (ADR-028: "never run on the host"). A method with no error channel that this layer must not perform can only refuse honestly.
+- **Signature reconciliation (module wins over sketch, the P-165 precedent).** P-109's `resolveCollision` has no `pkg` input, so `resolve(rangeA, rangeB, options?)` takes two ranges. P-111's `chooseDedupeStrategy` needs `(versions, requested)`, so `dedupe` takes that pair. P-112's `mergeScripts` requires `prefixA`/`prefixB`, so the facade requires its options. The alternative — inventing a `(pkg, range)` or a `(manifest)`-shaped wrapper — would be a second code path with made-up semantics.
+- **`complianceGate` fails CLOSED.** A scan that cannot run returns `{ blocking: true, report }` with the failure as a reason; "we could not check" must never read as "it is compliant" (the same direction as P-164's unenforceable-cost cap). On success it is a single honest delegate chain: `scanDeclared` (P-118) → `detectUnknown` (P-123) → `checkGpl` (P-121) → `chooseDualLicense` for OR expressions (P-122) → `checkCompatibility` (P-120) → `evaluatePolicy` (P-127).
+- **The declared placeholders are given real meaning.** `LicenseFacade.scan(): string[]` returns the distinct normalized SPDX ids the stage declares; `check(): boolean` is the inverse of the gate's `blocking`. Both delegate, so the pre-existing members are no longer stubs.
+- **`LicenseAggregateFieldsLike` is a structural seam.** P-127's `LicenseAggregateFields` is module-private, so the facade declares an identically-shaped interface (ADR-030's pattern) rather than importing a private type — the compiled contract is the same without reaching into another module's internals.
+- **`DEFAULT_LICENSE_POLICY` is explicit and documented.** `complianceGate`/`check` default to permissive + weak-copyleft allowed, unknown denied, attribution required, MIT target. A caller needing a different bar passes its own; nothing reads the config schema's name-list `LicensePolicy`, which is a different concept.
+- **Loop wiring is injection, not a `loop.ts` edit.** `ToolContext.deps`/`.license` are required members, but the loop receives the whole context (`LoopConfig.context`, P-140/ADR-021), so the real facades are wired by the orchestrator (P-238) and there is no mock in the production path. The mandated test drives the real `runToolLoop` with a `ToolContext` whose facades are the real classes and asserts a tool reads real module output through them. The full E2E is P-167's mandate and is not pre-empted here.
+
+**Consequences:**
+
+- `fix_dependency`/`detect_gaps` see what C actually declares; a licence verdict blocks via `complianceGate` with the real policy engine; neither has a second, drifting implementation.
+- Adding a facade method is additive; no interface change was needed, so no P-140–P-165 tool or loop test changed.
+- The 4 mandated tests (`deps union/resolve match modules`, `license scan/compat match modules`, `complianceGate blocks on deny`, `loop uses real facades`) plus 9 extras run against real modules and fixture packages.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

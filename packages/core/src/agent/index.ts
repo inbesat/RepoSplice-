@@ -231,6 +231,25 @@ export {
 export { GitFacade, createGitFacade, withinRepoRoot, parseOriginTrailer } from './gitFacade.js';
 export type { FacadePaths, StitchOrigin, StageCommitOptions, CommitInfo } from './gitFacade.js';
 
+// P-166 — the production deps/license facades: the loop's checks and fixes run
+// through the real P-104–P-117 / P-118–P-130 modules.
+export {
+  DepsFacade,
+  LicenseFacade,
+  createDepsFacade,
+  createLicenseFacade,
+  createDepsLicenseFacades,
+  manifestDependencyMap,
+  DEFAULT_LICENSE_POLICY,
+} from './depsLicenseFacade.js';
+export type {
+  DepsLicensePaths,
+  DependencyMap,
+  LicenseAggregateFieldsLike,
+  PolicyOverridesLike,
+  ComplianceGateResult,
+} from './depsLicenseFacade.js';
+
 // P-149 import extraction (pure, exported for reuse by P-150/P-151).
 export {
   parseJsImports,

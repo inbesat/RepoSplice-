@@ -883,6 +883,16 @@ export {
   pythonPackageName,
   classifyJsSpecifier,
   resolveRelativeImport,
+  // P-166 deps/license facades. The `ai/types` `DepsFacade`/`LicenseFacade`
+  // interfaces are already exported above, so the agent-side implementations
+  // are aliased here (same disambiguation as `LicenseCompliancePolicy`).
+  DepsFacade as AgentDepsFacade,
+  LicenseFacade as AgentLicenseFacade,
+  createDepsFacade,
+  createLicenseFacade,
+  createDepsLicenseFacades,
+  manifestDependencyMap,
+  DEFAULT_LICENSE_POLICY,
 } from './agent/index.js';
 export type {
   SourceRepo,
@@ -964,6 +974,11 @@ export type {
   DiffHunk,
   DiffLine,
   SpecifierKind,
+  DepsLicensePaths,
+  DependencyMap,
+  LicenseAggregateFieldsLike,
+  PolicyOverridesLike,
+  ComplianceGateResult,
 } from './agent/index.js';
 
 export { createDockerClient, pingDocker, defaultDockerSocket } from './sandbox/docker.js';
