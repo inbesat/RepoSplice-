@@ -2100,4 +2100,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-047: Sandbox Limits Parse Docker's Own Notation, Timeout and Abort Get Distinct Codes, and OOM-Kill Is Left Enabled
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-174 (`PHASES_DETAILED.md:8778-8821`) makes the sandbox enforce hard resource limits so a runaway merged repo cannot hang or starve the host. Its handoff names the goal precisely: "expose failures distinctly (timeout vs OOM vs abort) so P-163 can route them". Five things needed reconciling.
+
+**Decisions:**
+
+1. **`SANDBOX_TIMEOUT` (56) and `SANDBOX_ABORTED` (57) are new codes, and P-168's `run` ADOPTS them.** The handoff asks for distinct failures, but P-168 reported a wall-clock overrun as `DOCKER_ERROR` and an abort as the generic `ABORTED` (a P-140 loop code). Both are wrong for routing: a timeout is the runaway-build class that P-163 retries or fails distinctly, while `ABORTED` already means "the agent loop stopped". So `run`'s timeout path now returns `SANDBOX_TIMEOUT { timeoutMs }` and its abort paths `SANDBOX_ABORTED`, and `enforceTimeout` reports the same two codes — one vocabulary whichever layer catches the stop. P-168's two tests were updated with it; nothing else consumed those codes.
+2. **`enforceTimeout` owns a clock, and container cleanup stays P-168's.** The phase says "on timeout, `client.kill(id)` + `client.rm(id)`", but `run` removes its container in a `finally` and never exposes a handle — so a wrapper holding an id could not be generic, and a second killer would race the first. The wrapper is therefore `(fn, timeoutMs, signal)` exactly as specified and returns the typed codes; the kill+remove is P-168's in-run guarantee. That the container really is gone is asserted end-to-end (a real `SandboxClient` over a fake docker, `removed === ['t1']`), not assumed.
+3. **Limits parse Docker's own notation, and an unreadable value is a typed error.** `config.sandbox.limits` speaks Docker (`memory: '2g'`, `cpu: '1'`, `timeout: 600` **seconds**) while `ContainerSpec` wants bytes and cores. `parseMemoryToMb` (`2g`/`512m`/`1.5g`/`1024k`/bare-MB) and `parseCpuCount` (fractions allowed) are the conversion, and an invalid value returns `CONFIG_ERROR` rather than a silent `0` — a dropped limit would remove the very protection this phase exists to add. `defaultLimits(config)` consequently returns a `Result` (the spec sketched a bare return; the no-throw rule and the failure mode decide it).
+4. **The spec's listed defaults lose to the config's actual defaults.** Step 1 lists `timeoutMs 300_000 … memMb 1536, cpuCount 2` but labels them "Defaults (config P-009)", and P-009's real schema is `limits: { memory: '2g', cpu: '1', timeout: 600 }` — i.e. **2048 MB, 1 core, 600 s**. Since the acceptance criterion says "Defaults from config", the config wins when supplied (600 s ⇒ `600_000` ms, with the seconds→ms conversion documented), and the step-1 numbers survive only as the no-config fallback (`DEFAULT_LIMITS`).
+5. **`OomKillDisable` is deliberately NOT set.** The Files list says "client.ts (optionally set OOM)"; setting it would disable the OOM killer and let a runaway allocation starve the host — the exact failure class this phase prevents. The memory cap plus the daemon's default OOM-kill policy is the safe pair, and a test asserts the field is absent so the decision cannot drift silently.
+6. **`strictLimits()` tightens only time/memory/CPU/network.** The log and artifact bounds stay P-173's constants (`DEFAULT_LOG_CAPACITY`, `DEFAULT_MAX_ARTIFACT_BYTES`) because they protect host memory rather than constrain the code under test; `limitsToCaptureOptions(cfg)` is the shared wiring that lets a `CaptureManager` be built straight from a profile (asserted: a 2-line profile really drops the third line).
+
+**Consequences:**
+
+- The profile is one mapping plus one clock, so it is entirely unit-testable, and the last test closes the loop — `applyLimits` output through the real client produces `HostConfig { Memory, NanoCpus, NetworkMode: 'none' }`, which is what the daemon actually receives.
+- Timeouts and aborts are now distinguishable at the boundary, which is what P-163's error table and P-175's fallback decision both need.
+- `defaultLimits` cannot silently drop a limit: a typo'd `sandbox.limits.memory` fails loudly at config-read time.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

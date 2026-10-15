@@ -1068,6 +1068,17 @@ export type {
   CaptureOptions,
   CaptureClient,
 } from './sandbox/capture.js';
+export {
+  DEFAULT_LIMITS,
+  STRICT_LIMITS,
+  applyLimits,
+  enforceTimeout,
+  defaultLimits,
+  limitsToCaptureOptions,
+  parseMemoryToMb,
+  parseCpuCount,
+} from './sandbox/limits.js';
+export type { LimitsConfig, LimitsConfigSource } from './sandbox/limits.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

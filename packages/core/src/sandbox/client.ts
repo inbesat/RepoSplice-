@@ -528,7 +528,7 @@ export class SandboxClient {
     const invalid = validateSpec(spec);
     if (invalid.isErr()) return err(invalid.error);
     if (opts.signal?.aborted === true) {
-      return err({ code: 'ABORTED', message: 'sandbox run aborted before start' });
+      return err({ code: 'SANDBOX_ABORTED', message: 'sandbox run aborted before start' });
     }
     const timeoutMs = opts.timeoutMs ?? DEFAULT_RUN_TIMEOUT_MS;
 
@@ -714,14 +714,15 @@ export class SandboxClient {
         () =>
           finish(
             err({
-              code: 'DOCKER_ERROR',
-              ...(containerId !== undefined ? { containerId } : {}),
-              message: `container exceeded timeoutMs=${timeoutMs}`,
+              code: 'SANDBOX_TIMEOUT',
+              timeoutMs,
+              message: `container exceeded its time budget (${timeoutMs}ms${containerId !== undefined ? `, ${containerId}` : ''})`,
             })
           ),
         timeoutMs
       );
-      const onAbort = (): void => finish(err({ code: 'ABORTED', message: 'sandbox run aborted' }));
+      const onAbort = (): void =>
+        finish(err({ code: 'SANDBOX_ABORTED', message: 'sandbox run aborted' }));
 
       if (signal !== undefined) {
         if (signal.aborted) {

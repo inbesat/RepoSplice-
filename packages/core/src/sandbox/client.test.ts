@@ -238,8 +238,9 @@ describe('P-168 SandboxClient', () => {
 
     const result = await client.run(SPEC, { timeoutMs: 25 });
     expect(result.isErr()).toBe(true);
-    if (result.isErr() && result.error.code === 'DOCKER_ERROR') {
-      expect(result.error.message).toContain('timeoutMs=25');
+    if (result.isErr() && result.error.code === 'SANDBOX_TIMEOUT') {
+      expect(result.error.timeoutMs).toBe(25);
+      expect(result.error.message).toContain('25ms');
     }
     // Cleanup is guaranteed on the timeout path too.
     expect(calls.removed).toHaveLength(1);
@@ -255,7 +256,7 @@ describe('P-168 SandboxClient', () => {
     const result = await running;
 
     expect(result.isErr()).toBe(true);
-    if (result.isErr()) expect(result.error.code).toBe('ABORTED');
+    if (result.isErr()) expect(result.error.code).toBe('SANDBOX_ABORTED');
     expect(calls.removed).toHaveLength(1);
 
     // An already-aborted signal never touches the daemon.
@@ -266,7 +267,7 @@ describe('P-168 SandboxClient', () => {
       signal: aborted.signal,
     });
     expect(early.isErr()).toBe(true);
-    if (early.isErr()) expect(early.error.code).toBe('ABORTED');
+    if (early.isErr()) expect(early.error.code).toBe('SANDBOX_ABORTED');
     expect(pre.calls.created).toHaveLength(0);
   });
 

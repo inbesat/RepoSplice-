@@ -99,6 +99,19 @@ export type {
   CaptureClient,
 } from './capture.js';
 
+// P-174 — timeout and resource limits.
+export {
+  DEFAULT_LIMITS,
+  STRICT_LIMITS,
+  applyLimits,
+  enforceTimeout,
+  defaultLimits,
+  limitsToCaptureOptions,
+  parseMemoryToMb,
+  parseCpuCount,
+} from './limits.js';
+export type { LimitsConfig, LimitsConfigSource } from './limits.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

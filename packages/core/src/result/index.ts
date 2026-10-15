@@ -109,6 +109,12 @@ export type StitchError =
       message: string;
     }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
+  // P-174: a sandbox run exceeded its wall-clock budget. Distinct from
+  // `DOCKER_ERROR` and from `SANDBOX_ABORTED` because P-163 routes them
+  // differently: a timeout is the runaway-build class, an abort is a human.
+  | { code: 'SANDBOX_TIMEOUT'; timeoutMs: number; message: string }
+  // P-174: a sandbox run was stopped by an AbortSignal (human/loop cancel).
+  | { code: 'SANDBOX_ABORTED'; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
   | { code: 'AUTH_ERROR'; provider: string; message: string }
@@ -242,6 +248,8 @@ export const STITCH_ERROR_CODES = [
   'DEP_INSTALL_OFFLINE_BLOCKED',
   'SANDBOX_LOG_LIMIT',
   'SANDBOX_ARTIFACT_LIMIT',
+  'SANDBOX_TIMEOUT',
+  'SANDBOX_ABORTED',
   'CONFIG_ERROR',
   'USER_CANCELLED',
   'INTERNAL',

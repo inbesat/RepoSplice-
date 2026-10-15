@@ -192,6 +192,8 @@ function describeError(error: StitchError): string {
     case 'DEP_INSTALL_OFFLINE_BLOCKED':
     case 'SANDBOX_LOG_LIMIT':
     case 'SANDBOX_ARTIFACT_LIMIT':
+    case 'SANDBOX_TIMEOUT':
+    case 'SANDBOX_ABORTED':
       return `${error.code}: ${error.message}`;
     case 'USER_TIMEOUT':
       return `${error.code}: ${error.message} (waited ${error.timeoutMs}ms)`;

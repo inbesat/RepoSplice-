@@ -178,6 +178,16 @@ const RULES = {
     action: 'continue',
     hint: 'The extracted artifacts exceeded the configured byte budget. Raise sandbox.maxArtifactBytes, or narrow the captured paths.',
   },
+  SANDBOX_TIMEOUT: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'The sandboxed step exceeded its time budget — the runaway-build class. Raise sandbox.limits.timeout, or investigate the loop.',
+  },
+  SANDBOX_ABORTED: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'The sandboxed step was cancelled. Re-run the merge when you are ready.',
+  },
   DOCKER_ERROR: {
     cls: 'sandbox',
     action: 'abort',
