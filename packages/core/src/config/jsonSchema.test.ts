@@ -10,8 +10,10 @@ describe('config jsonSchema (P-039)', () => {
     expect(Object.keys(small.properties ?? {})).toEqual(['name', 'count']);
     expect(small.required).toEqual(['name', 'count']);
 
-    // The full ConfigSchema (P-009) emits all 9 top-level sections, all required.
-    // P-158 added `agent` (the tool args/result limits block).
+    // The full ConfigSchema (P-009) emits every top-level section.
+    // P-158 added `agent` (the tool args/result limits block); P-175 added
+    // `ci`, which is OPTIONAL (it is the GitHub Actions fallback's flag), so it
+    // appears in `properties` but not in `required`.
     const full = configJsonSchema();
     expect(full.type).toBe('object');
     expect(Object.keys(full.properties ?? {}).sort()).toEqual(
@@ -19,6 +21,7 @@ describe('config jsonSchema (P-039)', () => {
         'agent',
         'anthropic',
         'autonomy',
+        'ci',
         'github',
         'licensePolicy',
         'ollama',

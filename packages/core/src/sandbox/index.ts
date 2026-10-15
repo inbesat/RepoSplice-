@@ -112,6 +112,23 @@ export {
 } from './limits.js';
 export type { LimitsConfig, LimitsConfigSource } from './limits.js';
 
+// P-175 — GitHub Actions fallback + the verification dispatcher.
+export {
+  fallbackSelection,
+  renderWorkflow,
+  runViaGitHubActions,
+  DEFAULT_WORKFLOW_FILE,
+  WORKFLOW_PLACEHOLDERS,
+} from './fallback.js';
+export type {
+  BackendChoice,
+  SelectionSource,
+  WorkflowValues,
+  GitHubFallbackOptions,
+} from './fallback.js';
+export { runVerification } from './runner.js';
+export type { VerificationKind, RunVerificationOptions } from './runner.js';
+
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {
   DockerSandboxClient,

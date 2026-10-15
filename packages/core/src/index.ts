@@ -1079,6 +1079,21 @@ export {
   parseCpuCount,
 } from './sandbox/limits.js';
 export type { LimitsConfig, LimitsConfigSource } from './sandbox/limits.js';
+export {
+  fallbackSelection,
+  renderWorkflow,
+  runViaGitHubActions,
+  DEFAULT_WORKFLOW_FILE,
+  WORKFLOW_PLACEHOLDERS,
+} from './sandbox/fallback.js';
+export type {
+  BackendChoice,
+  SelectionSource,
+  WorkflowValues,
+  GitHubFallbackOptions,
+} from './sandbox/fallback.js';
+export { runVerification } from './sandbox/runner.js';
+export type { VerificationKind, RunVerificationOptions } from './sandbox/runner.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

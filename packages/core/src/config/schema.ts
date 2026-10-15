@@ -69,6 +69,14 @@ export const SandboxConfigSchema = z.object({
    * Optional; `undefined` uses the code default (100 MB).
    */
   maxArtifactBytes: z.number().int().positive().optional(),
+  /**
+   * P-175: which backend to use. `'auto'` (the default when unset) prefers
+   * Docker and falls back to GitHub Actions; `'docker'`/`'github'` force one.
+   * Distinct from the P-009 `backend` field, which predates the fallback and
+   * cannot express `auto` — the selector prefers `mode` when it is set and
+   * otherwise reads `backend`. See ADR-048.
+   */
+  mode: z.enum(['auto', 'docker', 'github']).optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 
@@ -118,6 +126,17 @@ export const ConfigSchema = z.object({
   anthropic: AnthropicConfigSchema,
   ollama: OllamaConfigSchema,
   sandbox: SandboxConfigSchema,
+  /**
+   * P-175: the GitHub Actions fallback's configuration. Optional, and its
+   * presence (with auth) is what enables the GH path at all — the phase's
+   * "keep the GH path behind a flag".
+   */
+  ci: z
+    .object({
+      /** Workflow file the dispatch targets, repo-relative. */
+      path: z.string().min(1),
+    })
+    .optional(),
   paths: PathsConfigSchema,
   licensePolicy: LicensePolicySchema,
   autonomy: AutonomySchema,

@@ -2124,4 +2124,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-048: The Fallback Adds `sandbox.mode` and an Optional `ci` Block, Renders a Committed Template, and Never Fabricates a Verdict
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-175 (`PHASES_DETAILED.md:8828-8872`) makes verification work when Docker is not: select a backend, run the build/test on GitHub Actions through the workflow P-100 already dispatches, and hand back the SAME `BuildResult`/`TestResult` the Docker path returns so no consumer can tell which ran. Four of its requirements needed a decision.
+
+**Decisions:**
+
+1. **`config.sandbox.mode` is a NEW optional field; the P-009 `backend` is not widened.** The spec wants `mode: 'auto' | 'docker' | 'github'`, but `SandboxBackendSchema` is `'docker' | 'github-actions'` and has no `auto`. Adding a member to that enum would force every existing consumer's `switch` to change; instead `mode` is additive and `fallbackSelection` prefers it, falling back to `backend` when unset — so an existing config keeps its meaning and the new knob is explicit about precedence. (One selector, two inputs, documented, rather than a silent reinterpretation of `backend`.)
+2. **`config.ci.path` is a new OPTIONAL top-level `ci` block**, and its presence (together with resolved auth) is the GH path's "flag" that step 4 asks for. It is the only new top-level section, so `configJsonSchema.test.ts`'s pinned **`required`** list is unchanged — but its pinned **`properties`** list broke, which is the test doing its job; the expectation was updated with the reason recorded in the test itself.
+3. **The workflow template is a committed FILE, and rendering takes its TEXT.** Reading `templates/github-build.yml` at runtime would break in a bundled `dist` (the same packaging problem ADR-042 recorded for build contexts), and duplicating it as a string constant would drift. So `renderWorkflow(template, values)` is pure and the production caller supplies the file it read (path from `config.ci.path`); tests read the real committed file. Substitution is strict, like P-141's prompt renderer: a missing value is a typed `CONFIG_ERROR` rather than a `{{placeholder}}` left in a dispatched workflow. The first draft wrapped placeholders in `${{ '…' }}`, which the test caught surviving into the output — a real defect in my own template, fixed rather than asserted around.
+4. **A forced `docker` with no daemon falls back to a usable GitHub path; it is `unavailable` only when there is none.** Step 1 says a forced docker should "error if daemon down", but the acceptance criterion refines it to "…error only when no GH path" — and the acceptance wins, because refusing to verify when a working backend is configured would be the wrong failure. `auto` is unchanged: Docker first, GitHub second.
+5. **An unfinished GitHub run is `SANDBOX_TIMEOUT`, never a verdict.** A run that has not completed has no `pass`/`fail` to report, and inventing one would feed a false result to the agent loop and the pipeline. Latency is documented as minutes-not-seconds (queue + cold runner + install), and the caller's `timeoutMs` is the poll budget.
+6. **The GH test path REUSES P-172's `parseTestOutput`.** Counts and the failure list are produced by the same parser as the Docker path, so "identical shape" is enforced by construction rather than by convention — which is what the handoff demands. Only the log SOURCE differs (a fetched job log instead of a container stream).
+7. **`runVerification` separates "no backend exists" from "the wiring is missing":** the former is `SANDBOX_UNAVAILABLE` (an environment state P-155 added for exactly this), the latter `CONFIG_ERROR` (a caller bug). A test asserts both, because collapsing them would send a user to fix their machine when the bug is in the call.
+
+**Consequences:**
+
+- The whole fallback is exercisable offline: the Octokit surface is P-100's own narrow `SandboxTriggerClient` (carried in `opts.github`, preserving the spec's four-argument signature), so the tests need no HTTP mock and no network.
+- Both backends now provably return the same shape — asserted field-by-field for build AND test — which is the property every downstream consumer (agent tool, web panel, pipeline) depends on.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

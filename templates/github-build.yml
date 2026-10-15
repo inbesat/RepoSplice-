@@ -1,0 +1,30 @@
+# P-175 — the GitHub Actions sandbox fallback workflow.
+#
+# Used when Docker is unavailable. `fallback.ts`'s `renderWorkflow` replaces the
+# `{{placeholders}}` below, and the result is written into the child repo by the
+# pipeline and then dispatched through P-100's `triggerSandbox` (workflow
+# dispatch). Keep the placeholder set in sync with `WORKFLOW_PLACEHOLDERS` in
+# `packages/core/src/sandbox/fallback.ts` — a missing value is a typed error at
+# render time rather than a broken workflow on a runner.
+name: stitch-sandbox
+on:
+  workflow_dispatch:
+    inputs:
+      jobId:
+        description: repo-stitcher job id (correlation)
+        required: true
+      ecosystem:
+        description: ecosystem under test
+        required: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: {{timeoutMinutes}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: {{install}}
+      - name: Build
+        run: {{build}}
+      - name: Test
+        run: {{test}}
