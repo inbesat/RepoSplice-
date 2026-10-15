@@ -227,6 +227,10 @@ export {
   deepMerge,
 } from './configDoc.js';
 
+// P-165 — the production git facade: agent tools address real git state.
+export { GitFacade, createGitFacade, withinRepoRoot, parseOriginTrailer } from './gitFacade.js';
+export type { FacadePaths, StitchOrigin, StageCommitOptions, CommitInfo } from './gitFacade.js';
+
 // P-149 import extraction (pure, exported for reuse by P-150/P-151).
 export {
   parseJsImports,

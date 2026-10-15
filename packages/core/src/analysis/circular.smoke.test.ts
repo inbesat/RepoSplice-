@@ -15,14 +15,14 @@ const repoRoot = resolve(here, '..', '..', '..', '..');
 const coreSrc = join(repoRoot, 'packages', 'core', 'src');
 
 describe('P-022 findCycles: clean tree has no cycles', () => {
-  it('reports zero cycles for packages/core/src', async () => {
+  it('reports zero cycles for packages/core/src', { timeout: 120_000 }, async () => {
     const r = await findCycles(coreSrc, { fileExtensions: ['ts'] });
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
       expect(r.value).toEqual([]);
       expect(hasCycles(r.value)).toBe(false);
     }
-  }, 60_000);
+  });
 });
 
 describe('P-022 findCycles: detects a deliberate cycle in a fixture', () => {

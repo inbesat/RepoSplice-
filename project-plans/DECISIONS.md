@@ -1848,4 +1848,47 @@ Two follow-on defects the same test exposed:
 
 ---
 
+## ADR-038: The Git Facade Mutates the Child Stage, Not the Source Repos
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-165 supplies the production implementation of the `GitFacade` contract that P-140 declared and P-161 extended (`GitFacade` was, until now, only a *type* — `ai/types.ts:75`). Its stated job (`PHASES_DETAILED.md:8334-8377`) is to make agent-tool mutations "real git operations **on the child-repo stage**", so `select_files`/`move_file`/`edit_config`/`propose_component` and P-161's undo stack write history instead of raw bytes.
+
+The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktree`, `move`→P-073, `commit`→P-077, `mergeSources`→P-072+P-075, `stageStatus`→P-084, `rollback`→P-085). As with every Epic 7 phase, the sketch is advisory: ADR-021/023/025 fix the real signatures, and the mandate is to reconcile against the declared type, not the sketch.
+
+**The defect this phase had to correct.** An in-progress draft (uncommitted) implemented the mutating methods as `repoFor(label)` — i.e. `writeFile('A', path)` wrote into **source repo A**. That is wrong, and it is wrong in the one way that matters most here:
+
+1. **ADR-023 says so explicitly** (`DECISIONS.md:658`): "`GitFacade` … addresses the **source** repos, and its repo parameter is typed `'A' | 'B'`. **Repo C is not a source.**" The mutation surface P-152 later added to `GitFacade` is the read/write counterpart of the read-only `StagingFacade`, and P-152 step 3 requires the path "within C stage root".
+2. **Every mutating tool addresses the stage.** `edit_config`/`move_file`/`propose_component` validate containment against `ctx.config['stageRoot'] ?? 'C'` and then call `ctx.git.writeFile(ctx.cwd, 'A', …)` / `ctx.git.readStagedFile(…)`; `revert.ts` uses the same `REVERT_REPO = 'A'` placeholder. The `'A'` argument is a convention forced by the P-140 signature, not a target choice.
+3. **Writing to source A corrupts provenance.** The agent composes into C; rewriting the user's originals (A/B) would silently falsify the `ProvenanceMap` (P-181) that credits upstream authors. The phase's own acceptance criterion says "traversal outside **stage root**".
+
+**Decisions:**
+
+- **Mutations target `paths.repoC`; reads split by purpose.** `listFiles`/`readFile` address the source repos (`'A' | 'B'`); `readStagedFile`/`writeFile`/`move`/`deleteFile`/`commit`/`commitStage`/`rollback`/`abort`/`stageStatus` address the child stage. The `repo: 'A' | 'B'` parameter on the mutating methods is retained (the contract fixes the arity) but is **ignored as a target** and documented as the provenance origin hint — widening it to `'A' | 'B' | 'C'` stays rejected per ADR-023.
+- **`writeFile` writes the live stage worktree, then verifies `git add`.** `writeToWorktree` (P-076) writes into an *isolated detached* worktree (`git/worktree.ts:445-528`) — correct for the merge/commit pipeline, wrong for an interactive agent whose very next tool (`run_build`, `edit_config`'s read-back) must see the file in the stage. So the facade writes with `fs` (mkdir -p), verifies, then `git add -- <path>` so the change is a real, staged git change. The spec's "→ `writeToWorktree`" is therefore deliberately not followed, for the same reason step 1's `listFiles`-via-P-090 sketch was reconciled against P-148's real `listFiles`.
+- **The P-082 binary skip is enforced and SURFACED, never silent.** A payload with a NUL in git's 8000-byte window is refused before any write; every write is then verified with P-082's `isBinary` (git attr + extension + magic) and, if binary, the bytes are reverted and a typed `CONFIG_ERROR` naming the reason is returned. Silently dropping a file the model asked to write is exactly the "it never happened" failure P-162 exists to prevent.
+- **`mergeSources` and `stageStatus` are added as extra capabilities on the concrete class.** `mergeSources(opts)` delegates to `mergeRepos` (P-072, which applies the caller's P-075 resolver via `resolveConflicts`); `stageStatus()` delegates to `isClean` (P-084). The spec's `rollback`/`rollbackAbort` maps onto P-085's real exports: `rollback(ref)` = `resetTo` (reverts a failed multi-step mutation, the acceptance criterion), and `abort(kind)` = `abortGitOp` (aborts an in-progress op).
+- **`commit(message): Promise<void>` throws** — the P-140 contract returns `void` and so has no error channel. Callers that want a typed result use `commitStage`. This is the one place the no-throw rule is overridden by a pre-existing interface, and it is documented at the call site.
+- **Loop wiring.** `createGitFacade` is exported from `agent/index.ts`; the loop's context is injected (`LoopConfig.context`, P-140/ADR-021), so the real facade is the only production implementation and there is no mock in the production path. The end-to-end loop proof (two fixture repos → agent loop → buildable C) is P-167's mandate and is not pre-empted here.
+
+**A real bug the tests caught.** `commitStage` pre-expands the tool's intended file list to `git status --porcelain=v1 -z --untracked-files=all` granularity so P-077's file-for-file precheck passes for brand-new directories. The first version mishandled two chunk shapes: a staged **rename** (`R  <new>\0<old>\0`, where the second chunk has no `XY ` prefix) was truncated to garbage, and a staged **deletion** (`D `) was passed to `git add`, which fails with `pathspec '<deleted>' did not match any files` once the deletion is already in the index. Fixed by parsing the rename source correctly and excluding already-staged deletions from the pre-stage set, while still passing a genuinely unmatched entry through so git refuses it (the `move` + commit sequence is the standing regression guard).
+
+**Alternatives Considered:**
+
+- **Keep the draft's source-repo mapping** — rejected: ADR-023/025 and every tool's `stageRoot: 'C'` containment check contradict it, and it corrupts P-181 provenance.
+- **Widen the repo parameter to `'A' | 'B' | 'C'`** — rejected (again, per ADR-023): it would change `SelectedFile.repo`, a P-148 contract P-181 reads.
+- **Use P-076 `writeToWorktree` for `writeFile`** — rejected: it mutates an ephemeral detached worktree the stage never sees.
+- **Silently skip binary writes** — rejected: a hidden no-op the model cannot observe is the failure P-162 guards against.
+- **Filter `commitStage`'s pre-stage to "addable" paths generically** — rejected: a truly unmatched path must still fail loudly, so the exclusion is scoped to *already-staged deletions* only.
+
+**Consequences:**
+
+- Every agent mutation lands in the child stage as a real git change, so P-079/P-181 can reconstruct provenance from history and P-161's undo reverts real commits.
+- Commits carry co-author trailers (P-077) plus a one-line JSON `Stitch-Origin:` trailer (`parseOriginTrailer` reads it back) — the structured seam P-181/P-311 consume.
+- The binary skip is a first-class, visible refusal rather than a silent drop.
+- `readStagedFile` closes the P-152 gap so `edit_config`/`move_file`/`propose_component`/`revert` read and write the same tree.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

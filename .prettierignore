@@ -11,3 +11,4 @@ coverage/
 .DS_Store
 project-plans/
 PRESENTATION_3D.html
+.playwright-mcp/
