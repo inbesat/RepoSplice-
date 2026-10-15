@@ -2148,4 +2148,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-049: The Flaky Check Takes a Re-Run Thunk, Off Means Off, and `pass` Comes From the First Attempt
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-176 (`PHASES_DETAILED.md:8879-8921`) turns a raw run into a VERDICT with a bounded repeat check, so a flaky test cannot make the agent loop forever on noise or let the pipeline ship a broken child. Its handoff then makes `Verdict.flaky` the field the loop (P-155) and the pipeline (P-238) read to decide whether to stop retrying.
+
+**Decisions:**
+
+1. **`checkFlaky` takes a re-run THUNK, not a client.** The spec's fifth parameter is `client`, but re-running means re-dispatching through P-175 — which is Docker *or* GitHub, chosen at call time — and the mandated tests are "fake runner with scripted outcomes". A `FlakyRunner = (attempt) => Promise<Result<RunOutcome, StitchError>>` is what keeps one code path for both backends and lets the tests script flips with no daemon and no network. Production passes `runVerification` itself.
+2. **Off means off: only `enabled === true` enables repeats.** `config.sandbox.flakyCheck` is new and optional, and the default must be the cheap posture. My first version read `enabled === false` as the only off-switch, which silently made an UNSET config run three attempts — a real cost bug on the GitHub path (each attempt is minutes of runner time), caught by the `disabled by default` test. The guard is now `enabled !== true`.
+3. **`pass` comes from the FIRST attempt; a lucky retry never turns a red base green.** The acceptance states it plainly ("failing base that passes on retry → `flaky:true, pass:false`"), and the asymmetry is deliberate: a passing base gets exactly ONE confirmation (cheap), while a failing base gets the caller's budget. Declaring success on a retry would hide the failure the retry just demonstrated.
+4. **`assessVerdict` accepts a single run OR a sequence (additive), with three defined `stableSince` values.** The spec sketches one run, but the multi-attempt rule then has no home and would be written twice. Widening the parameter is backward compatible for the single-run call, and `stableSince` becomes precise: `'first'` when every attempt passed, `'last'` when only the final one did, `'none'` when the final one failed.
+5. **The Verdict rides on the result via an intersection type, not by mutating the frozen shapes.** P-171's handoff froze `BuildResult` for the web panel (P-220); so `runVerification` returns `VerifiedRun = (BuildResult | TestResult) & { verdict?: Verdict }` and the raw `runBuild`/`runTests` stay untouched.
+6. **`repeat` is clamped to 0..{@link MAX_FLAKY_REPEAT} (3), default 2.** The phase handoff says "keep `repeat` small (1–3) to bound cost/latency" and P-175's handoff notes a GH attempt costs minutes, so the bound is enforced in `resolveRepeat` rather than trusted from the caller (`repeat: 99` yields 3).
+7. **Warnings live on the Verdict.** The UI (P-220) needs the flaky-file hint, and the spec's `Verdict` return type is one value, so `Verdict.warnings?` is additive: `flakySameFileSeen` names files that failed in *some* attempts (a file failing in all of them is broken, not flaky), and a line diff between attempts flags a likely timing dependence.
+
+**Consequences:**
+
+- The verdict layer is pure plus one injected thunk, so all six mandated scenarios run in milliseconds: a clean pass, a green-to-red flip (flaky but still a pass), a red-to-green retry (flaky and still NOT a pass), the repeat bound, the default-off posture, and the flaky-file warning.
+- `Verdict.flaky` is now a real signal for P-155/P-238 to stop retrying on noise, and it is produced by the same code whichever backend ran.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

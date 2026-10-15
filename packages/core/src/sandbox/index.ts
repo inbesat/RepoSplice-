@@ -127,7 +127,28 @@ export type {
   GitHubFallbackOptions,
 } from './fallback.js';
 export { runVerification } from './runner.js';
-export type { VerificationKind, RunVerificationOptions } from './runner.js';
+export type { VerificationKind, RunVerificationOptions, VerifiedRun } from './runner.js';
+
+// P-176 — pass/fail verdict + flaky detection.
+export {
+  assessVerdict,
+  checkFlaky,
+  buildWarnings,
+  flakySameFileSeen,
+  logsDiffer,
+  resolveRepeat,
+  MAX_FLAKY_REPEAT,
+  DEFAULT_FLAKY_REPEAT,
+} from './verdict.js';
+export type {
+  Verdict,
+  VerdictAttempt,
+  FlakyThreshold,
+  FlakyRunner,
+  CheckFlakyOptions,
+  AttemptDetail,
+  RunOutcome,
+} from './verdict.js';
 
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {

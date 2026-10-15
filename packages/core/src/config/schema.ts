@@ -77,6 +77,12 @@ export const SandboxConfigSchema = z.object({
    * otherwise reads `backend`. See ADR-048.
    */
   mode: z.enum(['auto', 'docker', 'github']).optional(),
+  /**
+   * P-176: confirm a verification run with a bounded repeat check and attach
+   * the `Verdict`. OFF by default, because every repeat costs a container run
+   * or — on the GitHub path — minutes of runner time.
+   */
+  flakyCheck: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 

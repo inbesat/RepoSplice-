@@ -1093,7 +1093,26 @@ export type {
   GitHubFallbackOptions,
 } from './sandbox/fallback.js';
 export { runVerification } from './sandbox/runner.js';
-export type { VerificationKind, RunVerificationOptions } from './sandbox/runner.js';
+export type { VerificationKind, RunVerificationOptions, VerifiedRun } from './sandbox/runner.js';
+export {
+  assessVerdict,
+  checkFlaky,
+  buildWarnings,
+  flakySameFileSeen,
+  logsDiffer,
+  resolveRepeat,
+  MAX_FLAKY_REPEAT,
+  DEFAULT_FLAKY_REPEAT,
+} from './sandbox/verdict.js';
+export type {
+  Verdict,
+  VerdictAttempt,
+  FlakyThreshold,
+  FlakyRunner,
+  CheckFlakyOptions,
+  AttemptDetail,
+  RunOutcome,
+} from './sandbox/verdict.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
