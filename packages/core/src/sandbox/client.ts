@@ -65,6 +65,16 @@ export interface HostConfigLike {
  */
 export type ContainerCreateOptionsLike = Docker.ContainerCreateOptions;
 
+/** The `buildImage` options this client sets (dockerode's `ImageBuildOptions`). */
+export interface ImageBuildOptionsLike {
+  /** The tag to produce (`-t`). */
+  t?: string;
+  /** Dockerfile path (`-f`), absolute or relative to the context. */
+  dockerfile?: string;
+  /** `--build-arg` values. */
+  buildargs?: Record<string, string>;
+}
+
 /** The container operations the client uses. */
 export interface ContainerLike {
   /** The daemon-side id, when the handle exposes one (used in errors). */
@@ -84,6 +94,10 @@ export interface ContainerLike {
 export interface DockerLike {
   ping(): Promise<unknown>;
   pull(repoTag: string, options?: { platform?: string }): Promise<unknown>;
+  buildImage(
+    file: string | NodeJS.ReadableStream,
+    options: ImageBuildOptionsLike
+  ): Promise<unknown>;
   createContainer(options: ContainerCreateOptionsLike): Promise<ContainerLike>;
   getContainer(id: string): ContainerLike;
 }
@@ -115,6 +129,7 @@ function adaptDocker(docker: Docker): DockerLike {
   return {
     ping: () => docker.ping(),
     pull: (repoTag, options) => docker.pull(repoTag, options ?? {}),
+    buildImage: (file, options) => docker.buildImage(file, options),
     createContainer: async options => adaptContainer(await docker.createContainer(options)),
     getContainer: id => adaptContainer(docker.getContainer(id)),
   };
@@ -161,6 +176,20 @@ export interface PullOptions {
   /** Pull the image for a specific platform (e.g. `linux/amd64`). */
   platform?: string;
   /** Streaming-progress hook; receives raw pull chunks. */
+  onProgress?: (chunk: string) => void;
+}
+
+/** Options for {@link SandboxClient.buildImage}. */
+export interface BuildImageOptions {
+  /** Build context: a path to a tar archive, or a readable stream. */
+  context: string | NodeJS.ReadableStream;
+  /** The tag to produce (e.g. `stitch-node:eph-1a2b3c`). */
+  tag: string;
+  /** Dockerfile path (`-f`), absolute or relative to the context. */
+  dockerfile?: string;
+  /** `--build-arg` values. */
+  buildArgs?: Record<string, string>;
+  /** Streaming-progress hook; receives raw build chunks. */
   onProgress?: (chunk: string) => void;
 }
 
@@ -358,13 +387,63 @@ export class SandboxClient {
     // A fake may resolve nothing meaningful; a real daemon always returns a
     // stream. Only drain what is actually a stream.
     if (!isReadableStream(stream)) return ok(undefined);
-    return this.#drainPullStream(stream, image, opts.onProgress);
+    return this.#drainStream(
+      stream,
+      detail => ({
+        code: 'DOCKER_PULL_FAILED',
+        image,
+        message: `docker pull "${image}" failed: ${detail}`,
+      }),
+      opts.onProgress
+    );
   }
 
-  /** Drain a pull stream; a stream-level `error` line is a failed pull. */
-  #drainPullStream(
+  /**
+   * Build an image from a context, consuming the build stream to completion.
+   *
+   * `context` is dockerode's `file` argument — a path to a tar archive or a
+   * readable stream; this client passes it through unchanged (shaping a real
+   * build context is the pipeline's job, and no `tar` dependency is added for
+   * it). A `{"error": ...}` line is a failed build even when the call resolved,
+   * so the stream is drained and inspected. Both failures become
+   * `DOCKER_BUILD_FAILED` naming the produced tag.
+   */
+  async buildImage(options: BuildImageOptions): Promise<Result<string, StitchError>> {
+    if (options.tag.trim() === '') {
+      return err({ code: 'CONFIG_ERROR', field: 'tag', message: 'buildImage: tag is required' });
+    }
+    let stream: unknown;
+    try {
+      stream = await this.#docker.buildImage(options.context, {
+        t: options.tag,
+        ...(options.dockerfile !== undefined ? { dockerfile: options.dockerfile } : {}),
+        ...(options.buildArgs !== undefined ? { buildargs: options.buildArgs } : {}),
+      });
+    } catch (cause: unknown) {
+      return err({
+        code: 'DOCKER_BUILD_FAILED',
+        image: options.tag,
+        message: `docker build "${options.tag}" failed: ${detailOf(cause)}`,
+      });
+    }
+    // A fake may resolve nothing meaningful; only drain a real stream.
+    if (!isReadableStream(stream)) return ok(options.tag);
+    const drained = await this.#drainStream(
+      stream,
+      detail => ({
+        code: 'DOCKER_BUILD_FAILED',
+        image: options.tag,
+        message: `docker build "${options.tag}" failed: ${detail}`,
+      }),
+      options.onProgress
+    );
+    return drained.isErr() ? err(drained.error) : ok(options.tag);
+  }
+
+  /** Drain a pull/build stream; a stream-level `error` line is a failure. */
+  #drainStream(
     stream: NodeJS.ReadableStream,
-    image: string,
+    makeError: (detail: string) => StitchError,
     onProgress?: (chunk: string) => void
   ): Promise<Result<void, StitchError>> {
     return new Promise<Result<void, StitchError>>(resolve => {
@@ -399,25 +478,9 @@ export class SandboxClient {
         }
       };
       stream.on('data', onData);
-      stream.on('error', (cause: unknown) =>
-        finish(
-          err({
-            code: 'DOCKER_PULL_FAILED',
-            image,
-            message: `docker pull "${image}" failed: ${detailOf(cause)}`,
-          })
-        )
-      );
+      stream.on('error', (cause: unknown) => finish(err(makeError(detailOf(cause)))));
       stream.on('end', () =>
-        finish(
-          streamError === undefined
-            ? ok(undefined)
-            : err({
-                code: 'DOCKER_PULL_FAILED',
-                image,
-                message: `docker pull "${image}" failed: ${streamError}`,
-              })
-        )
+        finish(streamError === undefined ? ok(undefined) : err(makeError(streamError)))
       );
     });
   }

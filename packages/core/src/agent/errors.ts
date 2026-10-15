@@ -168,6 +168,11 @@ const RULES = {
     action: 'abort',
     hint: 'The sandbox image could not be pulled. Check the image tag and registry access, or configure the GitHub Actions fallback.',
   },
+  DOCKER_BUILD_FAILED: {
+    cls: 'sandbox',
+    action: 'abort',
+    hint: 'The local sandbox image could not be built. Check the Dockerfile and its build context, or set sandbox.buildLocal to false to pull instead.',
+  },
 
   // --- tool: the loop continues and the model adapts (P-158) ----------------
   TOOL_ARGS_INVALID_JSON: {

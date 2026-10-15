@@ -1,0 +1,13 @@
+# P-169 — per-ecosystem sandbox image (Python).
+#
+# Extends the P-008 base idea for the `python` ecosystem. `buildLocal` builds
+# this instead of pulling `python:3.12-slim`. The tooling matches the pinned
+# P-155 commands (`python -m build`, `pytest`).
+FROM python:3.12-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir uv poetry build pytest
+
+WORKDIR /workspace

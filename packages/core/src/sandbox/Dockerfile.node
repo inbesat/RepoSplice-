@@ -1,0 +1,13 @@
+# P-169 — per-ecosystem sandbox image (Node/bun).
+#
+# Extends the P-008 base idea (toolchains pre-installed, WORKDIR /workspace) for
+# the `node` ecosystem. `buildLocal` builds this instead of pulling
+# `node:22-alpine`. Base is oven/bun so the pinned node commands from P-155
+# (`bun run build`, `bun test`) run without an extra install step.
+FROM oven/bun:1.1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace

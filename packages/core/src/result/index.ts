@@ -74,6 +74,10 @@ export type StitchError =
   // the registry/image/tag or daemon auth, and P-175's GH Actions fallback
   // keys off it, while a container failure is about the run itself.
   | { code: 'DOCKER_PULL_FAILED'; message: string; image?: string }
+  // P-169: building a local per-ecosystem image failed. Distinct from both a
+  // pull failure (registry/image) and `DOCKER_ERROR` (a container operation):
+  // a build failure is about the Dockerfile/context the user asked us to use.
+  | { code: 'DOCKER_BUILD_FAILED'; message: string; image?: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }
@@ -207,6 +211,7 @@ export const STITCH_ERROR_CODES = [
   'GITHUB_API_ERROR',
   'DOCKER_ERROR',
   'DOCKER_PULL_FAILED',
+  'DOCKER_BUILD_FAILED',
   'AI_PROVIDER_ERROR',
   'LICENSE_VIOLATION',
   'DEPENDENCY_CONFLICT',

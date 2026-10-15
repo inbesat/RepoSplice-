@@ -53,6 +53,7 @@ interface FakeCalls {
   waited: number;
   removed: { id?: string; force?: boolean; v?: boolean }[];
   statsRequested: string[];
+  builds: string[];
 }
 
 interface FakeContainerConfig {
@@ -104,12 +105,20 @@ function makeFakeContainer(calls: FakeCalls, config: FakeContainerConfig = {}): 
 interface FakeDockerConfig {
   pingRejects?: boolean;
   pull?: () => Promise<unknown>;
+  buildImage?: () => Promise<unknown>;
   container?: FakeContainerConfig;
   containersById?: Record<string, FakeContainerConfig>;
 }
 
 function makeFakeDocker(config: FakeDockerConfig = {}): { docker: DockerLike; calls: FakeCalls } {
-  const calls: FakeCalls = { created: [], started: 0, waited: 0, removed: [], statsRequested: [] };
+  const calls: FakeCalls = {
+    created: [],
+    started: 0,
+    waited: 0,
+    removed: [],
+    statsRequested: [],
+    builds: [],
+  };
   const docker: DockerLike = {
     async ping() {
       if (config.pingRejects === true) throw new Error('daemon down');
@@ -118,6 +127,11 @@ function makeFakeDocker(config: FakeDockerConfig = {}): { docker: DockerLike; ca
     async pull() {
       if (config.pull !== undefined) return config.pull();
       return new FakeStream(['{"status":"pulling"}\n']);
+    },
+    async buildImage(_file, options) {
+      calls.builds.push(options.t ?? '');
+      if (config.buildImage !== undefined) return config.buildImage();
+      return new FakeStream(['{"stream":"Successfully built"}\n']);
     },
     async createContainer(options) {
       calls.created.push(options);
@@ -293,6 +307,49 @@ describe('P-168 SandboxClient', () => {
     const client = new SandboxClient({ docker: removeFail.docker });
     await expect(client.rm('c1')).resolves.toBeUndefined();
     expect(removeFail.calls.statsRequested).toContain('c1');
+  });
+
+  it('builds an image', async () => {
+    const { docker, calls } = makeFakeDocker();
+    const client = new SandboxClient({ docker });
+
+    const built = await client.buildImage({
+      context: '/tmp/ctx.tar',
+      tag: 'stitch-node:eph-1',
+      dockerfile: '/ctx/Dockerfile.node',
+      buildArgs: { CI: '1' },
+    });
+    expect(built.isOk() && built.value).toBe('stitch-node:eph-1');
+    expect(calls.builds).toEqual(['stitch-node:eph-1']);
+
+    // A `{"error": ...}` line inside a resolved build stream IS a failed build.
+    const bad = makeFakeDocker({
+      buildImage: async () => new FakeStream(['{"error":"no such file"}\n']),
+    });
+    const failed = await new SandboxClient({ docker: bad.docker }).buildImage({
+      context: '/tmp/ctx.tar',
+      tag: 'stitch-node:eph-2',
+    });
+    expect(failed.isErr()).toBe(true);
+    if (failed.isErr() && failed.error.code === 'DOCKER_BUILD_FAILED') {
+      expect(failed.error.message).toContain('no such file');
+    }
+
+    // A rejection maps the same way.
+    const rejected = makeFakeDocker({
+      buildImage: async () => Promise.reject(new Error('daemon refused')),
+    });
+    const direct = await new SandboxClient({ docker: rejected.docker }).buildImage({
+      context: '/tmp/ctx.tar',
+      tag: 'stitch-node:eph-3',
+    });
+    expect(direct.isErr()).toBe(true);
+    if (direct.isErr()) expect(direct.error.code).toBe('DOCKER_BUILD_FAILED');
+
+    // An empty tag is a caller bug, not a build.
+    const empty = await client.buildImage({ context: '/tmp/ctx.tar', tag: '  ' });
+    expect(empty.isErr()).toBe(true);
+    if (empty.isErr()) expect(empty.error.code).toBe('CONFIG_ERROR');
   });
 
   it('rejects an invalid spec without touching the daemon', async () => {

@@ -1002,12 +1002,25 @@ export type {
   SandboxClientOptions,
   SandboxClientFactoryOptions,
   PullOptions,
+  BuildImageOptions,
   RunOptions,
   DockerLike,
   ContainerLike,
   ContainerCreateOptionsLike,
+  ImageBuildOptionsLike,
   HostConfigLike,
 } from './sandbox/client.js';
+export {
+  ECOSYSTEM_IMAGES,
+  EPHEMERAL_PREFIX,
+  SANDBOX_IMAGES_TABLE_SQL,
+  imageFor,
+  isEphemeralTag,
+  ephemeralTagFor,
+  ensureImage,
+  clearImageCacheForTests,
+} from './sandbox/images.js';
+export type { ImageClient, EnsureImageOptions } from './sandbox/images.js';
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 

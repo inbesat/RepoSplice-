@@ -1970,4 +1970,28 @@ The spec's step 1 sketches a capability list (`writeFile`→P-076 `writeToWorktr
 
 ---
 
+## ADR-042: Images Key on the Real `Ecosystem` Union, Add `DOCKER_BUILD_FAILED` and Two Config Keys, and Cache Through the P-145 Table Pattern
+
+**Status:** Accepted
+**Date:** 2026-10-15
+
+**Context:** P-169 (`PHASES_DETAILED.md:8539-8584`) gives each ecosystem a pinned base image (or a locally-built `Dockerfile.<ecosystem>`) and caches the resolution. Four of its requirements did not match the codebase, one of them in a way that would have produced dead files.
+
+**Decisions:**
+
+1. **`ECOSYSTEM_IMAGES` is keyed by `Ecosystem` as the codebase defines it, not by the sketch's keys.** Step 1's sketch is `{ npm: …, python: …, cargo: …, go: … }`, but the P-103 union is `Ecosystem = 'node' | 'python' | 'rust' | 'go'` (`npm`/`cargo` are the *parser* ids, `EcosystemParser`). Every consumer — P-155's `BuildEcosystem`, `ECOSYSTEM_COMMANDS`, `detectEcosystems`, `detectEcosystemFromListing` — speaks `node|python|rust|go`, so a map keyed `npm|python|cargo|go` would be unusable from `run_build`. Same reason the Dockerfiles are **`Dockerfile.node|python|rust|go`**: step 2's lookup is `Dockerfile.<eco>` where `<eco>` is the resolution key, so `Dockerfile.npm`/`Dockerfile.cargo` could never be found — dead files. The four files exist as the phase's Files list requires, named for the ecosystem they serve.
+2. **`DOCKER_BUILD_FAILED` is a new code (51).** The spec mandates it and it is genuinely distinct: a *pull* failure is registry/image/auth (and drives P-175's fallback), a *container* failure is the run, and a *build* failure is the Dockerfile/context the user asked us to use. Added with the same six coordinated edits as `DOCKER_PULL_FAILED` (union, `STITCH_ERROR_CODES`, `doctor.ts`'s exhaustive renderer, P-163's `Record<StitchErrorCode, ErrorRule>` — the compile error fired again — `build.smoke`'s count, and `INTEGRATIONS.md` §9.1).
+3. **`config.sandbox.overrideImage` and `config.sandbox.buildLocal` are added as OPTIONAL.** Both are named by step 2 and neither existed (`SandboxConfigSchema` had `backend`/`dockerHost?`/`limits` + P-168's `networkAllow`). Optional keeps `defaultConfig` and existing configs untouched; `overrideImage` is an open record whose unknown keys are ignored rather than rejected.
+4. **`SandboxClient.buildImage` is added to the P-168 client**, because P-169's build path mandates `client.buildImage` and P-168's spec did not include it. It is dockerode-shaped (`buildImage(context, { t, dockerfile, buildargs })`), drains the build stream (a `{"error": …}` line is a failure even when the call resolved), and maps to `DOCKER_BUILD_FAILED`; the shared stream-drain was factored into one `#drainStream(makeError)`. The build **context** is a tar path or stream passed through unchanged — **no `tar` dependency is added** (shaping a context is a packaging concern), so `buildLocal` requires an explicit `dockerfileDir` and the context defaults to it.
+5. **The `ensureImage` client seam is narrow and structural.** `SandboxClient` declares `#private` fields, which makes the class **nominally** typed, so no test fake could be assigned to it; `ImageClient` names exactly the two methods needed (`pull`, `buildImage`). This is the ADR-030 rule applied once more.
+6. **Caching owns its table and fails loud on misconfiguration.** The `sandbox_images` table is created on first use (the P-145 `ai_calls` / P-160 `hil_requests` pattern — `store/schema.ts`'s header reserves its own migration slots), keyed `ecosystem|tag|platform` with an upsert so a re-resolve never duplicates, and `platform` recorded (`null` when unqualified). A missing `dockerfileDir` or `Dockerfile.<eco>` under `buildLocal` is a typed `CONFIG_ERROR`, never a silent fall-through to a pull the user did not ask for; pull/build errors propagate unchanged.
+
+**Consequences:**
+
+- Image resolution is one pure-ish decision function plus a cache, entirely exercisable offline with a fake client — the 6 mandated tests plus 4 extras run with no daemon and no registry.
+- The resolved ref (pinned public tag, or a deterministic `stitch-<eco>:stitch-ephemeral-<hash>`) is what P-170/P-171 hand to `run`, and `EPHEMERAL_PREFIX` is what P-177's cleanup prunes.
+- Reusing the in-repo `Ecosystem` union means adding an ecosystem is a compile error in `ECOSYSTEM_IMAGES` rather than a silent miss.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

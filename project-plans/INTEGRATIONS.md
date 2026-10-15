@@ -454,6 +454,7 @@ type StitchError =
   | { code: 'GITHUB_API_ERROR'; status: number; message: string; hint?: string; repo?: string; scope?: string }
   | { code: 'DOCKER_ERROR'; message: string; containerId?: string }
   | { code: 'DOCKER_PULL_FAILED'; message: string; image?: string }
+  | { code: 'DOCKER_BUILD_FAILED'; message: string; image?: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
   | { code: 'LICENSE_VIOLATION'; license: string; policy: 'warn' | 'deny' }
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }

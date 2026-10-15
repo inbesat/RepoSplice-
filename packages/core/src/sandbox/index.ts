@@ -18,12 +18,27 @@ export type {
   SandboxClientOptions,
   SandboxClientFactoryOptions,
   PullOptions,
+  BuildImageOptions,
   RunOptions,
   DockerLike,
   ContainerLike,
   ContainerCreateOptionsLike,
+  ImageBuildOptionsLike,
   HostConfigLike,
 } from './client.js';
+
+// P-169 — ephemeral image per ecosystem.
+export {
+  ECOSYSTEM_IMAGES,
+  EPHEMERAL_PREFIX,
+  SANDBOX_IMAGES_TABLE_SQL,
+  imageFor,
+  isEphemeralTag,
+  ephemeralTagFor,
+  ensureImage,
+  clearImageCacheForTests,
+} from './images.js';
+export type { ImageClient, EnsureImageOptions } from './images.js';
 
 export { createDockerClient, pingDocker, defaultDockerSocket } from './docker.js';
 export type {

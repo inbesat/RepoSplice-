@@ -1,0 +1,11 @@
+# P-169 — per-ecosystem sandbox image (Rust).
+#
+# Extends the P-008 base idea for the `rust` ecosystem. `buildLocal` builds this
+# instead of pulling `rust:1.80-alpine`. `rustfmt`/`clippy` mirror the P-008
+# base; the pinned P-155 commands are `cargo build` / `cargo test`.
+FROM rust:1.80-alpine
+
+RUN apk add --no-cache git ca-certificates musl-dev \
+    && rustup component add rustfmt clippy
+
+WORKDIR /workspace

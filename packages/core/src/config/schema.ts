@@ -49,6 +49,20 @@ export const SandboxConfigSchema = z.object({
    * which is the behaviour that predates this field.
    */
   networkAllow: z.boolean().optional(),
+  /**
+   * P-169: per-ecosystem image overrides (`sandbox.overrideImage.node` etc.).
+   * A user-provided tag short-circuits both the pull and the local build.
+   * Keys are the P-103 ecosystem names (`node` | `python` | `rust` | `go`);
+   * unknown keys are ignored rather than rejected, so a stale entry cannot
+   * break image resolution.
+   */
+  overrideImage: z.record(z.string(), z.string().min(1)).optional(),
+  /**
+   * P-169: build each `Dockerfile.<ecosystem>` locally instead of pulling the
+   * pinned public image. Requires `dockerfileDir` to be supplied to
+   * `ensureImage` (see ADR-042).
+   */
+  buildLocal: z.boolean().optional(),
 });
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
 
