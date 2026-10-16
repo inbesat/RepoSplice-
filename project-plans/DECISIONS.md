@@ -2859,6 +2859,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 179 passed / 1 skipped files and 2309 passed / 1 skipped tests, exit 0.
 - Wiring the stage wrapper into `PipelineStateMachine` and `enqueue` dedupe into `JobQueue` is deliberately NOT done here: this phase's file mandate is `jobs/idempotency.ts`, and both call sites are P-238/P-239 surfaces. P-251's integration suite is the right place to prove them together.
 
+## ADR-074: P-251 Stubs Only AI and Sandbox, Writes the Checksum Manifest in `finalize`, and Uses the Real Cacheability Predicate to Prove Its Own Point
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-251 (PHASES_DETAILED.md:12318) is the acceptance gate for the orchestration epic (P-238–P-250): one suite exercising a full pipeline on fixtures, resume-after-crash, cancel-mid-sandbox, dry-run, rollback, idempotent re-run and concurrency, asserting DB + audit + filesystem invariants.
+
+**Decisions:**
+
+1. ONLY THE AI PROVIDER AND THE SANDBOX ARE STUBBED. The phase says so ("real providers are out of scope here") and determinism demands it. Everything that is ORCHESTRATION is real: the state machine, the job queue on real SQLite, rollback, cancel, metrics, tracing, the cache, the pool.
+
+2. THE CHECKSUM WRITER IS REAL, SO THE HAPPY-PATH ASSERTIONS ARE NOT TAUTOLOGICAL. `buildChecksumManifest` is the one provenance artifact writer that actually writes (`opts.repoC`). `generateCredits`/`generateSbom` are PURE — they return text/objects and the caller writes them — so the suite's provenance stage produces CREDITS/SBOM content as a stage output, and those modules keep their own unit tests. Asserting on files the test itself faked, with no real writer involved, would have been a self-fulfilling check.
+
+3. THE CHECKSUM MANIFEST IS WRITTEN BY `finalize`, NOT BY THE `provenance` STAGE. The first version had `provenance` write it, which was wrong twice: `provenance` runs BEFORE `finalize` (so the manifest described an empty directory — the test caught this as a bare `'\n'`), and worse, it made a stage write during a DRY RUN, violating the phase's own "no side effects" rule. C is materialised by `finalize`, so the manifest that describes C belongs to it; `provenance` is now pure.
+
+4. THE SUITE USES THE REAL `isCacheable` PREDICATE, AND THAT IS THE POINT. A permissive cache stub ("everything is cached") made the resumed run SKIP `finalize` — silently producing a run that writes no C at all. The failing assertion was a genuine finding, not a test bug: it is exactly the hazard P-250's positive cacheability list exists to prevent, so the suite now consults the real predicate rather than re-implementing it loosely.
+
+5. A STAGE FAILS BY RETURNING, NOT BY THROWING. The machine's contract is "a handler never throws" and it does not catch, so a throwing handler rejects `run` itself. The suite's crashing-sandbox scenario returns `{status:'failed'}`, which is the documented shape of a failing stage, and the resumed run then reuses the settled stages.
+
+6. `test:orchestration` HAS NO COVERAGE GATE, DELIBERATELY. The phase asks for one, but `packages/core/src/orchestration/` contains ONLY the suite — there is no production module to measure, so `--coverage.include="src/orchestration/**/*.ts"` would be vacuous or fail on an empty set. The script runs the suite; the coverage gate applies when production code lands there. Recorded rather than silently omitted.
+
+**Consequences:**
+
+- Seven tests (all spec-named), each asserting DB + audit + filesystem: happy path (C + CREDITS + sbom + a real checksums file naming `c.txt`), resume-after-crash (a failed sandbox stops the run, the re-boot reuses settled stages and completes), cancel-mid-sandbox (the stage observes the abort, the job is `cancelled` not `failed`, finalize refuses to write so there is no partial C, and the audit holds the `CancelRecord`), dry-run (finalize `skipped` with `reason: dry-run`, nothing written, a 9-stage plan), rollback (generated files removed, a pre-existing file restored, `RollbackRecord` appended), idempotent (cache hit, `finalizeNoOp` unchanged, duplicate submission detected), and concurrency (six tasks under a two-slot pool, peak ≤ 2, metrics persisted and a trace buffered).
+- **The Orchestration epic P-238–P-251 is CLOSED.**
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 180 passed / 1 skipped files and 2316 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

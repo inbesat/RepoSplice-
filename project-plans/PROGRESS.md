@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-251 - Orchestration: Tests
+**Current Phase:** P-189 - CLI: Commander + Global Options (aradhy lane, opened at user request)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -381,7 +381,7 @@
 - [x] **P-248** Tracing (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2299 passed / 0 failed; new `tracing/` module, per ADR-071)*
 - [x] **P-249** Concurrency (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2304 passed / 0 failed; new `concurrency/` module, shared budget via `Limits`, per ADR-072)*
 - [x] **P-250** Idempotency (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2309 passed / 0 failed; content-addressed stage cache + job dedupe + finalize no-op, per ADR-073)*
-- [ ] **P-251** Tests (both)
+- [x] **P-251** Tests (both) *(2026-10-17 — gate green: all 7 scenarios + full core suite 2316 passed / 0 failed; new `orchestration/__tests__/`, ADR-074. **Orchestration epic P-238–P-251 CLOSED.**)*
 - [ ] **P-252** CLI↔Web contract (both)
 
 #### Epic 13: Testing/CI/Quality (P-253–P-267) — split
