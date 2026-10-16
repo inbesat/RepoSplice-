@@ -1274,6 +1274,21 @@ export type {
   BuildChecksumOptions,
 } from './provenance/index.js';
 
+// P-187 — the append-only provenance audit log.
+export {
+  ProvenanceAudit,
+  sanitizeDetail,
+  AUDIT_ACTIONS,
+  PROVENANCE_AUDIT_TABLE_SQL,
+} from './provenance/index.js';
+export type {
+  AuditAction,
+  AuditRecord,
+  AuditDraft,
+  AuditQuery,
+  ProvenanceAuditOptions,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

@@ -114,3 +114,18 @@ export type {
   ChecksumVerification,
   BuildChecksumOptions,
 } from './checksums.js';
+
+// P-187 — the append-only provenance audit log.
+export {
+  ProvenanceAudit,
+  sanitizeDetail,
+  AUDIT_ACTIONS,
+  PROVENANCE_AUDIT_TABLE_SQL,
+} from './audit.js';
+export type {
+  AuditAction,
+  AuditRecord,
+  AuditDraft,
+  AuditQuery,
+  ProvenanceAuditOptions,
+} from './audit.js';

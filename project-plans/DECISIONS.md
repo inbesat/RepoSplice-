@@ -2464,4 +2464,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-060: A Second Audit Surface Owned on First Use, Append-Only Verified Structurally, and Detail Scrubbed by Walking the Object
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-187 (`PHASES_DETAILED.md:9401-9443`) records an append-only trail of pipeline events — 17 `AuditAction`s, `AuditRecord { id, ts, action, actor, jobId?, detail, ok }` — in a `provenance_audit` SQLite table, with `query` filters, `exportJson` for compliance (P-307), `fullAudit` for review, and `detail` sanitized. It lists `orchestration/pipeline.ts` as a "later hook", and the CLI command as P-196-area.
+
+**Decisions:**
+
+1. **The `provenance_audit` table is OWNED on first use, not added as a store migration.** `store/schema.ts:10` does reserve an extension slot for `P-187`, so this was a real choice rather than a default: the phase never asks for the store to be edited, every sibling that needed a table (P-145/P-169/P-173/P-178) owned it, and `DbLike` is deliberately `bun:sqlite`-free so an owner can create its table without touching another phase's migration surface. Recorded because the reservation means the opposite choice was defensible.
+2. **This is a SECOND audit surface, and the name says so.** Migration v1 already defines a general `audit` table and P-145 owns `ai_calls`; neither can answer "what did this stitch do" without wading through unrelated rows, so `provenance_audit` is its own table.
+3. **Append-only is verified STRUCTURALLY, not by intent.** The test enumerates the class prototype and asserts the ABSENCE of `update`/`delete`/`remove`/`edit`/`clear`/`reset`/`truncate` while confirming `append` exists. A test that only calls `append` and counts rows would pass for a class that could also delete them.
+4. **`detail` is sanitized by WALKING the object, scrubbing every string leaf through P-179's `scrubSecrets`.** Stringifying the whole detail and scrubbing the text would work too, but it would collapse the structure — a caller reading a record back would get a string where it stored an object. Walking preserves the shape AND removes credentials, and non-strings keep their types (asserted: a number stays `3`, a boolean stays `true`).
+5. **Sanitization happens BEFORE the insert, which is the actual guarantee.** The test queries the RAW table and asserts the credential is absent from the stored `detail` column — not merely that the returned object looks clean. Ingress scrubbing means a compliance dump cannot leak what was never written (the same choice P-173's capture made for a different stream).
+6. **A durable `DbLike` is REQUIRED; there is no in-memory fallback.** Every other table-owning phase (P-178's cache, P-179's fallbacks) could sensibly degrade to memory because it was an optimisation. An audit that evaporates with the process is not an audit, so requiring storage is the honest signature.
+7. **`id` and `ts` are assigned by `append` and returned**, so a caller gets the stored record rather than having to re-read it, and `ts` comes from an INJECTED clock so all six tests are deterministic (the P-178…P-186 precedent).
+8. **`exportJson` is ordered OLDEST-first by `ts` then `id`.** `query` returns newest-first, which is right for a UI, but a compliance dump must read as a story and must be DIFFABLE: the test asserts two exports of the same log are byte-identical, and an empty log exports `[]` rather than failing.
+9. **Filters combine with AND, and no match is an empty list rather than an error** — the same "absence is an answer" rule P-184 and P-186 applied. `limit` is validated as a positive integer before being applied.
+10. **No new `StitchError` code.** A blank `action`/`actor` is `CONFIG_ERROR`; table setup and SQL failures are `INTERNAL` (already produced by `dbRun`/`dbAll`).
+11. **`orchestration/pipeline.ts` was NOT touched.** The phase marks it "emit audit events — later hook", and the pipeline is P-238; wiring it now would mean inventing the pipeline's structure ahead of its own phase. The audit's `append` is the seam P-238 and P-160's HIL flow will call, and the test proves both the pipeline-shaped actions (`clone`/`build`/`commit`) and the HIL pair (`approve`/`reject`) record and are attributable to one `jobId`.
+
+**Consequences:**
+
+- Six tests (all spec-named) run against REAL temp SQLite and cover assignment and raw-row storage, the structural append-only check, every query filter plus AND-combination and the empty result, the sanitizer at both entry and storage, pipeline and HIL actions attributing to a job, and the ordered diffable export.
+- Gate: typecheck 0, lint 0, **depcruise 0 (182 modules, 480 dependencies)**, build 0, and the **core** suite **160 passed | 1 skipped (161 files), 2091 passed | 1 skipped tests, exit 0**.
+- The audit log is now the trust record beside the tamper-evidence anchor (P-186), and the last provenance data phase; P-188 consolidates the epic's tests the way P-180 closed the sandbox epic.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
