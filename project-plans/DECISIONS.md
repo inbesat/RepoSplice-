@@ -2685,6 +2685,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - `--dry-run` reaches the CLI/API (P-192/P-217); that wiring is the CLI/web lane and is not part of this phase.
 - Gate: typecheck 0, lint 0, prettier clean, circular guard 3/3, full core suite 173 passed / 1 skipped files and 2279 passed / 1 skipped tests, exit 0.
 
+## ADR-068: P-245 Grows the Job Vocabulary (`rolled_back`), and P-239's Terminal Assertion Is Updated Rather Than Worked Around
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-245 (PHASES_DETAILED.md:12057) mandates that a rollback "set job status `rolled_back`". P-239's `JOB_STATUSES`/`JOB_TRANSITIONS` (`jobs/types.ts`) declared `succeeded` and `cancelled` TERMINAL, and `jobs/__tests__/queue.test.ts:111` asserted `isTerminalJobStatus('succeeded') === true`. The two cannot both hold: if `succeeded` may reach `rolled_back`, it is by definition not terminal. The blueprint defines no conflict rule for this, so the conflict was SURFACED (with the failing assertion as evidence) rather than silently resolved.
+
+**Decisions:**
+
+1. THE STATUS IS ADDED AND `succeeded`/`cancelled` BECOME NON-TERMINAL. `JOB_STATUSES` gains `rolled_back`; `succeeded → rolled_back` and `cancelled → rolled_back` are legal; `failed → rolled_back` too (a failed job may still have written files); `rolled_back` is the new TERMINAL status. The model this expresses is the phase's own: a finalised C that turns out wrong is not the last word.
+
+2. P-239'S ASSERTION IS UPDATED, NOT WORKED AROUND. `queue.test.ts:111` now asserts `succeeded` is NOT terminal and `rolled_back` IS, and its `Object.keys(JOB_TRANSITIONS)` count moves 6 → 7. The alternative — writing `rolled_back` into the row while leaving `canJobTransition` unaware — was rejected: it would make the table lie about a status the database actually holds, in the one module whose job is to make failures durable.
+
+3. NO NEW `StitchError` CODE. A drift refusal is a `CONFIG_ERROR {field:'force'}` — a bad request against the current state the caller can fix — matching the P-074/P-084 precedent, so the union does not grow for a recoverable condition.
+
+4. CONTAINMENT REUSES `resolveWithin` (P-205), not a new helper. Every path a rollback touches (removal target AND backup source) is re-resolved under its root, so a snapshot row that was tampered with cannot be used to delete outside its own tree.
+
+5. THE SNAPSHOT IS ITS OWN TABLE (`pipeline_job_snapshots`), following the "own your DDL on first use" pattern of P-169/P-173/P-178/P-241 rather than altering `jobs/schema.ts`'s `pipeline_jobs` (ADR-063). Backups default to a SIBLING of the out dir, never inside it — a backup dir under the out dir would be indexed by the snapshot and then deleted by the very rollback that needs it.
+
+6. `job.rolled-back` GREW `TOPICS` TO 17, which matches the `job.*` wildcard, so P-241's `bus.test.ts` length AND list moved for a third time. Updating them is cheap and is the P-241 contract test doing its job.
+
+**Consequences:**
+
+- Six tests (all spec-named): snapshot restore, generated-file removal, config revert, drift-block-then-force, dry-run list (asserting NOTHING moved and the status is unchanged), and the audit record + `job.rolled-back` event + a second rollback reporting "nothing to undo".
+- P-246 (Cancel) will grow the vocabulary again (`cancelling`); the same P-239 count/terminality edits should be expected there.
+- Gate: typecheck 0, lint 0, prettier clean, circular guard green, full core suite 174 passed / 1 skipped files and 2285 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

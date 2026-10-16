@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-245 - Orchestration: Rollback Whole Job
+**Current Phase:** P-246 - Orchestration: Cancel
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-245 Rollback Whole Job (inbesat, Wave 3, depends on P-244 DONE). P-244 shipped `pipeline/dryRun.ts` (`DryRunPlan`, `buildDryRunPlan`, `dryRunPlanJson`, `emitDryRunPlan`, `dryRunAllowsGeneration`), the `finalize`-skip branch in `pipeline/runPipeline.ts` (`cfg?: JobConfig`), the primitive `dryRun` flag on `RunOptions`/`PipelineCtx`, and the `job.dry-run-plan` topic (ADR-067). P-245 Step-1 recon DONE (surfaces read and confirmed): (1) checksums — `provenance/checksums.ts` exposes `buildChecksumManifest(repoPath, opts)` and `verifyChecksums(repoPath, manifest, opts)` returning `{valid, mismatches}`, which is the drift test; (2) audit — `provenance/audit.ts` already lists `AuditAction` `'rollback'` and owns `ProvenanceAudit.append(AuditDraft)` + `PROVENANCE_AUDIT_TABLE_SQL`, so no new audit machinery; (3) containment — reuse `withinRepoRoot` (P-165, `agent/gitFacade.ts`); do NOT invent a second helper; (4) queue — `jobs/queue.ts` `JobQueue` has get/enqueue/claim/finish/fail/cancel/pause/resume/setStageStatus but NO `rolled_back` setter, so P-245 must add the status (or model snapshots as their own side table beside `PIPELINE_JOBS_TABLE_SQL` in `jobs/schema.ts`, table `pipeline_jobs`, ADR-063). Also: `job.rolled-back` is NOT yet in `TOPICS` (16 today) — adding it breaks P-241's `bus.test.ts` counts a third time (length AND the `job.*` list); don't invent a new error code for drift, reuse the `CONFIG_ERROR`/`GIT_ERROR` precedent or ADR a distinct code. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
+| **Next Handoff** | P-246 Cancel (inbesat, Wave 3, depends on P-245 DONE). P-245 shipped `jobs/rollback.ts` (`snapshotJob`/`planRollback`/`rollbackJob`/`listRollbackPlan` + the `pipeline_job_snapshots` table), the `rolled_back` job status (ADR-068), and the `job.rolled-back` topic (`TOPICS` is now 17). P-246 needs: (a) a `CancellationToken`/`AbortSignal` threaded through `PipelineCtx` — note `RunOptions.signal` and `PipelineCtx.signal` ALREADY exist and `#ctxFor` forwards the signal, so the seam is in place and only stage-level checks are missing; (b) `jobs/cancel.ts` with `cancelJob(id,{reason})` → `cancelling` → `cancelled` (guard: an already-completed job errors), emitting `job.cancelled` (topic exists, `JobPayload` has `kind`); this means growing `JOB_STATUSES` again with `cancelling` — expect a THIRD P-239 terminality/count edit (queue.test.ts asserts `Object.keys(JOB_TRANSITIONS)` length); (c) container stop (P-168) and the SIGINT/SIGTERM ties in `index.ts` (P-189, aradhy lane). Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
 
 ---
 
@@ -375,7 +375,7 @@
 - [ ] **P-242** Progress aggregation (inbesat)
 - [x] **P-243** Per-job config (inbesat) *(2026-10-17 — gate verified: all 5 required cases present + green, typecheck/lint clean; fixed the P-241 wildcard/topic-count expectations the new `job.config-resolved` topic invalidated)*
 - [x] **P-244** Dry-run (inbesat) *(2026-10-17 — gate green: `skips finalize`, `no generation`, `builds plan`, `no side effects`, `plan json` + the `job.dry-run-plan` emit; full core suite 2279 passed / 0 failed)*
-- [ ] **P-245** Rollback whole job (inbesat)
+- [x] **P-245** Rollback whole job (inbesat) *(2026-10-17 — gate green: all 6 required cases + full core suite 2285 passed / 0 failed; grew `JOB_STATUSES` with `rolled_back` and updated P-239's terminality assertion, per ADR-068)*
 - [ ] **P-246** Cancel (inbesat)
 - [ ] **P-247** Metrics (inbesat)
 - [ ] **P-248** Tracing (inbesat)
