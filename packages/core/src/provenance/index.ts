@@ -76,3 +76,24 @@ export type {
   GitNotesOptions,
   AttachOptions,
 } from './gitnotes.js';
+
+// P-185 — the HTTP contract for the UI (framework-agnostic; the CLI binds it).
+export {
+  provenanceRoutes,
+  buildProvenanceRoutes,
+  serializeProvenanceMap,
+  recordingRouteHost,
+  PROVENANCE_ROUTES,
+} from './api.js';
+export type {
+  ProvenanceFileDto,
+  ProvenanceStatsDto,
+  ProvenanceMapDto,
+  SerializeProvenanceOptions,
+  RouteRequest,
+  RouteResponse,
+  RouteHandler,
+  RouteDescriptor,
+  RouteHost,
+  ProvenanceRoutesOptions,
+} from './api.js';

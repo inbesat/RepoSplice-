@@ -2407,4 +2407,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-058: No `Elysia` Import in Core (the Contract Is Framework-Agnostic), `ctx` Must Be USED, and PII Gets a Third Default-Closed Gate
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-185 (`PHASES_DETAILED.md:9305-9344`) exposes P-181's provenance map to the UI: `serializeProvenanceMap`, `provenanceRoutes(ctx, { getMap })`, plus `/api/provenance`, `/api/provenance/file?path=` and `/api/credits`, with acceptance requiring a 404 on an unknown path, email hidden unless configured, and the contract types exportable for web. It sketches the return type as `Elysia.Routes`. Its files are `packages/core/src/provenance/api.ts` + `api.test.ts` — and the block explicitly defers rendering ("later web P-221/P-229 render it — this phase produces the contract + route handlers"), while step 4 already places the server wiring at P-193.
+
+**Decisions:**
+
+1. **No `Elysia` import in `packages/core`, because elysia is not a core dependency — verified, not assumed.** `packages/core/package.json` declares no elysia; `packages/cli/package.json` pins `"elysia": "1.4.30"`, and core's own description reserves the HTTP/WS server for the CLI. Importing it would (a) demand a dependency core does not declare, breaking a frozen-lockfile install, and (b) push a server framework down a layer. So core exports **framework-agnostic route descriptors with pure handlers** and the CLI's Elysia server **binds** them at P-193 — which is the block's own step 4 and what its own test line ("route handler with fake ctx/getMap") presumes. `packages/cli` is another developer's package and was not touched.
+2. **`ctx` is typed `RouteHost` so it is USED rather than an ignored parameter.** `provenanceRoutes(ctx, opts)` calls `ctx.register(route)` for each descriptor AND returns them. The CLI passes an adapter over its Elysia app; a test passes `recordingRouteHost()`, which ships with the module. Keeping the phase's two-parameter arity while making the first parameter meaningful beats either an unused argument or a redesign that drops it.
+3. **Handlers are pure: `{ status, body }` in, no framework out.** This makes every acceptance criterion testable with a function call — no listener, no port, no Elysia — which is why the suite is fast and deterministic.
+4. **`400`, `404` and `500` are kept distinct, because they mean different things.** A missing/blank `path` parameter is the caller's mistake (400); a path the map does not contain is a normal miss (404); a renderer that returned `err` is a real defect (500). Collapsing 404 into 400 tells a client it called wrongly when it called correctly, and collapsing either into 500 hides a broken server behind an apparent data gap.
+5. **`404` is a response VALUE, not a `StitchError`.** An absent file is an expected answer; `Result` remains for genuine handler failures. Conflating "not found" with "failed" is exactly the distinction P-184's `readGitNotes` also draws between absent and corrupt.
+6. **The stats reuse P-182's exact predicates.** `unattributed` counts `repo === 'unknown'` and `agentEdited` counts `stitchedBy === 'agent'` — the same two tests CREDITS renders sections from — so the panel and the document cannot disagree about what "unattributed" means. `byRepo` is counted per label.
+7. **Email gains a THIRD default-closed gate.** P-181 only *stores* `sourceEmail` behind its own opt-in; P-182 only *renders* one behind its own flag; this serializer only *transports* one when `includeEmails` is set. Three independent gates, all off by default, and the test asserts the address never appears in the serialized JSON (not merely that the field is absent) so a nested leak would also fail.
+8. **Lookup goes through `getOrigin`, which normalises separators.** The handler does not re-implement file lookup, which is also why a Windows-style `lib\\util.go` query resolves and the test asserts it.
+9. **`/api/credits` returns the markdown as the BODY**, matching the acceptance's wording ("returns the CREDITS content"), and defaults to `generateCredits(map, {})` — which is render-only when no `repoC` is given, so this route never touches the filesystem. An injectable `getCredits` keeps the route testable and lets a caller substitute a cached document.
+10. **`PROVENANCE_ROUTES` is exported** so a binder and the tests agree on the three paths without retyping them — the same drift-proofing P-182 applied to its table columns.
+11. **No new `StitchError` code.** Everything here is a response status; the only error crossing the boundary is P-182's renderer `Result`, whose message is narrowed via `'message' in error` before being placed in a 500 body.
+
+**Consequences:**
+
+- Five tests (all spec-named) cover the full map plus stats and descriptor registration, a file origin including the backslash-normalised lookup and an unattributed file being SERVED rather than hidden, the 400/404/500 three-way distinction, credits rendering plus an injected renderer and its failure, and the email gate across both the serializer and the routes.
+- The contract is now the single shape web P-221/P-229 and the CLI server (P-193) both consume, and `ProvenanceMapDto` is exported from `src/index.ts` for the web import the acceptance requires.
+- Gate: typecheck 0, lint 0, **depcruise 0 (180 modules, 474 dependencies)**, build 0, and the **core** suite **158 passed | 1 skipped (159 files), 2079 passed | 1 skipped tests, exit 0**.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

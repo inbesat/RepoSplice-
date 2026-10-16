@@ -1236,6 +1236,27 @@ export type {
   AttachOptions,
 } from './provenance/index.js';
 
+// P-185 — the provenance HTTP contract (the CLI's server binds these at P-193).
+export {
+  provenanceRoutes,
+  buildProvenanceRoutes,
+  serializeProvenanceMap,
+  recordingRouteHost,
+  PROVENANCE_ROUTES,
+} from './provenance/index.js';
+export type {
+  ProvenanceFileDto,
+  ProvenanceStatsDto,
+  ProvenanceMapDto,
+  SerializeProvenanceOptions,
+  RouteRequest,
+  RouteResponse,
+  RouteHandler,
+  RouteDescriptor,
+  RouteHost,
+  ProvenanceRoutesOptions,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,
