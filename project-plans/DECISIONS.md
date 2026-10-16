@@ -2830,6 +2830,35 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 178 passed / 1 skipped files and 2304 passed / 1 skipped tests, exit 0.
 - Follow-up recorded for whoever next grows `StitchError`: add `TASK_TIMEOUT` together with its `ERROR_RULES` entry, the `errors.test.ts` recovery lists, and any exhaustive switch.
 
+## ADR-073: P-250 Addresses Work by Its Inputs, Caches Only Provably-Pure Stages, and Requires Both Halves of "Unchanged" at Finalize
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-250 (PHASES_DETAILED.md:12276) makes re-runs safe: a content-addressed stage cache, enqueue dedupe for double-submits, a finalize that is safe to re-run, and LRU eviction with a `--no-cache` escape.
+
+**Decisions:**
+
+1. THE KEY IS THE IDENTITY, AND SORTED-KEY JSON MAKES IT STABLE. `cacheKey = sha256(canonical({stage, configHash, inputs}))` with object keys sorted, so two callers that build the same inputs in a different order get the same address. The alternative — a key plus a separate input comparison — leaves a window where a stale row can be served; addressing by the inputs closes it by construction.
+
+2. `getCache` VERIFIES THE INPUTS AND RETURNS `undefined` ON MISMATCH. A key already encodes its inputs, so a mismatch means the CALLER built the key from something else — a wiring bug. Returning the row would be exactly the silent staleness the handoff warns about ("include every input that matters or you'll silently serve stale results"), so it returns nothing instead.
+
+3. CACHEABILITY IS A POSITIVE LIST (`deps`, `licenses`, `provenance`, `sandbox`). A stage added later is uncacheable until someone proves it pure, so the default fails safe. `putCache` REFUSES a non-cacheable stage (`CONFIG_ERROR`) rather than trusting the caller to check — the phase names AI generation (P-146, gated and non-deterministic) and fs writes (whose effect IS the work) as never-cacheable, and a table is what makes that enforceable.
+
+4. A CACHE HIT TOUCHES `last_access`, WHICH IS WHAT MAKES EVICTION LRU. A read that did not touch would make `evictLru` FIFO wearing an LRU name.
+
+5. DUPLICATE DETECTION READS THE SIGNATURE FROM THE ROW'S CONTEXT, NOT A NEW COLUMN. `findDuplicateJob` matches `ctx.signature` (stamped by whoever enqueues) and only counts jobs still LIVE (`queued`/`running`/`paused`/`cancelling`) within a window. Adding a column to `pipeline_jobs` would be editing P-239's DDL (ADR-063 precedent: own your own table instead). A FINISHED job is history — deliberately re-running it must NOT be silently redirected to an old result. The status list is built into the SQL from one constant so the query and the policy cannot drift.
+
+6. "ALREADY FINALIZED" REQUIRES BOTH HALVES. `finalizeNoOp` reports `unchanged` only when the tree still matches its recorded checksums AND the run produced no diff. Either alone is insufficient in a way that matters: a matching tree with a pending diff still has work, and an empty diff over a tampered tree would let a diff report hide the tampering — the test asserts the tampered case specifically.
+
+7. NO NEW `StitchError` CODE. An uncacheable stage is `CONFIG_ERROR` (a bad request), a bad row is `INTERNAL` (treated as a miss, never a crash). This follows ADR-072's finding: a new code is a coordinated multi-file change, and neither of these conditions needs one.
+
+**Consequences:**
+
+- Five tests (all spec-named): a cache hit with a miss before it and an order-insensitive key, input-change invalidation (a mismatched-input read returns nothing AND a changed input produces a new address), the cacheability table with `putCache` refusing `agent` plus LRU eviction, enqueue dedupe (in-flight match, order-insensitive sources, a different config hash, a finished job ignored, and a window miss), and finalize no-op (unchanged, pending-diff, and tampered-tree-with-empty-diff).
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 179 passed / 1 skipped files and 2309 passed / 1 skipped tests, exit 0.
+- Wiring the stage wrapper into `PipelineStateMachine` and `enqueue` dedupe into `JobQueue` is deliberately NOT done here: this phase's file mandate is `jobs/idempotency.ts`, and both call sites are P-238/P-239 surfaces. P-251's integration suite is the right place to prove them together.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

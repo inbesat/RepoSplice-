@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-250 - Orchestration: Idempotency
+**Current Phase:** P-251 - Orchestration: Tests
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-250 Idempotency (inbesat, Wave 3, depends on P-249 DONE). P-249 shipped `concurrency/pool.ts` (`Pool`, `Limits`, `resolveLimit`; ADR-072). P-250 needs: read its own phase file (§12276). Two carried-forward items: (a) **OPEN DEBT from P-249 (ADR-072)** — a distinct `TASK_TIMEOUT` code is the right shape but costs a coordinated multi-file change (`ERROR_RULES` in `agent/errors.ts` is a TOTAL record over the union, plus `errors.test.ts` recovery lists plus every exhaustive switch such as `system/doctor.ts`, which broke when the code was trialled); P-249 therefore reports a pool deadline as `INTERNAL` with the deadline in the message. Anyone adding an error code should do those edits together. (b) `TracerOptions.onSpan` (P-248) and the metrics collector are still callback-fed — `TOPICS` is 17 with no `trace.span`. Gate note: pinned counts — `queue.test.ts` (`Object.keys(JOB_TRANSITIONS)` = 8), `audit.test.ts` (`AUDIT_ACTIONS` = 18), `bus.test.ts` (`TOPICS` = 17). Also open from P-241: pipeline/jobs/tracing/concurrency are not yet exported from the public barrel (`core/src/index.ts`), per ADR-066 §9. |
+| **Next Handoff** | P-251 Orchestration TESTS (inbesat, Wave 3, depends on P-250 DONE) — this is the ACCEPTANCE GATE for the whole orchestration layer (P-238–P-250). P-250 shipped `jobs/idempotency.ts` (ADR-073). P-251's file is `packages/core/src/orchestration/__tests__/orchestration.suite.test.ts` (new) and it must exercise resume-after-crash, cancel-mid-sandbox, dry-run, rollback, idempotent re-run, metrics/tracing capture and concurrency under load together. Useful inventory of what now exists to wire: `pipeline/{states,stateMachine,runPipeline,dryRun}.ts`, `jobs/{queue,resume,rollback,cancel,metrics,idempotency}.ts`, `tracing/{spans,tracer}.ts`, `concurrency/pool.ts`, `events/{bus,topics,progress}.ts`. Note the suite will need the same DbLike harness (`makeDbAdapter` from `sandbox/__tests__/fake-docker.js`) and should keep the `--exclude build.smoke` convention in mind when running the gate. Two carried-forward items: (a) **OPEN DEBT (ADR-072)** — a distinct `TASK_TIMEOUT` code needs a coordinated multi-file change; (b) `TOPICS` is 17 with no `trace.span`, and pipeline/jobs/tracing/concurrency are still not exported from the public barrel (`core/src/index.ts`, ADR-066 §9) — P-251 is a natural place to fix the barrel since it exercises everything. Gate note: pinned counts — `queue.test.ts` (8), `audit.test.ts` (18), `bus.test.ts` (17). |
 
 ---
 
@@ -380,7 +380,7 @@
 - [x] **P-247** Metrics (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2294 passed / 0 failed; event-sourced, own-DDL `pipeline_job_metrics`, per ADR-070)*
 - [x] **P-248** Tracing (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2299 passed / 0 failed; new `tracing/` module, per ADR-071)*
 - [x] **P-249** Concurrency (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2304 passed / 0 failed; new `concurrency/` module, shared budget via `Limits`, per ADR-072)*
-- [ ] **P-250** Idempotency (inbesat)
+- [x] **P-250** Idempotency (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2309 passed / 0 failed; content-addressed stage cache + job dedupe + finalize no-op, per ADR-073)*
 - [ ] **P-251** Tests (both)
 - [ ] **P-252** CLI↔Web contract (both)
 
