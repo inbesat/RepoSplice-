@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-244 - Orchestration: Dry-Run
+**Current Phase:** P-245 - Orchestration: Rollback Whole Job
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-244 Dry-Run (inbesat, Wave 3, depends on P-243 DONE). P-243 shipped `jobs/jobConfig.ts` (resolved config ← flags ← overrides, zod-validated, deep-frozen, `configHash` for P-240 resume validity, redacted `job.config-resolved`). NOTE for P-244: the phase spec names a `ProposedPlan` type that does NOT exist anywhere in the repo (only `ComponentProposal` P-154 + per-tool `dryRun` plans do) — define `DryRunPlan`/the proposal shape in `pipeline/dryRun.ts` rather than calling a phantom API, and record it in an ADR. P-244 also requires (a) adding `cfg: JobConfig` to `PipelineOptions` in `pipeline/runPipeline.ts` (P-238 has no config today) and (b) registering a new `job.dry-run-plan` topic in `events/topics.ts` (not currently in `TOPICS`). Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
+| **Next Handoff** | P-245 Rollback Whole Job (inbesat, Wave 3, depends on P-244 DONE). P-244 shipped `pipeline/dryRun.ts` (`DryRunPlan`, `buildDryRunPlan`, `dryRunPlanJson`, `emitDryRunPlan`, `dryRunAllowsGeneration`), the `finalize`-skip branch in `pipeline/runPipeline.ts` (`cfg?: JobConfig`), the primitive `dryRun` flag on `RunOptions`/`PipelineCtx`, and the `job.dry-run-plan` topic. NOTE for P-245: (a) the pre-finalize snapshot hook belongs in `finalize` (P-238) and `provenance/checksums.ts` already exposes `buildChecksumManifest`/`verifyChecksums` (P-186) for the index+hashes; (b) `jobs/queue.ts` + `jobs/resume.ts` own the SQLite job row (P-239) the snapshot record must live beside; (c) path containment for deletion is P-205, and the audit `RollbackRecord` is P-187 — do not invent a new error code for drift, reuse the typed `GIT_ERROR`/`CONFIG_ERROR` precedent or surface it as a new distinct code via ADR. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
 
 ---
 
@@ -374,7 +374,7 @@
 - [ ] **P-241** Event bus→WS (inbesat)
 - [ ] **P-242** Progress aggregation (inbesat)
 - [x] **P-243** Per-job config (inbesat) *(2026-10-17 — gate verified: all 5 required cases present + green, typecheck/lint clean; fixed the P-241 wildcard/topic-count expectations the new `job.config-resolved` topic invalidated)*
-- [ ] **P-244** Dry-run (inbesat)
+- [x] **P-244** Dry-run (inbesat) *(2026-10-17 — gate green: `skips finalize`, `no generation`, `builds plan`, `no side effects`, `plan json` + the `job.dry-run-plan` emit; full core suite 2279 passed / 0 failed)*
 - [ ] **P-245** Rollback whole job (inbesat)
 - [ ] **P-246** Cancel (inbesat)
 - [ ] **P-247** Metrics (inbesat)
