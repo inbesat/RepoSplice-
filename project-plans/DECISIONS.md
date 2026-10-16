@@ -2912,6 +2912,37 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Five mandated cases pass: `prints version`, `lists help`, `unknown command exits 1`, `parses global flags`, `maps exit codes`. Gate: root typecheck 0, eslint 0, CLI package suite 8 files / 38 tests passed.
 - Remaining roughness, recorded: the phase's step 3 wording for the unknown-command exit code differs from its acceptance criteria (resolution above), and the P-010 `logger` export could not be located by that name — the CLI prints through `console` (AGENTS.md §4 permits it in commands), which is a fallback, not a wiring.
 
+## ADR-076: P-190 Emits the Schema's Real Config Sections, Registers `init` in `cli.ts` to Avoid a Cycle, and Injects Every Interactive Edge
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-190 (PHASES_DETAILED.md:9558) adds `stitch init`: scaffold `stitch.toml`, `.env.example` and `.gitignore`, and optionally validate + store a provider API key.
+
+**Decisions:**
+
+1. THE TEMPLATE USES THE SCHEMA'S REAL SECTIONS, NOT THE PHASE'S PROSE. Step 1 asks for `[ai] provider='openrouter'`, `[sandbox]`, `[licenses]`, `[agent]`. Reading `packages/core/src/config/schema.ts:153-180`, the top-level `ConfigSchema` is exactly `github`, `openrouter`, `anthropic`, `ollama`, `sandbox`, `ci?`, `paths`, `licensePolicy`, `autonomy`, `agent` — so there is **no `[ai]`** (providers are top-level) and the licence section is **`[licensePolicy]`**. Writing the phase's names would produce a `stitch.toml` that P-200 silently ignores — a config that looks configured and does nothing. The shipped template therefore carries `[openrouter]`, `[sandbox]`, `[sandbox.limits]`, `[licensePolicy]`, `[agent]`, `[paths]`; the phase's prose is illustrative, the schema is authoritative because it is what consumes the file. The template's own comment says so, and the test asserts no `[ai]`/`[licenses]` SECTION exists.
+
+2. THE TEMPLATE IS A STARTING POINT, NOT A FULL DUMP. P-200 merges `defaultConfig` before parsing (`schema.ts:239`), so a scaffolded file only needs the sections a user would plausibly change; every omitted key keeps its default.
+
+3. `init` IS REGISTERED IN `cli.ts`, AS STEP 4 SAYS, BECAUSE THE ALTERNATIVE IS A CYCLE. The command registry's other entries live in `program.ts` (`status`, `doctor`), so the consistent choice would be there — but `cli.ts` already imports `STITCH_VERSION` from `program.ts`, and registering from `program.ts` would need `cli.ts`'s exit constants back, closing `program.ts → cli.ts → program.ts`. The phase's own instruction removes the dilemma, and registration is additive so the globals remain testable on a bare `Command`.
+
+4. EVERY INTERACTIVE EDGE IS INJECTED (`confirm`, `promptKey`, `validateKey`, `store`, `write`, `templatesDir`). A command whose whole job is a conversation would otherwise be untestable without a TTY, a network and the user's real home directory; injecting them is what lets the five mandated cases run headlessly, and it is why `openStore()` is called by the CALLER (cli.ts) rather than inside `init`.
+
+5. REFUSE BEFORE WRITING. The existing-`stitch.toml` check happens before any file is touched, so a declined prompt leaves the directory byte-identical — asserted directly (`readFile` equals the original, and `.env.example` is still absent).
+
+6. THE KEY IS STORED, NEVER PRINTED. It goes to the durable `StitchStore` under `<provider>.apiKey`; the summary names the provider and, when no key was supplied, points at `.env`. `.env.example` carries NAMES with empty values — the test asserts no value is present (`/^OPENROUTER_API_KEY=.+$/m` is false), which is the "no secrets in written templates" acceptance item made executable.
+
+7. `--offline` SKIPS VALIDATION BUT STILL SCAFFOLDS, and the scaffold happens BEFORE the key step, so an offline run is complete rather than partial. A failing validation returns before storing, so a rejected key is never persisted.
+
+8. NO NEW `StitchError` CODE. A refusal is `CONFIG_ERROR` (the caller can pass `--force`); a template/filesystem failure is `INTERNAL`.
+
+**Consequences:**
+
+- Five tests (all spec-named) against a real temp dir and the REAL shipped templates: scaffolds (files exist, real sections present, no phantom sections, no env values, gitignore entries), refuses (`-y`/`--force`/confirmed-prompt each overwrite, a decline leaves byte-identical state and writes nothing else), validates-and-stores (order asserted, key never echoed, a failing validation does not store, `--no-key-prompt` skips), offline (validation not called, scaffold still complete), and prints-summary (names `stitch add`/`stitch merge` and the `.env` pointer).
+- Gate: root typecheck 0, eslint 0, prettier clean, CLI suite 9 files / 43 tests passed.
+- Still open from P-190's prose: the phase says the key goes to "`~/.stitch/config`"; the real store is `~/.stitch/config.json` via `openStore()`/Configstore, which is what is used.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
