@@ -1289,6 +1289,58 @@ export type {
   ProvenanceAuditOptions,
 } from './provenance/index.js';
 
+// P-241/P-242 — the event spine and the progress model. The CLI's WS bridge
+// (P-193/P-199) and the web's ThinkingStream (P-216) consume these through the
+// public API, never by reaching into `core/src/events/*`.
+export {
+  TOPICS,
+  COALESCIBLE_TOPICS,
+  matchesTopic,
+  topicsFor,
+  eventEnvelopeSchema,
+} from './events/topics.js';
+export type {
+  Topic,
+  EventEnvelope,
+  PipelineStagePayload,
+  JobPayload,
+  JobResumedPayload,
+  AgentPayload,
+  ProgressPayload,
+  TopicPayloads,
+  PayloadFor,
+} from './events/topics.js';
+export { Bus, bus, createBusForwarder } from './events/bus.js';
+export type {
+  BusHandler,
+  BusEnvelope,
+  BusOptions,
+  BusHandlerError,
+  BusForwarder,
+  EventSink,
+  ForwarderStats,
+  Unsubscribe,
+} from './events/bus.js';
+export {
+  ProgressAggregator,
+  createProgressAggregator,
+  validateProgressOptions,
+  DEFAULT_STAGE_WEIGHTS,
+  DEFAULT_STAGE_LABELS,
+  DEFAULT_CADENCE_MS,
+  DEFAULT_MAX_ETA_MS,
+  STAGE_FOR_TOPIC,
+  STAGE_PHASES,
+  AWAITING_APPROVAL,
+} from './events/progress.js';
+export type {
+  ProgressModel,
+  StageProgress,
+  OverallProgress,
+  ActivityLabel,
+  ProgressAggregatorOptions,
+} from './events/progress.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

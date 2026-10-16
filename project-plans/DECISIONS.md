@@ -2621,4 +2621,39 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-066: Progress Is Normalised (Not Summed), an ETA Is Never Invented, and "Current" Means Earliest Unresolved
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-242 (PHASES_DETAILED.md:11925-11962) reduces the P-241 event spine into one stable, throttled progress model - per-stage and overall percent, ETA, activity label, phase grouping - which the CLI progress view (P-199) and the web ThinkingStream (P-216) render. The handoff names the stake: "a lying ETA erodes trust".
+
+**Decisions:**
+
+1. THE STAGE VOCABULARY IS THE PIPELINE'S OWN. The phase illustrates weights with four stage names (deps, agent, sandbox, provenance); the aggregator reduces the very events the pipeline emits, so it uses the real nine 'PIPELINE_STAGES' from P-238. Weights, labels and phase groupings are 'Record<PipelineStage, ...>', so a stage that exists without a weight is a compile error rather than a silent zero on screen.
+
+2. WEIGHTS ARE NORMALISED OVER THE ACTIVE (NON-SKIPPED) STAGES, NOT SUMMED. The phase's own example weights sum to 0.95, so a naive 'overall = sum(weight*percent)' caps a fully finished stitch at 95%. Dividing by the weight of the stages still in play is ALSO exactly the skipped-stage redistribution the phase asks for in step 4 - one rule, not two - instead of leaving a permanent hole in the bar. A wholly skipped pipeline reads 100 (nothing left to do), not 0.
+
+3. AN ETA IS NEVER INVENTED. Before any event has been observed there is no throughput, so 'etaMs' is undefined; it stays undefined while overall percent is 0, and is 0 (known-complete) at 100%. Above zero it is 'elapsed*(100-pct)/pct' clamped to [0, maxEtaMs], with elapsed itself clamped at 0 so a clock that moves backwards cannot yield a negative estimate. An absent estimate is honest; a fabricated one is worse than none.
+
+4. EMISSION IS FORCED ON A STAGE CHANGE AND THROTTLED (default 200ms) OTHERWISE, and never fires twice for an identical model - that is the no-flicker requirement in both directions (a repeated frame is noise, a missed stage change is useless). 'etaMs' is deliberately EXCLUDED from the change signature, because it moves with the clock on every tick and would otherwise defeat the guard entirely. State is always live even when a frame is held, so throttling never loses information.
+
+5. ACTIVITY PRIORITY: paused (awaiting_hil/blocked) shows "awaiting approval", derived from the STAGE STATUSES rather than stored, so resuming releases it with no second piece of state to desynchronise. Otherwise a payload 'detail' is SPECIFIC and always wins; a topic or stage default label is GENERIC, replaces another generic (so the line follows the newest stage and does not go stale) but never clobbers a specific label.
+
+6. "CURRENT" IS THE EARLIEST UNRESOLVED STAGE. My first version scanned from the BACK, so 'overall.phase' and the emitted 'progress.stage' named the last unfinished stage - it reported 'attest' while the agent was still running, and 'finalize' as the stage the bar was on. The tests caught it; scanning from the front is what makes both fields describe where the run IS.
+
+7. VALIDATION IS THE ONLY FALLIBLE ENTRY POINT AND REUSES AN EXISTING CODE. 'createProgressAggregator' returns 'Result<ProgressAggregator, StitchError>', rejecting a NaN weight (P-243 will feed weights in from per-job config, so this is a real trust boundary) and a non-positive cadence. It reuses 'CONFIG_ERROR {field, message}', so the 'StitchError' union is unchanged at 58 codes and the six-to-nine coordinated edits a new code requires were correctly NOT needed. The constructor is private, so an unvalidated instance cannot exist; every other method is infallible and returns a plain value, matching P-241's precedent for 'publish'.
+
+8. TWO ADDITIVE PAYLOAD EXTENSIONS, both in my own P-241 module: 'ProgressPayload' gains 'overall'/'etaMs'/'phase' (the original 'stage'/'percent'/'detail' cannot carry the model, and the phase says this model is what gets emitted) and 'AgentPayload' gains 'percent', so an agent step can move the agent stage. Both are optional, so no existing producer breaks.
+
+9. THE PUBLIC BARREL NOW EXPORTS THE EVENTS MODULE (bus, topics, progress). AGENTS.md section 7 requires core types to be reachable through 'core/src/index.ts', and P-242's own context makes the consumer explicit, which is why this could no longer be deferred - P-241 had left it undone. Open item, recorded rather than hidden: 'pipeline/' and 'jobs/' are still not exported from the barrel, and P-241 acceptance item 2 (re-pointing P-238/239/240's emit callbacks onto the shared bus) remains open.
+
+**Consequences:**
+
+- Five tests (all spec-named) assert real arithmetic rather than shapes: weighted percent (45% for five passed stages plus a half-done agent, and 100% - not 95% - when finished), throttling (a held frame with live state, then a changed frame, then an identical one that does NOT repaint, plus forced ticks), skipped redistribution (54%, explicitly asserted NOT to be the 37% a non-redistributed weighting would give, and a wholly skipped run reading 100), ETA clamping (a 1s ceiling reached from a ~67s extrapolation, undefined at 0%, 0 at 100%, non-negative on a backwards clock, and an ETA-only move not emitting), and a four-step activity priority matrix including the HIL pause and its release.
+- One test assertion was itself wrong and was fixed, not the code: a late group event from an already-passed stage re-offers that stage's generic label, which IS a model change and therefore an extra frame.
+- Gate: typecheck 0, lint 0, depcruise 0 (193 modules, 491 dependencies), build 0, and the core suite 166 passed / 1 skipped files, 2119 passed / 1 skipped tests, exit 0.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

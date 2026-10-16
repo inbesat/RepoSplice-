@@ -104,13 +104,22 @@ export interface AgentPayload {
   iteration?: number;
   tool?: string;
   detail?: string;
+  /** P-242: an intra-stage fraction, so an agent step can move the bar. */
+  percent?: number;
 }
 
 /** A progress tick (P-242) — the coalescible one. */
 export interface ProgressPayload {
+  /** The stage the bar is currently on. */
   stage: string;
+  /** The OVERALL percent, 0–100 (per-stage detail lives in the model, P-242). */
   percent?: number;
+  /** The activity label, e.g. "installing deps npm". */
   detail?: string;
+  /** P-242 additions: the aggregated snapshot, so a consumer renders one event. */
+  overall?: number;
+  etaMs?: number;
+  phase?: string;
 }
 
 /** The payload type per topic, so a publisher cannot send the wrong shape. */
