@@ -2943,6 +2943,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Gate: root typecheck 0, eslint 0, prettier clean, CLI suite 9 files / 43 tests passed.
 - Still open from P-190's prose: the phase says the key goes to "`~/.stitch/config`"; the real store is `~/.stitch/config.json` via `openStore()`/Configstore, which is what is used.
 
+## ADR-077: P-191 Reuses Core's Glob Rather Than Adding a Matcher, Refuses a No-Match as `CONFIG_ERROR` Not a Phantom Code, and Pins Remote Sources by Ref
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-191 (PHASES_DETAILED.md:9605) adds `stitch add <source> <paths...>`: resolve a local dir or clone `owner/repo`, expand the requested paths/globs, validate them, and persist the selection for a later `stitch merge`.
+
+**Decisions:**
+
+1. THE PHASE'S `NO_PATHS_MATCH` IS A PHANTOM AND WAS NOT INVENTED. Step 2 and the acceptance criteria both name `err('NO_PATHS_MATCH')`; grepping all of `packages/core/src` returns nothing, so the code is not in the `StitchError` union. A no-match therefore refuses as `CONFIG_ERROR {field:'paths'}` — the caller fixes it by naming other paths — with the offending patterns plus `did you mean: …` suggestions in the message. Adding a code is a coordinated multi-file change (`ERROR_RULES` is a total record, `errors.test.ts` pins the recovery lists, `system/doctor.ts` switches exhaustively), which ADR-072 measured.
+
+2. THERE IS ONE GLOB IMPLEMENTATION, AND IT IS CORE'S. Core exposes no path-SELECTING matcher — `util/ignore.ts` exports `buildIgnoreMatcher`/`shouldIgnore`, which ignore rather than select. So rather than hand-roll a matcher or add a second `picomatch` dependency (`packages/cli` declares none), the port was reshaped from `match(patterns, files)` to **`expand(dir, patterns)`**, implemented in the wiring with core's `listFiles` (P-034). It is called twice — `['**/*']` for the full listing (suggestions) and the user's patterns for the selection — so both purposes share one canonical traversal.
+
+3. REMOTE SOURCES ARE CLONED SHALLOW AND PINNED. `resolveSource` uses core's `cloneRepo({url, targetDir, shallow: true, depth: 1, branch?})` into `~/.stitch/cache/<owner__repo>` for an `owner/repo` ref, and returns a local path untouched otherwise. `--branch` reaches the clone AND is recorded on the selection, which is what P-181's provenance reads back; without it no `ref` key is written (not `ref: undefined`, because the repo compiles with `exactOptionalPropertyTypes`).
+
+4. THE STORE IS VALIDATED, NOT CAST. `sources` lives in the user-editable `StitchStore`, so `readSources` checks each entry field-by-field and DROPS a malformed one rather than trusting it into a merge. `saveSources` writes the array back as `JsonValue`.
+
+5. EVERY HEAVY EDGE IS A PORT, SO THE SIX CASES RUN WITHOUT GIT OR A NETWORK: `resolveSource`, `expand`, `loadSources`, `saveSources`. The command itself holds no cloning, globbing or storage logic, which is why it is fully testable and why the CLI cannot drift from core.
+
+6. DEDUP IS A WARNING, NOT AN ERROR, AND `--offline` IS LOCAL-ONLY. Re-adding a source/ref whose paths are all already recorded writes `Already recorded … — no change` and does not touch the store; a different `ref` is a different selection. An `owner/repo` source while `--offline` is refused before any clone is attempted.
+
+**Consequences:**
+
+- Six tests (all spec-named): local paths (persisted selection, summary names the source/count/`stitch merge`, blank source and empty pattern list refused), globs (`src/**` expands, mixed patterns union + dedupe + sort), no-match (`CONFIG_ERROR` with `did you mean`, nothing persisted, `--allow-empty` records an empty selection), dedupe (no-op warning without a write, a new path appends, a different ref is not deduped), pins branch (the ref reaches the resolver AND is recorded, and is absent when unspecified), and offline (remote refused, local works, `looksRemote` asserted directly).
+- A test-double glob stands in for P-036 inside the suite; the shipped path uses core's real `listFiles`.
+- Gate: root typecheck 0, eslint 0, prettier clean, CLI suite 10 files / 49 tests passed.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
