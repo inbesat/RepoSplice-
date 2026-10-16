@@ -31,3 +31,28 @@ export {
   UNATTRIBUTED_HEADING,
 } from './credits.js';
 export type { CreditsOptions } from './credits.js';
+
+// P-183 — SBOM (CycloneDX primary, SPDX optional; the machine/legal read).
+export {
+  generateSbom,
+  renderCycloneDx,
+  renderSpdx,
+  validateCycloneDx,
+  validateSpdx,
+  sbomComponents,
+  buildPurl,
+  sortedOrigins,
+  SBOM_FILENAMES,
+  TOOL_NAME,
+  CYCLONEDX_SPEC_VERSION,
+  SPDX_VERSION,
+  NOASSERTION,
+} from './sbom.js';
+export type {
+  SbomFormat,
+  SbomComponent,
+  SbomMetadata,
+  SbomInput,
+  SbomOptions,
+  SbomOutput,
+} from './sbom.js';

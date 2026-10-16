@@ -1191,6 +1191,31 @@ export {
 } from './provenance/index.js';
 export type { CreditsOptions } from './provenance/index.js';
 
+// P-183 — SBOM (CycloneDX primary, SPDX optional).
+export {
+  generateSbom,
+  renderCycloneDx,
+  renderSpdx,
+  validateCycloneDx,
+  validateSpdx,
+  sbomComponents,
+  buildPurl,
+  sortedOrigins,
+  SBOM_FILENAMES,
+  TOOL_NAME,
+  CYCLONEDX_SPEC_VERSION,
+  SPDX_VERSION,
+  NOASSERTION,
+} from './provenance/index.js';
+export type {
+  SbomFormat,
+  SbomComponent,
+  SbomMetadata,
+  SbomInput,
+  SbomOptions,
+  SbomOutput,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

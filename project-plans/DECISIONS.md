@@ -2349,4 +2349,34 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-056: `format: 'both'` Needs One Document Per Format, the Error-Code Ritual Was Really Nine Edits, and Validation Is an Exported Gate Because Otherwise It Is Untestable
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-183 (`PHASES_DETAILED.md:9214-9252`) emits a machine-readable SBOM for the composed app: CycloneDX JSON (primary) and SPDX (optional), carrying dependency components with `purl`s and P-128 licence verdicts plus P-181's file provenance. It declares `generateSbom(...): Promise<Result<string, StitchError>>`, mandates `err('SBOM_INVALID')` on malformed output, and requires validation against a minimal schema.
+
+**Decisions:**
+
+1. **`format: 'both'` cannot be a single `string`, so the result carries one document per requested format.** The declared `Result<string, …>` works for one flavour, but "both" has no honest single-string representation — inventing a JSON envelope would be a format nobody specified and every consumer would have to learn. `SbomOutput.documents` holds `{ cyclonedx?, spdx? }` and `written` lists the paths actually written. This is the same reconciliation shape as P-182's `repoC`: widen additively rather than fail an acceptance criterion the declaration cannot express.
+2. **The `SBOM_INVALID` ritual was NINE coordinated edits, not the six the precedent implies — and two were found by RUNNING tests.** The seven known sites are the union variant, `STITCH_ERROR_CODES`, `system/doctor.ts`, `agent/errors.ts`'s `ErrorRule`, both `build.smoke.test.ts` counts, and `INTEGRATIONS.md` §9.1. `CLASSIFIED_CODES` (an *alias* of `STITCH_ERROR_CODES`, so it looked self-maintaining) and `errors.test.ts`'s explicit **non-recoverable list** were invisible to reading: `typecheck` was already **0** and the change *looked* complete. The `classifies provider/tool/auth/sandbox/fatal` test caught it on the first run. **A green typecheck is not a green change** — the same lesson as P-181's logger-field drift guard.
+3. **Validation is an EXPORTED gate (`checkSbom`), not an inline step, because otherwise the mandated `SBOM_INVALID` path is untestable dead code.** The renderer is deterministic and, by construction, always produces a valid document — so a malformed document can only be reached from outside. Extracting the gate lets `generateSbom` use it *and* lets a test drive it with `'{}'` and `'not json'`, proving the malformed path returns the typed error instead of writing a broken artifact. A branch that cannot be exercised is the same as no branch.
+4. **Components are read from the merged manifest by `in`-narrowing its 4-way union — no casts (ADR-041).** `'require' in m` → Go, `'package' in m` → Cargo, `'source' in m` → Python, else npm. Cargo's values are themselves a union (`string | { version }`), handled explicitly, and npm contributes all four of its dependency maps.
+5. **`purl` uses P-115's parser ids, which map 1:1 onto purl types** (`npm`/`python`/`cargo`/`go` → `npm`/`pypi`/`cargo`/`golang`) — so no package-name translation table exists. An npm scope is a namespace+name pair and `@` is percent-encoded (`pkg:npm/%40angular/core@17.0.0`), because the unencoded form does not round-trip.
+6. **Output is deterministic from the inputs.** `created` defaults to `deps.generatedAt`, and the CycloneDX `serialNumber` / SPDX `documentNamespace` are content hashes rather than `randomUUID()` — so the same inputs render byte-identical documents, which is what makes the artifacts diffable in CI. `now`/`serialSeed` remain as explicit overrides (the P-182 precedent).
+7. **`LicenseReportRow` keyed `package@version` is the bridge from the manifest component set to the P-128 verdict**, and a component with no row is `NOASSERTION` — never a silently permissive default. The policy `decision` is exposed alongside, so a consumer can tell "allowed" from "concluded".
+8. **`NOASSERTION` (SPDX's own no-assertion token) is used for both formats**, so the two documents speak one vocabulary rather than each inventing its own blank.
+9. **Provenance rides in CycloneDX `properties`, not in `components`.** A compliance tool counts `components` as libraries; adding one entry per file would corrupt that count. Each origin becomes `stitch:file-origin:<C path>` with `repo`/`commit`/`sourcePath`/`stitchedBy`. SPDX uses `files` with `artifactOf` attribution, as the phase asks.
+10. **`provenance/types.ts` RE-EXPORTS rather than re-declares.** P-181 owns the origin types in `map.ts` and P-182 owns `CreditsOptions`; the phase lists a `types.ts`, and one home per type is what keeps that list honest.
+11. **A test found a real defect in the path this module REPORTS.** `written` was built by string concatenation with `/`, while `join()` yields `\` on Windows — so the function handed a caller a path it could not open. Fixed to use `join`, which is also why the assertion compares against `join(...)`.
+12. **No further error code.** Blank `metadata` and a blank `repoC` are `CONFIG_ERROR`; a failed write is `INTERNAL`; malformed output is `SBOM_INVALID`. Validation itself is a total function returning the reason as a `string | undefined`, so no throw is involved anywhere.
+
+**Consequences:**
+
+- Five tests (all spec-named) cover CycloneDX components+licences+provenance and the `both` shape, SPDX packages with `externalRefs`/`artifactOf`, purl formation (including the npm scope), the licence-verdict mapping (including the no-row `NOASSERTION` case), and validation — the last exercising the `SBOM_INVALID` gate directly with malformed and unparseable input, plus the write/return byte-equality and the two `CONFIG_ERROR` guards.
+- Gate: typecheck 0, lint 0, **depcruise 0 (178 modules, 470 dependencies)**, build 0, and the **core** suite **156 passed | 1 skipped (157 files), 2069 passed | 1 skipped tests, exit 0**.
+- SBOM output is now the machine-readable counterpart to P-182's CREDITS, both rendering from P-181's one map, ready for compliance export (P-307) and the web view (P-220).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
