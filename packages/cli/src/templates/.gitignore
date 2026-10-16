@@ -1,0 +1,22 @@
+# Added by `stitch init`.
+
+# Secrets and local state — never commit these.
+.env
+.env.*
+!.env.example
+.stitch/
+
+# Dependencies and build output.
+node_modules/
+dist/
+build/
+coverage/
+
+# Local databases and caches.
+*.db
+*.sqlite
+*.sqlite3
+
+# Editor / OS noise.
+.DS_Store
+*.log

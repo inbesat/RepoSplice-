@@ -1,0 +1,33 @@
+# stitch.toml — repo-stitcher project config (P-200).
+#
+# Scaffolded by `stitch init`. Every key below is validated by core's
+# `ConfigSchema` (packages/core/src/config/schema.ts); anything missing falls
+# back to its default, so this file is a starting point, not a full dump.
+#
+# NOTE on key names: there is deliberately no `[ai]` section — providers are
+# TOP-LEVEL — and the licence section is `[licensePolicy]`, matching the schema.
+
+[openrouter]
+# The model `stitch merge` uses unless a job overrides it.
+defaultModel = "openrouter/anthropic/claude-3.5-sonnet"
+
+[sandbox]
+# "docker" (local containers) or "auto" (fall back to GitHub Actions).
+backend = "docker"
+
+[sandbox.limits]
+memory = "2g"
+cpu = "2"
+timeout = 900
+
+[licensePolicy]
+allow = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC"]
+warn = ["MPL-2.0", "LGPL-2.1", "LGPL-3.0"]
+deny = ["GPL-3.0", "AGPL-3.0"]
+
+[agent]
+maxIterations = 20
+
+[paths]
+cacheDir = ".stitch/cache"
+worktreeDir = ".stitch/worktrees"
