@@ -30,7 +30,8 @@
     "test:license": "bunx vitest run src/license --coverage --coverage.include=\"src/license/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
     "test:ai": "bunx vitest run src/ai --coverage --coverage.include=\"src/ai/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.exclude=\"**/__fixtures__/**\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
     "test:agent:e2e": "bunx vitest run src/agent --coverage --coverage.include=\"src/agent/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
-    "test:sandbox": "bunx vitest run src/sandbox --coverage --coverage.include=\"src/sandbox/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80"
+    "test:sandbox": "bunx vitest run src/sandbox --coverage --coverage.include=\"src/sandbox/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80",
+    "test:provenance": "bunx vitest run src/provenance --coverage --coverage.include=\"src/provenance/**/*.ts\" --coverage.exclude=\"**/__tests__/**\" --coverage.exclude=\"**/*.test.ts\" --coverage.thresholds.lines=80 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80 --coverage.thresholds.functions=80"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.124.0",

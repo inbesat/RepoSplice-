@@ -2493,4 +2493,32 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-061: The Gate Is the vitest Form, Fixtures Are Committed as CONTENT and Materialized at Test Time, and the Suite Found Two Wrong Assumptions of Mine
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-188 (`PHASES_DETAILED.md:9451-9497`) closes Epic 9 by consolidating provenance (P-181–P-187) into one suite that verifies the whole chain — merge → map → CREDITS → SBOM → git notes → checksums → audit — with fixture repos and a coverage gate. It mandates `provenance.suite.test.ts`, a committed `fixtures/` directory with two tiny JS repos A/B, and `test:provenance` = `bun test src/provenance --coverage` with ≥80 line / ≥70 branch.
+
+**Decisions:**
+
+1. **`test:provenance` uses the vitest form, because `bun test` cannot run in this repo.** This is the identical conflict P-180 resolved for the sandbox (bunfig `preload` is rejected by Bun's native runner), so the script mirrors the five existing `test:<area>` siblings with `--coverage.include`/`--coverage.exclude` and the 80/70/80/80 thresholds. The mandated ≥80 line / ≥70 branch are honoured exactly, and the acceptance was met **by running it**: `test:provenance` exits 0 at **89.24% statements / 80.99% branches / 92.17% functions / 94.57% lines**.
+2. **The fixtures are committed as CONTENT and materialized at test time.** A literal `.git` directory inside `packages/core/src` would be walked by lint and dep-cruise, and a committed object database bakes in machine-authored commit SHAs. Committing the file SETS and `git init`-ing them through `commitFiles` + `FIXTURE_IDENTITY` gives shared, reviewed content AND authorship that is deterministic on every machine — which is precisely the property P-204's CLI integration tests will rely on when they reuse these fixtures (the phase's own handoff).
+3. **The chain starts where provenance starts: a staged tree C plus a blame map.** P-072/P-076's merge has its own suite and its own fixtures; re-driving it here would turn this into a git-core integration test. C is staged in the P-070 teleport shape (`repo-a/…`, `repo-b/…`) that P-181's suite already models, and `BlameSource.prefix` is what recovers the original source paths.
+4. **A material caveat this suite FOUND, recorded rather than papered over: `sourceCommit` is the commit THAT C BLAMES, not A's or B's.** A real pipeline merge imports A/B's objects, so the blamed commit is the upstream one; this staging does not share their history, so the honest assertion is C's own commit — asserted as such rather than against a SHA the fixture cannot produce. The limitation is in the HARNESS, not the code: P-181's `buildProvenanceMap` reports whatever the blame map proves, which is the contract.
+5. **`deterministic map` means two INDEPENDENT passes**, not two reads of one map: a fresh `buildBlameMap` and a fresh `buildProvenanceMap` each time, comparing origins, the serialized DTO, `mapChecksum`, and the CREDITS text byte-for-byte. It also carries forward ADR-059's property that `manifestSha256` is stable across a different clock. This is the acceptance's own wording ("attribution deterministic across runs").
+6. **A second wrong assumption of mine, caught by the suite: `origins()` sorts with `localeCompare`, which is NOT default code-unit `.sort()` order.** The first version asserted the DTO's file order equalled `[...files].sort()` and failed on `repo-a/lib/index.js` vs `repo-a/README.md`. The fix asserts the contract that actually exists — the transport preserves the map's own order, and that order is `localeCompare`-sorted — instead of asserting a different ordering rule and calling it the same.
+7. **The dependency report is an INDEPENDENT fixture input, stated as such in the file header.** It uses a `GoManifest` because every required field of that variant is knowable (P-183's reasoning); it is not a description of the JS fixture repos, and implying otherwise would be a quiet incoherence.
+8. **No new production API** — the only non-test artifact is one `package.json` script. The suite exercises the `Result`-returning surface already gated in P-181…P-187.
+9. **The audit step uses a real `DbLike`**, because ADR-060 deliberately gave `ProvenanceAudit` no in-memory fallback, and it re-asserts that a credential in a `detail` never reaches the export.
+10. **The `it('coverage gate')` assertion P-180 used is deliberately NOT duplicated.** P-180 asserted the script exists because its acceptance was about the script; here the acceptance is that the gate PASSES, so the gate itself was executed as part of this phase's own verification — a stronger check than a string match.
+
+**Consequences:**
+
+- Five tests (all spec-named) run the whole chain against ONE staged tree, plus the determinism, licence-verdict, tamper-detection and append-only scenarios — 42 tests across 8 files under `test:provenance`.
+- Gate: typecheck 0, lint 0, **depcruise 0 (183 modules, 480 dependencies)**, build 0, core suite **161 passed | 1 skipped (162 files), 2096 passed | 1 skipped tests**, `test:provenance` **0** at 89.24/80.99/92.17/94.57.
+- **Epic 9 (Provenance, P-181–P-188) is CLOSED.** Provenance now has one contract (the map), three reads (CREDITS, SBOM, the HTTP DTO), a durable transport (git notes), a tamper anchor (checksums), a trust record (audit), and a suite that proves they wire together.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
