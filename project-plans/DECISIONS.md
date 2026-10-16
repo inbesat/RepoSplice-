@@ -2801,6 +2801,35 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Wiring to `/api/jobs/<id>/trace` (P-216) and `--verbose`/`--trace` printing (P-206) is the CLI/web lane.
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 177 passed / 1 skipped files and 2299 passed / 1 skipped tests, exit 0.
 
+## ADR-072: P-249 Gives Concurrency ONE Shared Budget, Serves Priority at the Waiter, and Defers the `TASK_TIMEOUT` Error Code as Coordinated Debt
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-249 (PHASES_DETAILED.md:12234) adds a bounded concurrency governor: a semaphore pool with priority, per-task timeout and cancellation, plus a global cap of `min(configured, host cpu, sandbox host cap)` shared so sandbox + AI + dep-install compete for one allowance.
+
+**Decisions:**
+
+1. THE BUDGET IS SHARED BY COMPOSITION, NOT BY CONVENTION. A named stage pool takes a slot from a PARENT pool first (`PoolOptions.parent`), and `Limits.pool(name)` wires every stage pool to one global. Three pools at `--jobs 4` would otherwise put twelve containers on a four-core host; the test asserts the combined peak across two pools never exceeds the shared limit.
+
+2. `resolveLimit` NEVER RETURNS BELOW 1 AND TREATS AN ABSENT INPUT AS UNCONSTRAINING. `min(configured, host, sandboxCap)` with a missing value falling back to the host's core count; a pool that can run nothing is a deadlock, not a limit.
+
+3. PRIORITY IS SERVED AT THE WAITER, NOT AT SUBMIT TIME. A queued task carries a priority and its insertion sequence; `#dispatch` picks the highest priority, FIFO within a level. That is what stops an HIL approval (P-160) queueing behind the long build it is meant to unblock. The first implementation had `#acquireWithPriority` drop the priority on the floor — the code was corrected, and the test asserts the observed ORDER (`holder, high, low`), not a counter.
+
+4. A TIMEOUT RESOLVES A TYPED ERROR; IT NEVER REJECTS. `Promise.race` between the task and a deadline that RESOLVES `err(...)` keeps this module throw-free (no rejection is used as control flow). A timed-out task cannot be un-run — a promise is not cancellable — so the `AbortSignal` is what actually stops the work, and the deadline is reported honestly rather than pretended to be a cancellation.
+
+5. CANCELLATION IS PROMPT FOR WAITERS, NOT FOR RUNNERS. A queued waiter listens on its signal and leaves the queue IMMEDIATELY (`queued` drops at once in the test); a task already running is handed the signal and stops at its own next boundary. Claiming more than that would be a lie about what a promise can do.
+
+6. `tryAcquire` EXISTS FOR PREFLIGHT. The phase asks for it explicitly so a caller can avoid deadlocking on a slot it must hold across several steps.
+
+7. **`TASK_TIMEOUT` IS DEFERRED AS COORDINATED DEBT.** A pool deadline is genuinely distinct from `USER_TIMEOUT` (P-156 `ask_user` — no human answered) and `SANDBOX_TIMEOUT` (P-174 — a container blew its budget), so a dedicated code is the right shape. It was TRIALLED and reverted: ADR-066's warning proved accurate — `agent/errors.ts`'s `ERROR_RULES` is a TOTAL `Record` over the union, `errors.test.ts` pins the recovery classification in two lists, and `system/doctor.ts` switches over the union exhaustively, so the new member broke three files at once (`TS2741`, two failing tests, and `TS2366` in a file this phase does not own). P-249 therefore reports a deadline as `INTERNAL` carrying the milliseconds in its message, and records the distinct code as follow-up. Adding an error code is a single coordinated change, not a per-phase one.
+
+**Consequences:**
+
+- Five tests (all spec-named) measure OBSERVED behaviour rather than internals: peak in-flight of six tasks on a two-slot pool; the actual run order for a priority pair and a FIFO pair; a deadline reported without wedging the pool (slot released), a throwing task becoming `INTERNAL`, and an in-time task returning untouched; `min()` resolution plus a measured combined peak across two shared pools; and cancellation where a queued waiter leaves immediately, an already-aborted signal never queues, and `drain()` settles.
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 178 passed / 1 skipped files and 2304 passed / 1 skipped tests, exit 0.
+- Follow-up recorded for whoever next grows `StitchError`: add `TASK_TIMEOUT` together with its `ERROR_RULES` entry, the `errors.test.ts` recovery lists, and any exhaustive switch.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
