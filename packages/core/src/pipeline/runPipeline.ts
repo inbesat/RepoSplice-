@@ -20,7 +20,9 @@ import {
   type PipelineRunResult,
   type RunOptions,
   type StageHandler,
+  type StageOutcome,
 } from './stateMachine.js';
+import type { JobConfig } from '../jobs/jobConfig.js';
 import { type PipelineStage, type StageRecord } from './states.js';
 import { type StageCache } from './stateMachine.js';
 import { type PipelineEvent } from './stateMachine.js';
@@ -41,6 +43,12 @@ export interface PipelineOptions extends RunOptions {
   maxAttempts?: number;
   /** Resume from persisted state (P-240). */
   records?: readonly StageRecord[];
+  /**
+   * P-244: the resolved per-job config (P-243). Its `flags.dryRun` selects the
+   * dry-run branch; `flags.allowGeneration` is what a stage reads to stay in
+   * propose-only (P-160). Omitted for callers that have no job config yet.
+   */
+  cfg?: JobConfig;
 }
 
 /** What a run reports. */
@@ -59,8 +67,12 @@ export interface PipelineResult extends PipelineRunResult {
 export async function runPipeline(
   options: PipelineOptions
 ): Promise<Result<PipelineResult, StitchError>> {
+  // P-244: a dry run is `cfg.flags.dryRun` (the P-243 contract). `finalize` is the
+  // stage that writes C/lockfile/commit, so it is swapped for a skip here rather
+  // than deferred to the caller — a dry run that forgot to skip it would write.
+  const dryRun = options.cfg?.flags.dryRun === true || options.dryRun === true;
   const machine = new PipelineStateMachine({
-    handlers: options.handlers,
+    handlers: dryRun ? { ...options.handlers, finalize: skipFinalize } : options.handlers,
     ...(options.now !== undefined ? { now: options.now } : {}),
     ...(options.emit !== undefined ? { emit: options.emit } : {}),
     ...(options.cache !== undefined ? { cache: options.cache } : {}),
@@ -72,6 +84,7 @@ export async function runPipeline(
     ...(options.offline !== undefined ? { offline: options.offline } : {}),
     ...(options.jobs !== undefined ? { jobs: options.jobs } : {}),
     ...(options.signal !== undefined ? { signal: options.signal } : {}),
+    dryRun,
   });
   if (ran.isErr()) return err(ran.error);
 
@@ -79,6 +92,19 @@ export async function runPipeline(
     ...ran.value,
     ...(options.commitTarget !== undefined ? { commitTarget: options.commitTarget } : {}),
   });
+}
+
+/**
+ * P-244: the dry-run `finalize`.
+ *
+ * `finalize` is the stage that writes the child repo, the lockfile and the commit
+ * — the ONE thing a dry run must never do. Skipping it here (rather than teaching
+ * every `finalize` implementation about dry-run) keeps the ban in one place the
+ * machine already understands, and leaves the caller's handler untouched for a
+ * real run. `meta.reason` makes the skip auditable in the stage record.
+ */
+function skipFinalize(): Promise<StageOutcome> {
+  return Promise.resolve({ status: 'skipped', meta: { reason: 'dry-run' } });
 }
 
 /** Count the records by status — the summary a UI or an audit entry renders. */

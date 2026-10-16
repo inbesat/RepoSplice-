@@ -19,6 +19,7 @@ export const TOPICS = [
   'job.updated',
   'job.resumed',
   'job.config-resolved',
+  'job.dry-run-plan',
   'job.cancelled',
   'job.failed',
   'job.succeeded',
@@ -132,6 +133,15 @@ export interface JobConfigResolvedPayload {
   effectiveCfg: Record<string, unknown>;
 }
 
+/** A dry run's proposed plan (P-244), so web/CLI render one contract. */
+export interface JobDryRunPlanPayload {
+  jobId: string;
+  /** The out dir the run WOULD have written; nothing was written. */
+  outDir: string;
+  /** The full plan (P-244's `DryRunPlan`), serialised for the wire. */
+  plan: Record<string, unknown>;
+}
+
 /** The payload type per topic, so a publisher cannot send the wrong shape. */
 export interface TopicPayloads {
   'pipeline.stage': PipelineStagePayload;
@@ -140,6 +150,7 @@ export interface TopicPayloads {
   'job.updated': JobPayload;
   'job.resumed': JobResumedPayload;
   'job.config-resolved': JobConfigResolvedPayload;
+  'job.dry-run-plan': JobDryRunPlanPayload;
   'job.cancelled': JobPayload;
   'job.failed': JobPayload;
   'job.succeeded': JobPayload;

@@ -62,6 +62,13 @@ export interface PipelineCtx {
   readonly offline: boolean;
   /** `--jobs` (P-204): the caller's concurrency allowance. */
   readonly jobs: number;
+  /**
+   * P-244: this run is a dry run. Stages must reach a verdict but write NOTHING —
+   * no C, no lockfile, and AI in propose-only (P-160). A primitive rather than the
+   * `JobConfig` on purpose: `jobs/jobConfig.ts` already imports `pipeline/states.js`,
+   * so importing the config back here would close a `jobs → pipeline → jobs` cycle.
+   */
+  readonly dryRun: boolean;
   /** Cancellation (P-246). */
   readonly signal?: AbortSignal;
 }
@@ -201,6 +208,7 @@ export class PipelineStateMachine {
       attempt,
       offline: overrides.offline === true,
       jobs: Math.max(1, overrides.jobs ?? 1),
+      dryRun: overrides.dryRun === true,
       ...(overrides.signal !== undefined ? { signal: overrides.signal } : {}),
     };
   }
@@ -282,6 +290,8 @@ export interface RunOptions {
   offline?: boolean;
   /** `--jobs` (P-204): the caller's concurrency allowance. */
   jobs?: number;
+  /** P-244: run to a verdict but skip `finalize` — nothing is written. */
+  dryRun?: boolean;
   /** Cancellation (P-246). */
   signal?: AbortSignal;
 }
