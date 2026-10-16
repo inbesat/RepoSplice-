@@ -123,6 +123,10 @@ describe('P-163 agent error handling', () => {
         'PROMPT_MISSING_VAR',
         'PROMPT_NOT_FOUND',
         'SCANCODE_MISSING',
+        // P-183 added SBOM_INVALID and classified it `fatal`: a document that
+        // failed its own schema is a composition defect, so a retry reproduces
+        // it rather than resolving it.
+        'SBOM_INVALID',
         // P-164 added TOKEN_LIMIT and classified it `config`: reaching a token
         // budget needs a human to raise it, so it is not recoverable by retry.
         'TOKEN_LIMIT',
