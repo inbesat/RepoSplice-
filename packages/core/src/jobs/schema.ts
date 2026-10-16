@@ -37,6 +37,7 @@ export const PIPELINE_JOBS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS pipeline_jobs
   finished_at TEXT,
   result_json TEXT,
   error_json TEXT,
+  stage_status TEXT,
   lease_owner TEXT,
   lease_expires_at TEXT
 );

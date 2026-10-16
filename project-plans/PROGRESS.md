@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-16
-**Current Phase:** P-240 - Orchestration: Resume Jobs
+**Current Phase:** P-241 - Orchestration: Event Bus
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 365 (P-000–P-364; P-299 superseded by Epic 19) |
 | **Plan Document (deep-elaborated)** | 365/365 (9/9 FULL) |
-| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238 and P-239 (taken ahead of the aradhy CLI/Web lane) |
+| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238, P-239 and P-240 (taken ahead of the aradhy CLI/Web lane) |
 | **Active** | 0 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-240 Resume Jobs (inbesat, Wave 3, depends on P-239 which is DONE). Block read; files jobs/resume.ts (new), jobs/queue.ts (add getResumableContext), jobs/__tests__/resume.test.ts. 4 tests: checkpoints, resumes at stage, crash sweep, config mismatch restarts. Recon: needs per-stage stage_status plus ctx persisted (schema addition to pipeline_jobs), checkpoint() called from the P-238 machine, resumableCtx(), resume(), a boot sweep for expired leases unless --no-resume, a job:resumed event plus a P-187 ResumeRecord, and a config-hash guard that FORCES a restart from config on mismatch. P-250 caching is FUTURE, but P-238 already exposes the StageCache predicate seam, so resume depends on the shape and not the store. |
+| **Next Handoff** | P-241 Orchestration Event Bus to WS (inbesat, Wave 3, depends on P-240 which is DONE - ADR-064). Core lane is contiguous from P-238: pipeline state machine, durable job queue, resume. Note P-238/P-239/P-240 all EMIT events already (stage:transition, job:transition, job:resumed), so P-241 has producers waiting. |
 
 ---
 

@@ -447,4 +447,84 @@ export class JobQueue {
     }
     return ok(records);
   }
+
+  /**
+   * Persist the state machine's per-stage records (P-240's checkpoint).
+   *
+   * Called by the machine after each transition. There is NO column change on the
+   * hot path: `stage_status` is written on its own, so a checkpoint never has to
+   * read-modify-write the rest of the row and cannot lose a concurrent lease
+   * update. `null` clears it.
+   */
+  async setStageStatus(
+    id: string,
+    stageStatus: Record<string, unknown> | null
+  ): Promise<Result<void, StitchError>> {
+    const ready = this.#ensureTable();
+    if (ready.isErr()) return err(ready.error);
+    const written = dbRun(
+      this.#db,
+      `UPDATE ${JOBS_TABLE_NAME} SET stage_status = ? WHERE id = ?`,
+      stageStatus === null ? null : JSON.stringify(stageStatus),
+      id
+    );
+    if (written.isErr()) return err(written.error);
+    if (written.value.changes === 0) {
+      return err({
+        code: 'CONFIG_ERROR',
+        field: 'id',
+        message: `JobQueue.setStageStatus: no job ${id}`,
+      });
+    }
+    return ok(undefined);
+  }
+
+  /**
+   * Everything a resume needs to rebuild the run (P-240).
+   *
+   * `undefined` means no such job. A job WITHOUT a checkpoint comes back with
+   * `stageStatus: undefined`, which a caller must read as "nothing to resume" —
+   * an empty/absent checkpoint is not a resume point.
+   */
+  async getResumableContext(id: string): Promise<
+    Result<
+      | {
+          id: string;
+          kind: string;
+          status: JobStatus;
+          ctx: Record<string, unknown>;
+          stageStatus?: Record<string, unknown>;
+          leaseOwner?: string;
+        }
+      | undefined,
+      StitchError
+    >
+  > {
+    const ready = this.#ensureTable();
+    if (ready.isErr()) return err(ready.error);
+    const row = dbGet(
+      this.#db,
+      `SELECT id, kind, status, config_json, stage_status, lease_owner FROM ${JOBS_TABLE_NAME} WHERE id = ?`,
+      id
+    );
+    if (row.isErr()) return err(row.error);
+    if (row.value === null) return ok(undefined);
+    const record = row.value;
+    const jobId = record['id'];
+    const kind = record['kind'];
+    const status = record['status'];
+    if (typeof jobId !== 'string' || typeof kind !== 'string' || typeof status !== 'string') {
+      return err({ code: 'INTERNAL', message: `job ${id} has an unusable row` });
+    }
+    const stageStatus = parseJson(record['stage_status']);
+    const leaseOwner = record['lease_owner'];
+    return ok({
+      id: jobId,
+      kind,
+      status: status as JobStatus,
+      ctx: parseJson(record['config_json']) ?? {},
+      ...(stageStatus !== undefined ? { stageStatus } : {}),
+      ...(typeof leaseOwner === 'string' && leaseOwner !== '' ? { leaseOwner } : {}),
+    });
+  }
 }

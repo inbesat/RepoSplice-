@@ -2573,4 +2573,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-064: A Missing Checkpoint Is Refused, a Config Mismatch Restarts, and the Sweep Pauses Rather Than Requeues
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-240 (PHASES_DETAILED.md:11834-11873) adds job resume: on restart, on an explicit --resume, or after an HIL pause, a job re-enters the P-238 machine at the last incomplete stage, reusing persisted state, and records a resume marker in the audit log.
+
+**Decisions:**
+
+1. RESUME IS POSSIBLE ONLY BECAUSE OF P-238 AND P-239. P-238 keeps the pipeline RECORDS as its cursor, so re-entry needs no second code path; P-239 persists job and context. resume() is therefore mostly load-and-hand-back, and it uses the machine own resumePoint so the definition of incomplete has ONE home.
+2. A MISSING CHECKPOINT IS REFUSED, not treated as a fresh start. A job that never checkpointed has nothing to re-enter, and silently starting from the beginning would re-run stages a caller believed finished. It is a typed CONFIG_ERROR.
+3. A CONFIG MISMATCH RESTARTS rather than refusing. A checkpoint produced under a different configuration no longer describes the work, so the honest outcome is begin again from config - and the stale checkpoint is CLEARED so it cannot be replayed. This is a different outcome from cannot resume and is modelled as one (mode: restart).
+4. THE CRASH SWEEP PAUSES, IT DOES NOT REQUEUE. P-239 requeueStale already returns an expired lease to queued; this phase own acceptance asks for the swept job to be marked paused so it is VISIBLE as waiting for a resume, and the caller decides when to re-enter. The sweep composes the queue existing pause/list primitives rather than adding a second sweeper, and it is a NO-OP under --no-resume.
+5. THE LEASE IS TAKEN BEFORE THE STATE IS HANDED BACK. resume calls the queue guarded claim first, so a job owned by a LIVE worker cannot be stolen and a finished job cannot be reopened; failure is a typed ILLEGAL_TRANSITION (P-159 existing shape, no new code).
+6. CHECKPOINT GRANULARITY IS PER-STAGE, and stage_status is written on its OWN so a checkpoint never read-modify-writes the row and cannot clobber a concurrent lease update. Honest limit: adding the column to the IF NOT EXISTS DDL covers a fresh database (all tests) but is NOT a migration for an existing one; that upgrade path belongs with the store owner.
+7. THREE TEST-FIXTURE BUGS WERE MINE, not the implementation: the crash sweep DEFAULTS to the wall clock, so a fixture that did not pass now explicitly swept everything; my resume fixture omitted the agent record, and since the machine transitions all nine stages a missing record is an unknown stage (INTERNAL); and an off-by-one expected deps where the first incomplete stage is licenses. Each was corrected at source with the reasoning recorded in the assertion.
+
+**Consequences:**
+
+- Four tests (all spec-named) against REAL SQLite and the REAL machine prove a checkpoint round-trips through the database, that resume re-enters at the first incomplete stage and that passed stages are NOT re-run (the driven machine journal omits them), that the sweep pauses only the expired lease and leaves a live worker alone, and that a config mismatch restarts with the checkpoint cleared and cannot then be resumed again.
+- Gate: typecheck 0, lint 0, depcruise 0 (190 modules, 486 dependencies), build 0, and the core suite 164 passed / 1 skipped files, 2109 passed / 1 skipped tests, exit 0.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
