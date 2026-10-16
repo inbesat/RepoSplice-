@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-247 - Orchestration: Metrics
+**Current Phase:** P-248 - Orchestration: Tracing
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-247 Metrics (inbesat, Wave 3, depends on P-246 DONE). P-246 shipped `jobs/cancel.ts` (`cancelJob`, `cancelSandbox`, `createSignalHandler`, `emitCancelled`), the `cancelling` status (ADR-069) and the `'cancel'` audit action. P-247 needs `jobs/metrics.ts` + `jobs/metrics.test.ts`: per-job STAGE TIMINGS (`StageRecord.startedAt`/`finishedAt` are already on every record from P-238, so the durations are derivable rather than new instrumentation), counts (files/deps/tokens/licenses), reuse hits (P-250) and resource usage (sandbox CPU/mem P-176, token cost P-143), persisted in SQLite beside `pipeline_jobs` (own-DDL pattern, ADR-063) and exposed as `/api/jobs/<id>/metrics` (P-216, aradhy lane) + `stitch status --json` (P-194, aradhy lane). Gate note: additions to `JOB_STATUSES` or `AuditAction` have each cost an edit to a pinned count (`queue.test.ts` transitions length, `audit.test.ts` AUDIT_ACTIONS length) — check those two when growing either union. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
+| **Next Handoff** | P-248 Tracing (inbesat, Wave 3, depends on P-247 DONE). P-247 shipped `jobs/metrics.ts` (`MetricsCollector` + `finalizeMetrics`/`getMetrics`/`listMetrics`, own-DDL table `pipeline_job_metrics`, ADR-070). P-248 needs: read its own phase file (§12188) — it is the TRACING counterpart and will likely want to attach to the same P-241 bus rather than re-instrument; note the collector pattern here (attach/detach + a synchronous pure `snapshot()`) is the reusable shape, and `pipeline.stage` already carries `{stage, from, to}`. Gate note: `JOB_STATUSES` (queue.test.ts transitions length) and `AuditAction`/`AUDIT_ACTIONS` (audit.test.ts length 18) both have PINNED counts — check them before growing either union. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9) — P-248 is a natural moment to wire the emit callbacks onto the bus. |
 
 ---
 
@@ -377,7 +377,7 @@
 - [x] **P-244** Dry-run (inbesat) *(2026-10-17 — gate green: `skips finalize`, `no generation`, `builds plan`, `no side effects`, `plan json` + the `job.dry-run-plan` emit; full core suite 2279 passed / 0 failed)*
 - [x] **P-245** Rollback whole job (inbesat) *(2026-10-17 — gate green: all 6 required cases + full core suite 2285 passed / 0 failed; grew `JOB_STATUSES` with `rolled_back` and updated P-239's terminality assertion, per ADR-068)*
 - [x] **P-246** Cancel (inbesat) *(2026-10-17 — gate green: all 4 required cases + full core suite 2289 passed / 0 failed; adds `cancelling` to `JOB_STATUSES` and `'cancel'` to `AuditAction`, per ADR-069)*
-- [ ] **P-247** Metrics (inbesat)
+- [x] **P-247** Metrics (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2294 passed / 0 failed; event-sourced, own-DDL `pipeline_job_metrics`, per ADR-070)*
 - [ ] **P-248** Tracing (inbesat)
 - [ ] **P-249** Concurrency (inbesat)
 - [ ] **P-250** Idempotency (inbesat)

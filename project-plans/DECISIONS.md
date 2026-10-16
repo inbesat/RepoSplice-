@@ -2740,6 +2740,35 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Four tests (all spec-named): cancels mid-op (the op is genuinely interrupted and the state order is `['cancelling','cancelled']`), already-done errors (succeeded/failed/cancelled/rolled_back, unknown id, blank id — with nothing written), sigint graceful (once = graceful, twice = exit 130, exactly-once), and resume-refuses-cancelled against real SQLite.
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 175 passed / 1 skipped files and 2289 passed / 1 skipped tests, exit 0.
 
+## ADR-070: P-247 Stores Metrics in Their Own Table, Collects Them Event-Sourced, and Clamps Every Provider Number
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-247 (PHASES_DETAILED.md:12145) adds run metrics — per-stage timings, counts, token/cost and sandbox resource usage — "persisted in SQLite (P-239 job row)" and queryable per-job and as a trend.
+
+**Decisions:**
+
+1. METRICS GET THEIR OWN TABLE (`pipeline_job_metrics`), NOT P-239's ROW. The phase says "the job row"; the repo's own-DDL precedent (ADR-063 for `pipeline_jobs`, ADR-068 for the rollback snapshots, plus P-169/P-173/P-178/P-241) plus the `listMetrics({kind,from,to})` TREND query both fit a side table better — a trend is a scan over many jobs, and it would otherwise mean reading every job row. It also keeps a metrics write from touching the queue's row mid-lifecycle. Recorded rather than silently chosen.
+
+2. TIMINGS ARE DERIVED, NEVER SEPARATELY INSTRUMENTED. P-238 already stamps `StageRecord.startedAt`/`finishedAt` and emits a transition per move, so a duration is the distance between two transitions the pipeline already produced. Any second source would drift from the first, which is exactly the "the numbers must match what the UI showed" requirement in the handoff.
+
+3. COLLECTION IS SYNCHRONOUS AND PURE; PERSISTENCE IS ONE EXPLICIT CALL. `MetricsCollector` holds counters and a stage map and does no I/O; `finalizeMetrics` writes once at the end. A collector that wrote per event could leave half-written metrics behind a crashing stage, and would put SQLite on the pipeline's hot path.
+
+4. EVERY PROVIDER NUMBER IS CLAMPED (`safeAdd`). Token and dollar totals come from an adapter (P-143) that can report `NaN`, `Infinity` or a negative. One such value would silently poison every trend that includes it, so non-finite/negative deltas contribute 0 and the total is capped at `Number.MAX_SAFE_INTEGER`.
+
+5. SANDBOX MEMORY IS A PEAK, NOT A SUM. CPU and job counts accumulate; `sandboxMemMb` keeps the HIGHEST reading, because summing peak memory across runs reports a number no container ever used.
+
+6. `reusedFromCache` IS READ OFF THE SETTLING STATUS. P-238's cache hit settles a stage as `skipped`, so reuse needs no extra signal — the same transition that says "nothing to do here" is the one that says "already done".
+
+7. NO NEW `StitchError` CODE. A storage failure is `INTERNAL`; there is no new caller-fixable condition. The `listMetrics` WHERE clauses are built from bound parameters only, so a caller-supplied `kind` cannot reach the SQL text.
+
+**Consequences:**
+
+- Five tests (all spec-named): timings (a real 1500ms duration from an injected clock, a cache-hit reuse, and an unsettled stage contributing nothing), counts (bus-driven tallies, detach stopping them, direct tallies clamped against negatives/NaN), token cost (aggregation plus a hostile `NaN`/`Infinity`/negative reading), persist-and-query (round-trip, kind/from filters, `undefined` for an unknown job, replace-not-duplicate on re-finalize), and resources (sum vs peak semantics, plus the `sandbox.run` bus path).
+- Wiring to `/api/jobs/<id>/metrics` (P-193/P-216) and `stitch status --json` (P-194) is the CLI/web lane.
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 176 passed / 1 skipped files and 2294 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
