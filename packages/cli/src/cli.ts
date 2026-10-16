@@ -25,6 +25,8 @@ import { friendlyError } from '@repo-stitcher/core';
 import type { Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import { parseGlobal, type GlobalOptions } from './globals.js';
+import { init } from './commands/init.js';
+import { openStore } from './config.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -74,29 +76,62 @@ export function classifyCommanderError(error: CommanderError): ExitPlan {
 }
 
 /**
- * Attach the global options and the exit convention to a program.
+ * Attach the global options, the exit convention, and the `init` command.
  *
- * Returns the same program so a caller can keep registering commands; it does NOT
- * register any command itself, which keeps this phase's file the shell and leaves the
- * command list to the phases that own each command.
+ * `program.ts` remains the registry for the commands it owns (`status`, `doctor`).
+ * `init` is registered HERE because P-190 step 4 says so and because `program.ts`
+ * importing this module would close a cycle (`this` already imports `STITCH_VERSION`
+ * from `program.ts`). Registration is additive, so the globals stay testable on their
+ * own via {@link buildCLI} on a bare `Command`.
  */
 export function buildCLI(program: Command): Command {
-  return (
-    program
-      // Name, description and version are already set by the program's owner
-      // (`program.ts`). Re-declaring `version` here would register the flag twice and
-      // commander throws on a duplicate — so this function owns only the GLOBAL
-      // OPTIONS and the exit convention, which is the part P-189 is about.
-      .option('-V, --verbose', 'increase log verbosity')
-      .option('-c, --config <path>', 'override the config file')
-      .option('-y, --yes', 'assume yes for prompts')
-      .option('--offline', 'do not reach the network')
-      .option('-C, --cwd <dir>', 'working directory override')
-      .option('--no-color', 'disable coloured output')
-      .showHelpAfterError()
-      .showSuggestionAfterError()
-      .exitOverride()
-  );
+  program
+    // Name, description and version are already set by the program's owner
+    // (`program.ts`). Re-declaring `version` here would register the flag twice and
+    // commander throws on a duplicate — so this function owns only the GLOBAL
+    // OPTIONS and the exit convention, which is the part P-189 is about.
+    .option('-V, --verbose', 'increase log verbosity')
+    .option('-c, --config <path>', 'override the config file')
+    .option('-y, --yes', 'assume yes for prompts')
+    .option('--offline', 'do not reach the network')
+    .option('-C, --cwd <dir>', 'working directory override')
+    .option('--no-color', 'disable coloured output')
+    .showHelpAfterError()
+    .showSuggestionAfterError()
+    .exitOverride();
+
+  program
+    .command('init')
+    .description('Scaffold a stitch project (stitch.toml, .env.example, .gitignore)')
+    .option('--force', 'overwrite an existing stitch.toml without prompting')
+    .option('--provider <name>', 'validate and store an API key for this provider')
+    .option('--no-key-prompt', 'do not prompt for a provider key')
+    .action(async (options: InitCommandOptions) => {
+      // The store is opened here, not inside `init`, so the module stays free of the
+      // user's home directory and every persistence path is injectable in tests.
+      const store = openStore();
+      const result = await init(
+        {
+          ...globalOptionsOf(program),
+          force: options.force === true,
+          ...(options.provider !== undefined ? { provider: options.provider } : {}),
+          ...(options.keyPrompt === false ? { keyPrompt: false } : {}),
+        },
+        { ...(store.isOk() ? { store: store.value } : {}) }
+      );
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
+  return program;
+}
+
+/** The options commander hands `stitch init`. */
+interface InitCommandOptions {
+  force?: boolean;
+  provider?: string;
+  keyPrompt?: boolean;
 }
 
 /** The typed globals a parsed program carries. */
