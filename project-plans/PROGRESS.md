@@ -3,8 +3,8 @@
 
 **Version:** 1.0.0
 **Status:** Updated every session
-**Last Updated:** 2026-10-16
-**Current Phase:** P-243 - Orchestration: Per-Job Config
+**Last Updated:** 2026-10-17
+**Current Phase:** P-244 - Orchestration: Dry-Run
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-243 Per-Job Config (inbesat, Wave 3, depends on P-242 which is DONE - ADR-066). Core lane contiguous from P-238: state machine, job queue, resume, event bus, progress aggregation. NOTE for P-243: the aggregator already documents its weights as the configurable seam and validates them through CONFIG_ERROR, so per-job config has a consumer waiting; and the config hash for resume-validity (P-240) is the piece that ties JobConfig to the checkpoint. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
+| **Next Handoff** | P-244 Dry-Run (inbesat, Wave 3, depends on P-243 DONE). P-243 shipped `jobs/jobConfig.ts` (resolved config ← flags ← overrides, zod-validated, deep-frozen, `configHash` for P-240 resume validity, redacted `job.config-resolved`). NOTE for P-244: the phase spec names a `ProposedPlan` type that does NOT exist anywhere in the repo (only `ComponentProposal` P-154 + per-tool `dryRun` plans do) — define `DryRunPlan`/the proposal shape in `pipeline/dryRun.ts` rather than calling a phantom API, and record it in an ADR. P-244 also requires (a) adding `cfg: JobConfig` to `PipelineOptions` in `pipeline/runPipeline.ts` (P-238 has no config today) and (b) registering a new `job.dry-run-plan` topic in `events/topics.ts` (not currently in `TOPICS`). Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
 
 ---
 
@@ -373,7 +373,7 @@
 - [ ] **P-240** Resume jobs (inbesat)
 - [ ] **P-241** Event bus→WS (inbesat)
 - [ ] **P-242** Progress aggregation (inbesat)
-- [ ] **P-243** Per-job config (inbesat)
+- [x] **P-243** Per-job config (inbesat) *(2026-10-17 — gate verified: all 5 required cases present + green, typecheck/lint clean; fixed the P-241 wildcard/topic-count expectations the new `job.config-resolved` topic invalidated)*
 - [ ] **P-244** Dry-run (inbesat)
 - [ ] **P-245** Rollback whole job (inbesat)
 - [ ] **P-246** Cancel (inbesat)
