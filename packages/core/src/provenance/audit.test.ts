@@ -64,7 +64,7 @@ describe('P-187 audit', () => {
     }
 
     // The full action vocabulary is available for validation.
-    expect(AUDIT_ACTIONS).toHaveLength(17);
+    expect(AUDIT_ACTIONS).toHaveLength(18);
     expect(AUDIT_ACTIONS).toContain('checksum');
 
     // Blank action/actor is a typed config error, not a row.

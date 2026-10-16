@@ -126,7 +126,7 @@ describe('P-239 job queue', () => {
     // The lifecycle law is the table, and it is total.
     expect(canJobTransition('queued', 'running')).toBe(true);
     expect(canJobTransition('succeeded', 'running')).toBe(false);
-    expect(Object.keys(JOB_TRANSITIONS)).toHaveLength(7);
+    expect(Object.keys(JOB_TRANSITIONS)).toHaveLength(8);
 
     // Events are emitted per transition, in P-241's shape.
     const events: JobEvent[] = [];

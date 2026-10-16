@@ -333,6 +333,11 @@ export class JobQueue {
     return this.#settle(id, 'failed', { error });
   }
 
+  /** A stop was requested (P-246); the run settles it to `cancelled` or `failed`. */
+  async markCancelling(id: string): Promise<Result<JobRecord, StitchError>> {
+    return this.#settle(id, 'cancelling', {});
+  }
+
   /** A human stopped it. Legal from anything that is not terminal. */
   async cancel(id: string): Promise<Result<JobRecord, StitchError>> {
     return this.#settle(id, 'cancelled', {});

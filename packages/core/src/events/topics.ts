@@ -93,6 +93,8 @@ export interface JobPayload {
   from?: string;
   to?: string;
   owner?: string;
+  /** P-246: why a cancel/pause was requested. */
+  reason?: string;
 }
 
 /** A resume (P-240's `JobResumedEvent`). */

@@ -47,6 +47,7 @@ export type AuditAction =
   | 'push'
   | 'approve'
   | 'reject'
+  | 'cancel'
   | 'rollback'
   | 'publish';
 
@@ -67,6 +68,7 @@ export const AUDIT_ACTIONS: readonly AuditAction[] = [
   'push',
   'approve',
   'reject',
+  'cancel',
   'rollback',
   'publish',
 ];

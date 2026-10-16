@@ -10,6 +10,7 @@
 export const JOB_STATUSES = [
   'queued',
   'running',
+  'cancelling',
   'succeeded',
   'failed',
   'cancelled',
@@ -34,7 +35,10 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
  */
 export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
   queued: ['running', 'cancelled'],
-  running: ['succeeded', 'failed', 'paused', 'cancelled'],
+  running: ['succeeded', 'failed', 'paused', 'cancelled', 'cancelling'],
+  // P-246: a stop was REQUESTED. It is observable on its own so a UI can show a
+  // stop in progress, and it settles to `cancelled` (or `failed` if cleanup broke).
+  cancelling: ['cancelled', 'failed'],
   paused: ['running', 'cancelled', 'failed'],
   failed: ['running', 'cancelled', 'rolled_back'],
   succeeded: ['rolled_back'],
