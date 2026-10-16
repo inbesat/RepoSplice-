@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-16
-**Current Phase:** P-239 - Orchestration Pipeline State Machine (next inbesat phase; see the Next Handoff note for its dependency status)
+**Current Phase:** P-240 - Orchestration: Resume Jobs
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 365 (P-000–P-364; P-299 superseded by Epic 19) |
 | **Plan Document (deep-elaborated)** | 365/365 (9/9 FULL) |
-| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238 (taken ahead of the aradhy CLI/Web lane) |
+| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238 and P-239 (taken ahead of the aradhy CLI/Web lane) |
 | **Active** | 0 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-239 Orchestration Job Queue (inbesat, Wave 3, PHASES_DETAILED.md:11786) — it wraps P-238 in SQLite. P-238 is DONE (ADR-062): its declared dependency P-237 was wave sequencing rather than a code input, and all ten components it composes were already green. P-239 depends only on P-238, so the inbesat lane is OPEN again. |
+| **Next Handoff** | P-240 Orchestration Resume Jobs (inbesat, Wave 3, depends on P-239, which is DONE - ADR-063). The core lane is OPEN and contiguous again from P-238: P-238 pipeline state machine, P-239 durable job queue. Next: read the P-240 block fresh. |
 
 ---
 
