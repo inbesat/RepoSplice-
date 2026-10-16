@@ -2436,4 +2436,32 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-059: The Manifest Hash Excludes Its Own Timestamp, the File Is `sha256sum`-Shaped, Absence Is a Mismatch, and `map.ts` Gains One Optional Field
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-186 (`PHASES_DETAILED.md:9351-9394`) records a SHA-256 per staged file as the tamper-evidence anchor — integrity, drift detection and release auditing — with `manifestSha256` over the whole manifest, a written `<repoC>/checksums.sha256`, and `verifyChecksums` to detect drift. It mandates ignore globs, streaming hashes (bounded memory), and bounded concurrency via `p-limit` (P-031).
+
+**Decisions:**
+
+1. **`manifestSha256` covers `{ algorithm, entries }` and deliberately EXCLUDES `generatedAt`.** The phase says the hash must be "stable over the same tree" but also requires a `generatedAt` field; including the timestamp would make the hash differ on every rebuild of an unchanged tree, which is exactly what the stability criterion exists to prevent. The exclusion is stated in the module header and asserted directly (same tree, different clock, same hash) rather than left implicit.
+2. **`checksums.sha256` uses the conventional `sha256sum` line shape — `<sha256>  <path>`, two spaces, sorted, trailing newline.** The manifest is the artifact an auditor verifies; inventing a bespoke format would make it unverifiable by the coreutils they already have. A test asserts the two-space form and the exact rendered bytes.
+3. **Files are hashed as BYTE STREAMS, never decoded.** `git/binary.ts`'s header records that checksums "still carry every byte", so the stream is fed to `createHash` as buffers; a test hashes a `0x00 0xff 0x10 0x80` blob and asserts both its 4-byte size and its digest. Streaming is also what bounds memory by chunk size instead of repository size.
+4. **An ABSENT file is a mismatch, not an error.** `verifyChecksums` answers `valid: false` for drift AND for a missing entry, because both mean "C is not what was recorded" — the question the caller asked. Only a genuine IO failure (an unreadable file that exists) is an `err`. Same absent-vs-broken distinction P-184 drew for git notes.
+5. **Bounded concurrency via `p-limit`, default 8.** Verified before use that `p-limit` is a real core dependency (`"p-limit": "7.3.2"`) rather than trusting the phase's citation — the same check that caught P-183's phantom type and P-185's cross-layer dependency.
+6. **The walk reuses `util/glob.ts`'s `listFiles` with merged ignore globs.** No new walker: `listFiles` already accepts glob `ignore` patterns (verified empirically at P-034, and already used by P-178's cache), so `opts.ignore` merges ON TOP of {@link DEFAULT_CHECKSUM_IGNORES} rather than replacing them — a caller narrowing the walk should not silently start hashing `node_modules`.
+7. **The defaults exclude vcs, dependencies, build output AND the manifest itself.** `node_modules` alone would dominate both runtime and manifest, and excluding the manifest's own file keeps the manifest from describing itself on a second run — a test asserts the entry set is unchanged after a write.
+8. **Paths are stored relative and posix-normalised.** A manifest produced on Windows must verify on Linux; absolute or backslash paths would break the anchor exactly when it is needed (a release audit on a different machine).
+9. **`map.ts` gains ONE additive optional field** — a third constructor parameter and a `checksumManifestPath` getter, threaded through `from`. Existing callers (`ProvenanceMap.from(origins)`, `from(origins, warnings)`) are unaffected, and loading from sqlite simply has no manifest path. It is a session reference; the persisted payload remains the origins only.
+10. **No new `StitchError` code.** A blank `repoPath`/`repoC` is `CONFIG_ERROR`; walk, read and write failures are `INTERNAL`. Absence and drift never reach the error channel at all.
+
+**Consequences:**
+
+- Six tests (all spec-named) run against a REAL temp tree: sorted entries with real digests and sizes plus a byte-exact binary case, manifest-hash stability across clocks and its movement on a changed byte, the written file's `sha256sum` shape and byte-equality with the rendered text, a clean verification plus the empty-manifest and blank-repo cases, drift/absence/size-growth all landing in `mismatches` with `valid: false`, and the ignore defaults plus an extra glob.
+- Gate: typecheck 0, lint 0, **depcruise 0 (181 modules, 477 dependencies)**, build 0, and the **core** suite **159 passed | 1 skipped (160 files), 2085 passed | 1 skipped tests, exit 0**.
+- `manifestSha256` is now the value the git note (P-184) and the SBOM (P-183) reference, and the release checklist (P-318) verifies — one anchor, two references.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

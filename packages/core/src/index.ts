@@ -1257,6 +1257,23 @@ export type {
   ProvenanceRoutesOptions,
 } from './provenance/index.js';
 
+// P-186 — the checksum manifest (the tamper-evidence anchor).
+export {
+  buildChecksumManifest,
+  verifyChecksums,
+  renderChecksumFile,
+  CHECKSUM_MANIFEST_FILENAME,
+  CHECKSUM_ALGORITHM,
+  DEFAULT_HASH_CONCURRENCY,
+  DEFAULT_CHECKSUM_IGNORES,
+} from './provenance/index.js';
+export type {
+  ChecksumEntry,
+  ChecksumManifest,
+  ChecksumVerification,
+  BuildChecksumOptions,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

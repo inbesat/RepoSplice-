@@ -225,19 +225,36 @@ function parseStoredOrigin(row: SQLiteRow): FileOrigin | undefined {
 export class ProvenanceMap {
   readonly #byFile: Map<string, FileOrigin>;
   readonly #warnings: ProvenanceWarning[];
+  readonly #checksumManifestPath: string | undefined;
 
-  constructor(origins: readonly FileOrigin[], warnings: readonly ProvenanceWarning[] = []) {
+  constructor(
+    origins: readonly FileOrigin[],
+    warnings: readonly ProvenanceWarning[] = [],
+    checksumManifestPath?: string
+  ) {
     this.#byFile = new Map();
     for (const origin of origins) this.#byFile.set(origin.file, origin);
     this.#warnings = [...warnings];
+    this.#checksumManifestPath = checksumManifestPath;
   }
 
   /** A map from a list of origins. */
   static from(
     origins: readonly FileOrigin[],
-    warnings: readonly ProvenanceWarning[] = []
+    warnings: readonly ProvenanceWarning[] = [],
+    checksumManifestPath?: string
   ): ProvenanceMap {
-    return new ProvenanceMap(origins, warnings);
+    return new ProvenanceMap(origins, warnings, checksumManifestPath);
+  }
+
+  /**
+   * P-186: the checksum manifest written for this map's tree, when known.
+   *
+   * Optional and additive. It is a SESSION reference to the tamper-evidence
+   * anchor, so it is deliberately NOT part of the persisted origins payload.
+   */
+  get checksumManifestPath(): string | undefined {
+    return this.#checksumManifestPath;
   }
 
   /** Every origin, sorted by file path for a stable export (P-282). */
