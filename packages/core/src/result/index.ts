@@ -108,6 +108,11 @@ export type StitchError =
       limitBytes: number;
       message: string;
     }
+  // P-183: the assembled SBOM failed its own schema validation, so it was NOT
+  // written. A malformed document is worse than none — compliance export (P-307)
+  // and the web view (P-220) PARSE it — so the caller gets a typed error rather
+  // than a broken artifact.
+  | { code: 'SBOM_INVALID'; format: string; detail: string; message: string }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
   // P-174: a sandbox run exceeded its wall-clock budget. Distinct from
   // `DOCKER_ERROR` and from `SANDBOX_ABORTED` because P-163 routes them
@@ -248,6 +253,7 @@ export const STITCH_ERROR_CODES = [
   'DEP_INSTALL_OFFLINE_BLOCKED',
   'SANDBOX_LOG_LIMIT',
   'SANDBOX_ARTIFACT_LIMIT',
+  'SBOM_INVALID',
   'SANDBOX_TIMEOUT',
   'SANDBOX_ABORTED',
   'CONFIG_ERROR',

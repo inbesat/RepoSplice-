@@ -178,6 +178,11 @@ const RULES = {
     action: 'continue',
     hint: 'The extracted artifacts exceeded the configured byte budget. Raise sandbox.maxArtifactBytes, or narrow the captured paths.',
   },
+  SBOM_INVALID: {
+    cls: 'fatal',
+    action: 'abort',
+    hint: 'The generated SBOM failed schema validation, so it was not written. This is a composition defect for this dependency/license shape, not something a retry fixes.',
+  },
   SANDBOX_TIMEOUT: {
     cls: 'sandbox',
     action: 'abort',

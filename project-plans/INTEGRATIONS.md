@@ -459,6 +459,7 @@ type StitchError =
   | { code: 'DEP_INSTALL_OFFLINE_BLOCKED'; ecosystem: string; message: string }
   | { code: 'SANDBOX_LOG_LIMIT'; runId: string; dropped: number; retained: number; message: string }
   | { code: 'SANDBOX_ARTIFACT_LIMIT'; runId: string; bytes: number; limitBytes: number; message: string }
+  | { code: 'SBOM_INVALID'; format: string; detail: string; message: string }
   | { code: 'SANDBOX_TIMEOUT'; timeoutMs: number; message: string }
   | { code: 'SANDBOX_ABORTED'; message: string }
   | { code: 'AI_PROVIDER_ERROR'; provider: string; message: string }
