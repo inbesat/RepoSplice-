@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-16
-**Current Phase:** P-189 - CLI
+**Current Phase:** BLOCKED for the inbesat track - it resumes at P-238 (Wave 3, line 11740), gated behind P-237 (aradhy)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free from P-000 through P-188** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | 176 (P-189 -> P-364) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-189 opens the CLI (packages/cli — aradhy's package). The Provenance epic is CLOSED: map, CREDITS, SBOM, git notes, HTTP contract, checksums, audit, and a suite proving they wire together (`test:provenance` = 0 at 89.24/80.99/92.17/94.57 vs 80/70/80/80). |
+| **Next Handoff** | BLOCKED for the inbesat track. P-189 through P-237 are aradhy (CLI + web, Wave 2). The next inbesat-owned block starts at PHASES_DETAILED.md:11740 (Wave 3, the pipeline) and declares Depends On: P-237 - so NO inbesat phase is currently actionable until those land. Evidence: a full-owner grep of the plan shows the inbesat entries jump from line 9453 (P-188) straight to 11740. |
 
 ---
 
