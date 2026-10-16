@@ -18,6 +18,7 @@ export const TOPICS = [
   'job.started',
   'job.updated',
   'job.resumed',
+  'job.config-resolved',
   'job.cancelled',
   'job.failed',
   'job.succeeded',
@@ -122,6 +123,15 @@ export interface ProgressPayload {
   phase?: string;
 }
 
+/** A job's config was resolved and frozen (P-243). */
+export interface JobConfigResolvedPayload {
+  jobId: string;
+  /** SHA-256 of the pipeline-relevant subset; P-240 compares it on resume. */
+  hash: string;
+  /** The effective config, secret-VALUED keys replaced (P-206). */
+  effectiveCfg: Record<string, unknown>;
+}
+
 /** The payload type per topic, so a publisher cannot send the wrong shape. */
 export interface TopicPayloads {
   'pipeline.stage': PipelineStagePayload;
@@ -129,6 +139,7 @@ export interface TopicPayloads {
   'job.started': JobPayload;
   'job.updated': JobPayload;
   'job.resumed': JobResumedPayload;
+  'job.config-resolved': JobConfigResolvedPayload;
   'job.cancelled': JobPayload;
   'job.failed': JobPayload;
   'job.succeeded': JobPayload;
