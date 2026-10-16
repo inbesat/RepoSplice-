@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | 177 (P-188 -> P-364) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-187 audit log: append-only pipeline-event record, DISTINCT from P-145's AI-call audit; `store/schema.ts:10` reserves a migration slot for it, so decide reserved-migration vs own-table before editing the store. The provenance data + contract layers are complete: map, CREDITS, SBOM, git notes, HTTP contract. The provenance DATA layer is complete: map (P-181), CREDITS (P-182), SBOM (P-183), git notes (P-184). SBOM (P-183) and CREDITS (P-182) both render from P-181; CycloneDX is primary, SPDX optional. CREDITS is the human read; SBOM is the machine/legal one, and both render from P-181. **Epic 7 CLOSED** (P-148-P-167). **Epic 8 CLOSED** (P-168-P-180). **Epic 9 (Provenance) in progress: P-181-P-187 done; P-188 remains.** `ProvenanceMap.getOrigin` is the single query path for P-182/P-183/P-185/P-124. **Open item:** the P-155 `SandboxRunner` seam is reachable through P-175's `runVerification` but is still not bound to it as an adapter. |
+| **Next Handoff** | P-188 Provenance tests (the closing phase for Epic 9, the same shape as P-180 for Epic 8). The provenance data layer is COMPLETE: map (P-181), CREDITS (P-182), SBOM (P-183), git notes (P-184), HTTP contract (P-185), checksums (P-186), audit (P-187). |
 
 ---
 
