@@ -2712,6 +2712,34 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - P-246 (Cancel) will grow the vocabulary again (`cancelling`); the same P-239 count/terminality edits should be expected there.
 - Gate: typecheck 0, lint 0, prettier clean, circular guard green, full core suite 174 passed / 1 skipped files and 2285 passed / 1 skipped tests, exit 0.
 
+## ADR-069: P-246 Makes Cancellation Observable (`cancelling`), Durable Before the Token, and Adds a `cancel` Audit Action
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-246 (PHASES_DETAILED.md:12100) adds cooperative cancellation: `cancel(id,{reason})` asks a running pipeline to stop at its next safe checkpoint, marks the job `cancelled` (NOT `failed`), and makes a first SIGINT/SIGTERM graceful with a second as hard exit.
+
+**Decisions:**
+
+1. `cancelling` IS ADDED TO `JOB_STATUSES` AND THE QUEUE GROWS A `markCancelling` SEAM. The phase names the intermediate state, and it earns its keep: without it a UI cannot distinguish "stop requested, cleanup running" from "stopped". It settles to `cancelled` — or to `failed` if cleanup itself broke, which is why `cancelling → failed` is legal. This is the FOURTH edit to P-239's vocabulary across P-245/P-246, and `queue.test.ts`'s `Object.keys(JOB_TRANSITIONS)` count moves 7 → 8.
+
+2. THE STATUS IS DURABLE BEFORE THE TOKEN FIRES. `cancelJob` marks `cancelling`, THEN aborts the `AbortSignal`, THEN settles `cancelled`. Aborting first would let a stage complete its cleanup and report success while the queue still believed the run was live. The test asserts this as a SEQUENCE, not merely a final value.
+
+3. `'cancel'` IS ADDED TO `AuditAction`. The phase mandates a `CancelRecord`; reusing `'reject'` would make a human stopping a run indistinguishable from a refused proposal in the audit log. `AUDIT_ACTIONS` (the validating array) is a DIFFERENT declaration from the `AuditAction` union, and its length is pinned in `audit.test.ts` — both moved together, 17 → 18.
+
+4. NO NEW `StitchError` CODE. Cancelling a finished job or an unknown id is a `CONFIG_ERROR` — a bad request against current state the caller can fix — matching P-074/P-084 and ADR-068.
+
+5. "RESUME REFUSES CANCELLED" IS ALREADY TRUE AND NEEDS NO CODE. `resume` runs through `claim`, whose `canJobTransition` guard has no `cancelled → running` edge, so P-240's re-entry cannot revive a cancelled run. The test runs against a REAL `JobQueue` on real SQLite, because that refusal lives in SQL-backed state, not in a branch of this module — a fake would prove nothing.
+
+6. THE SIGNAL HANDLER IS A PLAIN FUNCTION OF THE SIGNAL NAME (`createSignalHandler`). Raising a real SIGINT in a test is untestable and dangerous; the handler takes the signal name and counts calls, so the graceful/hard-exit pair (`onFirst` once, then `onSecond` or exit 130) is asserted directly. The default exit sets `process.exitCode` rather than calling `process.exit`, so core never hard-kills a host process on its own.
+
+7. THE SANDBOX STOP IS A PORT (`SandboxStopper`). `cancel.ts` never imports Docker (P-168); a blank run id is refused rather than forwarded, because a port that read `''` as "all containers" would turn one job's cancel into a fleet-wide stop.
+
+**Consequences:**
+
+- Four tests (all spec-named): cancels mid-op (the op is genuinely interrupted and the state order is `['cancelling','cancelled']`), already-done errors (succeeded/failed/cancelled/rolled_back, unknown id, blank id — with nothing written), sigint graceful (once = graceful, twice = exit 130, exactly-once), and resume-refuses-cancelled against real SQLite.
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 175 passed / 1 skipped files and 2289 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-246 - Orchestration: Cancel
+**Current Phase:** P-247 - Orchestration: Metrics
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-246 Cancel (inbesat, Wave 3, depends on P-245 DONE). P-245 shipped `jobs/rollback.ts`, the `rolled_back` status (ADR-068) and the `job.rolled-back` topic (`TOPICS` is now 17). P-246 Step-1 recon DONE, with two useful head starts found by reading: (1) the cancellation SEAM IS ALREADY THERE — `RunOptions.signal` and `PipelineCtx.signal` exist and `stateMachine.ts #ctxFor` already forwards the signal, so only stage-boundary checks are missing; (2) `JobQueue.cancel(id)` ALREADY EXISTS (`queue.ts:337`, `return this.#settle(id,'cancelled',{})`) and `resume(id,owner)` routes through `claim`, whose transition guard already forbids `cancelled → running` — so "resume refuses cancelled" needs a test, not new code. Remaining work: (a) `cancel.ts` — `cancelJob(queue,id,{reason,token,bus,audit})`: `get` → error if already terminal, fire the token, `queue.cancel(id)`, append P-187 `CancelRecord{jobId,reason,stagesCompleted}`, emit `job.cancelled` (topic exists); (b) the intermediate `cancelling` status requires growing `JOB_STATUSES` and adding a `markCancelling` through the private `#settle(id,status,extra)`, which makes `cancelled` non-terminal-ish — expect a FOURTH P-239 edit (`queue.test.ts` asserts `Object.keys(JOB_TRANSITIONS)` length 7) OR document the deviation and go straight to `cancelled`; (c) `installSignalHandlers({onFirst,onSecond})` for the SIGINT graceful/hard-exit pair (testable without a real signal); (d) `cancelSandbox` container stop (P-168) behind an injected port; (e) SIGINT ties in `index.ts` (P-189, aradhy lane). Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
+| **Next Handoff** | P-247 Metrics (inbesat, Wave 3, depends on P-246 DONE). P-246 shipped `jobs/cancel.ts` (`cancelJob`, `cancelSandbox`, `createSignalHandler`, `emitCancelled`), the `cancelling` status (ADR-069) and the `'cancel'` audit action. P-247 needs `jobs/metrics.ts` + `jobs/metrics.test.ts`: per-job STAGE TIMINGS (`StageRecord.startedAt`/`finishedAt` are already on every record from P-238, so the durations are derivable rather than new instrumentation), counts (files/deps/tokens/licenses), reuse hits (P-250) and resource usage (sandbox CPU/mem P-176, token cost P-143), persisted in SQLite beside `pipeline_jobs` (own-DDL pattern, ADR-063) and exposed as `/api/jobs/<id>/metrics` (P-216, aradhy lane) + `stitch status --json` (P-194, aradhy lane). Gate note: additions to `JOB_STATUSES` or `AuditAction` have each cost an edit to a pinned count (`queue.test.ts` transitions length, `audit.test.ts` AUDIT_ACTIONS length) — check those two when growing either union. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9). |
 
 ---
 
@@ -376,7 +376,7 @@
 - [x] **P-243** Per-job config (inbesat) *(2026-10-17 — gate verified: all 5 required cases present + green, typecheck/lint clean; fixed the P-241 wildcard/topic-count expectations the new `job.config-resolved` topic invalidated)*
 - [x] **P-244** Dry-run (inbesat) *(2026-10-17 — gate green: `skips finalize`, `no generation`, `builds plan`, `no side effects`, `plan json` + the `job.dry-run-plan` emit; full core suite 2279 passed / 0 failed)*
 - [x] **P-245** Rollback whole job (inbesat) *(2026-10-17 — gate green: all 6 required cases + full core suite 2285 passed / 0 failed; grew `JOB_STATUSES` with `rolled_back` and updated P-239's terminality assertion, per ADR-068)*
-- [ ] **P-246** Cancel (inbesat)
+- [x] **P-246** Cancel (inbesat) *(2026-10-17 — gate green: all 4 required cases + full core suite 2289 passed / 0 failed; adds `cancelling` to `JOB_STATUSES` and `'cancel'` to `AuditAction`, per ADR-069)*
 - [ ] **P-247** Metrics (inbesat)
 - [ ] **P-248** Tracing (inbesat)
 - [ ] **P-249** Concurrency (inbesat)
