@@ -21,12 +21,14 @@
 // commander raises internally, which `main` catches.
 
 import { CommanderError, type Command } from 'commander';
-import { friendlyError } from '@repo-stitcher/core';
-import type { Result } from 'neverthrow';
+import { cloneRepo, friendlyError, listFiles, toPosix } from '@repo-stitcher/core';
+import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
+import { join, relative, resolve } from 'node:path';
 import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
-import { openStore } from './config.js';
+import { add, looksRemote, type SourceSelection } from './commands/add.js';
+import { defaultStoreDir, openStore, type JsonValue } from './config.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -124,7 +126,99 @@ export function buildCLI(program: Command): Command {
       });
     });
 
+  program
+    .command('add')
+    .description('Record a source repo and the paths to bring into the child')
+    .argument('<source>', 'a local directory, or owner/repo on GitHub')
+    .argument('[paths...]', 'file or glob patterns to include')
+    .option('--branch <ref>', 'pin a remote source to this ref')
+    .option('--allow-empty', 'record a selection that matched nothing')
+    .action(async (source: string, paths: string[], options: AddCommandOptions) => {
+      const store = openStore();
+      const result = await add(
+        {
+          ...globalOptionsOf(program),
+          ...(options.branch !== undefined ? { branch: options.branch } : {}),
+          ...(options.allowEmpty === true ? { allowEmpty: true } : {}),
+        },
+        { source, paths },
+        {
+          resolveSource: async (src, o) => {
+            // A local dir is used where it is; a remote is cloned SHALLOW into the
+            // cache (P-069) so the selection is pinned to a real commit (P-181).
+            if (!looksRemote(src)) return ok(resolve(src));
+            const targetDir = join(defaultStoreDir(), 'cache', src.replace(/\//g, '__'));
+            const cloned = await cloneRepo({
+              url: `https://github.com/${src}.git`,
+              targetDir,
+              shallow: true,
+              depth: 1,
+              ...(o.ref !== undefined ? { branch: o.ref } : {}),
+            });
+            return cloned.isOk() ? ok(targetDir) : err(cloned.error);
+          },
+          // Core's canonical glob (P-034). `listFiles` yields ABSOLUTE posix paths, so
+          // they are re-based on the source dir before `add` sees them.
+          expand: async (dir, patterns) => {
+            const found = await listFiles(dir, [...patterns]);
+            return found.isOk()
+              ? ok(found.value.map(path => toPosix(relative(dir, path))).sort())
+              : err(found.error);
+          },
+          loadSources: () =>
+            store.isErr() ? err(store.error) : readSources(store.value.get('sources')),
+          saveSources: sources =>
+            store.isErr()
+              ? err(store.error)
+              : store.value.set('sources', sources as unknown as JsonValue),
+        }
+      );
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
   return program;
+}
+
+/** The options commander hands `stitch add`. */
+interface AddCommandOptions {
+  branch?: string;
+  allowEmpty?: boolean;
+}
+
+/**
+ * Read the stored `sources` array.
+ *
+ * Validated entry by entry rather than cast: the store is a JSON file a user can edit,
+ * so a malformed selection must be dropped rather than trusted into a merge.
+ */
+function readSources(stored: Result<unknown, StitchError>): Result<SourceSelection[], StitchError> {
+  if (stored.isErr()) return err(stored.error);
+  const value = stored.value;
+  if (value === undefined || value === null) return ok([]);
+  if (!Array.isArray(value)) {
+    return err({
+      code: 'CONFIG_ERROR',
+      field: 'sources',
+      message: 'add: the stored "sources" value is not an array',
+    });
+  }
+  const out: SourceSelection[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const record = entry as Record<string, unknown>;
+    const source = record['source'];
+    const paths = record['paths'];
+    const ref = record['ref'];
+    if (typeof source !== 'string' || !Array.isArray(paths)) continue;
+    out.push({
+      source,
+      paths: paths.filter((p): p is string => typeof p === 'string'),
+      ...(typeof ref === 'string' ? { ref } : {}),
+    });
+  }
+  return ok(out);
 }
 
 /** The options commander hands `stitch init`. */

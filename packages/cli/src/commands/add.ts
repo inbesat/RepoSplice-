@@ -48,10 +48,15 @@ export interface AddDeps {
     source: string,
     opts: { ref?: string; offline: boolean }
   ) => Promise<Result<string, StitchError>>;
-  /** Repo-relative, posix-separated listing of the resolved source. */
-  listFiles: (dir: string) => Promise<Result<string[], StitchError>>;
-  /** Keep the files matching the patterns (P-036's matcher). */
-  match: (patterns: readonly string[], files: readonly string[]) => string[];
+  /**
+   * Expand patterns against a source directory, repo-relative and posix-separated.
+   *
+   * This is core's `listFiles` (P-034's glob) — the canonical matcher. It is called
+   * twice: `['**\/*']` for the full listing (used for suggestions) and the user's
+   * patterns for the selection. Deliberately ONE port rather than a listing plus a
+   * separate matcher: a second matcher in this package would be a drifting duplicate.
+   */
+  expand: (dir: string, patterns: readonly string[]) => Promise<Result<string[], StitchError>>;
   /** The project's current selections. */
   loadSources: () => Result<SourceSelection[], StitchError>;
   /** Persist the selections. */
@@ -141,12 +146,14 @@ export async function add(
   });
   if (resolved.isErr()) return err(resolved.error);
 
-  const listed = await deps.listFiles(resolved.value);
+  const listed = await deps.expand(resolved.value, ['**/*']);
   if (listed.isErr()) return err(listed.error);
 
   // Patterns are matched against the SOURCE-RELATIVE listing; a pattern that matches
   // nothing is a refusal (with suggestions) unless --allow-empty.
-  const matched = [...new Set(deps.match(args.paths, listed.value))].sort();
+  const expanded = await deps.expand(resolved.value, args.paths);
+  if (expanded.isErr()) return err(expanded.error);
+  const matched = [...new Set(expanded.value)].sort();
   if (matched.length === 0 && opts.allowEmpty !== true) {
     const near = suggestionsFor(args.paths, listed.value);
     return err({

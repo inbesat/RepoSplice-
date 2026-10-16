@@ -44,8 +44,8 @@ function deps(
     lines,
     saved,
     resolveSource: async () => ok('/work/source'),
-    listFiles: async () => ok([...FILES]),
-    match: globMatch,
+    // One port, both purposes: the full listing and the selection.
+    expand: async (_dir, patterns) => ok(globMatch(patterns, FILES)),
     loadSources: () => ok(initial),
     saveSources: sources => {
       saved.push(sources);
