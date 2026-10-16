@@ -2550,4 +2550,27 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-063: The Queue Table Is pipeline_jobs, Claim Is One Guarded UPDATE, and the Default Job Id Needed a Suffix
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-239 (PHASES_DETAILED.md:11786-11827) makes the queue the durable spine of Wave 3: jobs persisted with a lease, an atomic claim, guarded transitions, and crash recovery.
+
+**Decisions:**
+
+1. THE TABLE IS NAMED pipeline_jobs, NOT jobs. store/schema.ts (migration v1, P-030) ALREADY defines a jobs table (id, status, payload, created_at, updated_at) whose shape differs from the eleven columns this phase mandates. CREATE TABLE IF NOT EXISTS jobs would silently NO-OP against it, and every INSERT would then fail against columns that do not exist - a landmine that only fires at runtime, in the component whose job is durable failure. The phase column set is kept verbatim and the table named distinctly. store/schema.ts:10 DOES reserve an extension slot for P-239, so the alternative (ALTER the v1 table via a new migration) is real; this phase own file mandate is a schema.ts that owns its DDL - the arrangement P-169/P-173/P-178 used. Recorded rather than silently resolved.
+2. CLAIM IS ONE GUARDED UPDATE. It compiles to UPDATE ... WHERE id = ? AND status = ?, reading changes; two workers racing therefore produce exactly one winner and the loser gets ok(undefined) - a lost race, not an error. A read-then-write would let both observe queued and both run the job, so no-double-run is a property of the SQL rather than of caller care. Every other mutator is guarded the same way, with the status re-checked inside the WHERE so the guard cannot be lost to a race between the check and the update.
+3. THE LEASE IS THE CONCURRENCY AUTHORITY. lease_expires_at turns a crashed worker into a recoverable job (requeueStale) instead of one that runs forever; recovery is a RE-ENTRY (back to queued, claimable again), not a reset, and a live worker lease is left untouched - asserted directly.
+4. A REFUSED TRANSITION IS A TYPED ERROR, reusing P-159 existing ILLEGAL_TRANSITION ({from,to,message} - ADR-032 kept those fields plain for exactly this reuse). NO new error code, so no ritual.
+5. A REAL FLAW THE TEST CAUGHT: the default id was slug + timestamp only, which is NOT unique - two jobs of the same kind enqueued in one clock tick collided on the PRIMARY KEY and the second insert failed silently behind an isOk guard. The id now carries a random suffix; slug and timestamp keep it readable. The regression is asserted directly.
+6. A second wrong assumption of mine, corrected by the suite: started_at is the CLAIM time (when the job starts running), not the enqueue time; the fixture ticks the clock between the two so the assertion can tell them apart.
+
+**Consequences:**
+
+- Five tests (all spec-named) against REAL temp SQLite cover the full lifecycle with event emission, a genuine two-worker race plus pollReady skipping what it cannot win, cancel/pause/resume/retry with terminal refusals, stale-lease requeue that leaves a live lease alone, and the query surface status/history/metrics will consume.
+- Gate: typecheck 0, lint 0, depcruise 0 (189 modules, 485 dependencies), build 0, and the core suite 163 passed / 1 skipped files, 2105 passed / 1 skipped tests, exit 0.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
