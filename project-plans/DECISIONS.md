@@ -2521,4 +2521,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-062: The Declared Dependency Was Sequencing, `failed` Is Not Settled, and the Executor Has No Hidden Cursor
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-238 (`PHASES_DETAILED.md:11738-11779`) is the heart of merge execution: a nine-stage pipeline (`config → sources → selection → deps → licenses → agent → sandbox → provenance → finalize`) with explicit states, a transition table, per-stage records, and hooks for resumability (P-240), cancel-safety (P-246) and observability (P-241). It declares `Depends On: P-237`, and its `runPipeline.ts` is described as wiring the concrete stage modules.
+
+**Decisions:**
+
+1. **The declared `Depends On: P-237` is wave SEQUENCING, not a code input — and that is why this phase could be taken at all.** P-237 is `### P-237: Web - Perf Pass` (`:11694`), a web-UI optimisation. P-238's own context lists what it actually composes — config, fetch, selection, deps, license, agent, sandbox, provenance, finalize — and every one of those components has been implemented, tested and green since P-188. A web performance pass is not an input to a core pipeline state machine, so the dependency encodes "Wave 3 runs after Wave 2" rather than "P-238 needs P-237's artefact". Recorded explicitly, because a phase started over a declared dependency must say so rather than quietly ignore it.
+2. **`TRANSITIONS` is the single source of truth, and every move is validated against it.** The handoff is emphatic — "keep transitions table-only (no hidden state)" — and the reason is mechanical: a resumable machine persists only its RECORDS, so any state not in a record is lost on restart and the resume replays a different pipeline. `transition` is therefore the only mutator, and it consults `canTransition` every time.
+3. **`failed` is NOT a settled status — and the mandated test caught me getting this wrong.** My first version counted `failed` as settled, so after a stage failed the executor saw "nothing unsettled" ahead of it and walked ON to the next stage, reporting `completed` while a stage sat failed. `isSettledStatus` now means `passed | skipped` only, because a failed stage is still owed a retry (`failed → running` is legal in the table). The failing assertion was `expected 1 to be 2` on the attempt count — i.e. the retry had silently not happened. This is the sharpest form of decision 2: a status's MEANING to the executor is part of the law, not an implementation detail.
+4. **Resumable by construction: the records ARE the cursor.** `run` begins at the first unsettled stage and skips settled ones, so a second call after a pause, a failure or a process restart continues where it stopped. There is no separate `resume` path to keep in sync with the forward path — which is what makes P-240's persisted-state resume a matter of passing `records` back in rather than a second implementation.
+5. **Pausing is a first-class outcome.** A handler returning `blocked` or `awaiting_hil` stops the run and reports `stoppedAt`, so a licence verdict (P-131) or an HIL approval (P-160) can arrive out-of-band and the same `run` call resumes at that stage. `blocked → running` and `awaiting_hil → running` are in the table precisely for that re-entry.
+6. **A failed stage is a RESULT, not an `err`.** Like P-155's failing build, a red stage is reported in the returned records and the outcome is `'failed'`; the caller decides whether that is fatal. Only a genuine defect returns a typed error: `ILLEGAL_TRANSITION` (P-159's existing `{ from, to, message }` shape — **no new error code**, so no ritual) and `INTERNAL` for an unknown stage.
+7. **A stage with no handler is a deliberate `skipped`, not a failure.** The machine's job is to SEQUENCE; requiring every stage to be wired would make a partial pipeline indistinguishable from a broken one, and would break the dry-run use case.
+8. **`runPipeline` is the COMPOSER, and the concrete module wiring is injected.** The phase describes it as wiring deps P-113, license P-131, agent P-167, sandbox P-177 and provenance P-187 directly. Those handlers are supplied by the caller instead, deliberately: each is a thin adapter over a module whose signature belongs to that module, and the drivers that already exist — the merge command (P-192), the web server (P-216) and the job queue (P-239) — are where the business choice of WHICH modules to wire belongs. What this file owns is the composition contract (build the context, drive the machine, report), which is real and tested. Constructing five adapters blind from here would mean guessing at five APIs, exactly the failure mode the anti-hallucination protocol exists to prevent.
+9. **The idempotency seam is a PREDICATE, not a store.** `StageCache` is `{ has(stage, ctx) }` and a hit marks the stage `skipped` with `meta.cached`. P-250 owns persistence, so this phase depends on the shape and not on a table — the same "own the contract, let the storage owner supply the implementation" rule P-159's `AgentStateStore` followed.
+10. **Events are emitted from `transition` itself**, in P-241's shape (`{ type: 'stage:transition', stage, from, to, at }`). Emitting at the call site rather than at the executor loop means no transition can occur unobserved — the log cannot drift from the state.
+11. **`--jobs` and `--offline` reach the handlers through the context**, asserted directly, so the policies P-204 and P-146 own are plumbed rather than assumed.
+
+**Consequences:**
+
+- Four tests (all spec-named) cover the vocabulary and a nine-stage happy path with all 18 transitions announced in order plus policy plumbing, the transition table's enforcement including terminal and unknown-stage cases, a `blocked` pause and its resume (and the `awaiting_hil` equivalent), and a failing stage's retry, a permanent failure leaving later stages `pending`, and a cache hit skipping a handler.
+- Gate: typecheck 0, lint 0, **depcruise 0 (186 modules, 482 dependencies)**, build 0, and the **core** suite **162 passed | 1 skipped (163 files), 2100 passed | 1 skipped tests, exit 0**.
+- P-238 is the deterministic core the rest of Wave 3 builds on: P-239 wraps it in the job queue, P-240 persists records for resume, P-241 taps the events, P-246 passes a signal.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
