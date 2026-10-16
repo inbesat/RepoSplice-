@@ -30,7 +30,11 @@ export function runStatus(options: StatusOptions): string {
  */
 export function createProgram(): Command {
   const program = new Command();
-  program.name('stitch').description('AI-augmented multi-repo composition').version(STITCH_VERSION);
+  program
+    .name('stitch')
+    .description('AI-augmented multi-repo composition')
+    // `-V` belongs to P-189's `--verbose`, so version is long-form only.
+    .version(STITCH_VERSION, '--version');
 
   program
     .command('status')
