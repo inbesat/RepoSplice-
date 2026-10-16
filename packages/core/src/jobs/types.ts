@@ -14,6 +14,7 @@ export const JOB_STATUSES = [
   'failed',
   'cancelled',
   'paused',
+  'rolled_back',
 ] as const;
 
 export type JobStatus = (typeof JOB_STATUSES)[number];
@@ -28,15 +29,17 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
  *     may pause (a licence verdict or an HIL approval, P-160).
  *   - `paused` RESUMES into `running` — that is what makes P-240 a re-entry.
  *   - `failed` may RETRY, because a transient failure is not a verdict.
- *   - `succeeded`/`cancelled` are TERMINAL.
+ *   - `succeeded`/`cancelled` may be UNDONE by a rollback (P-245) — a finalised C
+ *     that turns out wrong is not the last word — and `rolled_back` is TERMINAL.
  */
 export const JOB_TRANSITIONS: Readonly<Record<JobStatus, readonly JobStatus[]>> = {
   queued: ['running', 'cancelled'],
   running: ['succeeded', 'failed', 'paused', 'cancelled'],
   paused: ['running', 'cancelled', 'failed'],
-  failed: ['running', 'cancelled'],
-  succeeded: [],
-  cancelled: [],
+  failed: ['running', 'cancelled', 'rolled_back'],
+  succeeded: ['rolled_back'],
+  cancelled: ['rolled_back'],
+  rolled_back: [],
 };
 
 /** May a job move `from → to`? */

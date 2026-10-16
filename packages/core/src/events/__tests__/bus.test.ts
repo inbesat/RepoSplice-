@@ -113,6 +113,7 @@ describe('P-241 event bus', () => {
       'job.resumed',
       'job.config-resolved',
       'job.dry-run-plan',
+      'job.rolled-back',
       'job.cancelled',
       'job.failed',
       'job.succeeded',
@@ -138,7 +139,8 @@ describe('P-241 event bus', () => {
 
     // The topic list is the stable contract, and coalescible topics are a subset.
     // P-243 grew it by one (`job.config-resolved`); P-244 by one (`job.dry-run-plan`).
-    expect(TOPICS).toHaveLength(16);
+    // P-245 grows it again (`job.rolled-back`), which also matches the `job.*` wildcard.
+    expect(TOPICS).toHaveLength(17);
     for (const topic of COALESCIBLE_TOPICS) expect(TOPICS).toContain(topic);
   });
 

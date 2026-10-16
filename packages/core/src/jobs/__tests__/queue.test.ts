@@ -108,7 +108,10 @@ describe('P-239 job queue', () => {
     expect(finished.value.result).toEqual({ commitTarget: '/tmp/c' });
     expect(finished.value.finishedAt).toBe(at(2 * MINUTE));
     expect(finished.value.leaseOwner).toBeUndefined();
-    expect(isTerminalJobStatus('succeeded')).toBe(true);
+    // P-245: a finalised job is no longer terminal — a wrong C can still be rolled
+    // back, and `rolled_back` is the status that ends the line.
+    expect(isTerminalJobStatus('succeeded')).toBe(false);
+    expect(isTerminalJobStatus('rolled_back')).toBe(true);
 
     // A blank kind is a typed config error.
     const blank = await q.enqueue({ kind: '   ', ctx: {} });
@@ -123,7 +126,7 @@ describe('P-239 job queue', () => {
     // The lifecycle law is the table, and it is total.
     expect(canJobTransition('queued', 'running')).toBe(true);
     expect(canJobTransition('succeeded', 'running')).toBe(false);
-    expect(Object.keys(JOB_TRANSITIONS)).toHaveLength(6);
+    expect(Object.keys(JOB_TRANSITIONS)).toHaveLength(7);
 
     // Events are emitted per transition, in P-241's shape.
     const events: JobEvent[] = [];

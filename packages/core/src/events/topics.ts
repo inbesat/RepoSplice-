@@ -20,6 +20,7 @@ export const TOPICS = [
   'job.resumed',
   'job.config-resolved',
   'job.dry-run-plan',
+  'job.rolled-back',
   'job.cancelled',
   'job.failed',
   'job.succeeded',
@@ -142,6 +143,15 @@ export interface JobDryRunPlanPayload {
   plan: Record<string, unknown>;
 }
 
+/** A job was rolled back to its pre-finalize snapshot (P-245). */
+export interface JobRolledBackPayload {
+  jobId: string;
+  snapshotId: string;
+  reason: string;
+  filesRemoved: number;
+  filesRestored: number;
+}
+
 /** The payload type per topic, so a publisher cannot send the wrong shape. */
 export interface TopicPayloads {
   'pipeline.stage': PipelineStagePayload;
@@ -151,6 +161,7 @@ export interface TopicPayloads {
   'job.resumed': JobResumedPayload;
   'job.config-resolved': JobConfigResolvedPayload;
   'job.dry-run-plan': JobDryRunPlanPayload;
+  'job.rolled-back': JobRolledBackPayload;
   'job.cancelled': JobPayload;
   'job.failed': JobPayload;
   'job.succeeded': JobPayload;
