@@ -2886,6 +2886,32 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - **The Orchestration epic P-238–P-251 is CLOSED.**
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 180 passed / 1 skipped files and 2316 passed / 1 skipped tests, exit 0.
 
+## ADR-075: P-189 Resolves Three Phase-vs-Library Conflicts — the Phantom `onCommandNotFound`, the Barrel That Is Also the Entrypoint, and `-V` Being Double-Claimed
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-189 (PHASES_DETAILED.md:9504) adds the `stitch` CLI shell: global options, an exit-code convention, and a shared error path. Its own text collides with the codebase and with its dependency in three places, all verified by reading.
+
+**Decisions:**
+
+1. `program.onCommandNotFound` IS A PHANTOM AND WAS NOT USED. Step 3 names it; `commander@15.0.0` (the version `packages/cli` depends on, in the bun store) has no such member — grepping its `typings/index.d.ts` returns nothing, while `exitOverride` (:553), `configureOutput` (:590), `showHelpAfterError` (:604), `showSuggestionAfterError` (:609) and `allowUnknownOption` (:768) all exist. So the unknown-command path is the `commander.unknownCommand` code surfacing through `exitOverride`, with `showSuggestionAfterError()` supplying the "did you mean" hint. Calling a method that does not exist would have been a hallucination the test gate would then have caught as a lie.
+
+2. `index.ts` STAYS A BARREL; THE RUN IS GUARDED. The phase lists `index.ts` as a "new — entrypoint", but it already exists as this package's public barrel, imported by its own tests and siblings. Executable code at module scope there would run on every `import`. So `cli.ts` owns `buildCLI`, `globals.ts` owns `GlobalOptions`, and `index.ts` keeps its exports, gains the shell's re-exports, and invokes `main()` only when the file IS the entry (compared via `fileURLToPath(import.meta.url)` against `process.argv[1]`). Note the guard needed an `import { main }` as well as a re-export: `export … from` creates no local binding, so the first version failed typecheck with `Cannot find name 'main'`.
+
+3. `--version` IS LONG-FORM ONLY, BECAUSE `-V` BELONGS TO `--verbose`. Commander's `.version()` claims `-V` by default, and the phase mandates `-V, --verbose`; registering both throws "conflicting flag". Version therefore registers as `--version`, which is what the phase's acceptance criterion actually exercises. A related duplicate-flag bug was found at runtime: `buildCLI` re-declaring `version` on a program whose owner (`program.ts`) already declared it threw "Cannot add option '--version'", so `buildCLI` now owns ONLY the global options and the exit convention, not the name/description/version.
+
+4. AN UNKNOWN COMMAND EXITS **1**, NOT 2. The phase contradicts itself (step 3 says 1; step 4 says "2 = usage error"), and an unknown command is arguably both. The ACCEPTANCE CRITERIA and the phase's own test name (`unknown command exits 1`) are authoritative for the gate, so unknown command → 1; commander's option/argument faults (`unknownOption`, `missingArgument`, …) → 2.
+
+5. THE EXIT CODE IS A VALUE, NOT A SIDE EFFECT. `exitOverride()` means commander never calls `process.exit`; `main(argv)` returns a number and `classifyCommanderError` maps a `CommanderError` to it, so all three conventions are asserted directly instead of by spawning a process. `exitCodeForResult(result, write)` renders a `StitchError` through core's `friendlyError` (P-163: `RULES_BY_CODE[code].hint`) and returns 1 — the injection of `write` is what makes that assertable.
+
+6. `from: 'node'`, NOT `'user'`. The entrypoint receives `process.argv` (which carries the `[node, script, …]` prefix), so the default commander form is correct; passing `{ from: 'user' }` made commander treat `node` as the command name. Two of the suite's failures were this, and one was that a bare invocation with no subcommand makes commander print help — which `exitOverride` turns into a throw — so the all-defaults case is asserted on the pure `parseGlobal` instead.
+
+**Consequences:**
+
+- Five mandated cases pass: `prints version`, `lists help`, `unknown command exits 1`, `parses global flags`, `maps exit codes`. Gate: root typecheck 0, eslint 0, CLI package suite 8 files / 38 tests passed.
+- Remaining roughness, recorded: the phase's step 3 wording for the unknown-command exit code differs from its acceptance criteria (resolution above), and the P-010 `logger` export could not be located by that name — the CLI prints through `console` (AGENTS.md §4 permits it in commands), which is a fallback, not a wiring.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
