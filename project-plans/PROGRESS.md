@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-240 Orchestration Resume Jobs (inbesat, Wave 3, depends on P-239, which is DONE - ADR-063). The core lane is OPEN and contiguous again from P-238: P-238 pipeline state machine, P-239 durable job queue. Next: read the P-240 block fresh. |
+| **Next Handoff** | P-240 Resume Jobs (inbesat, Wave 3, depends on P-239 which is DONE). Block read; files jobs/resume.ts (new), jobs/queue.ts (add getResumableContext), jobs/__tests__/resume.test.ts. 4 tests: checkpoints, resumes at stage, crash sweep, config mismatch restarts. Recon: needs per-stage stage_status plus ctx persisted (schema addition to pipeline_jobs), checkpoint() called from the P-238 machine, resumableCtx(), resume(), a boot sweep for expired leases unless --no-resume, a job:resumed event plus a P-187 ResumeRecord, and a config-hash guard that FORCES a restart from config on mismatch. P-250 caching is FUTURE, but P-238 already exposes the StageCache predicate seam, so resume depends on the shape and not the store. |
 
 ---
 
