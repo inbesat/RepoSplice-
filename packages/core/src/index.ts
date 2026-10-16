@@ -1167,6 +1167,22 @@ export type {
 export { parseDockerEngineVersion, checkDockerDaemon } from './sandbox/dockerProbe.js';
 export type { DockerDaemonStatus } from './sandbox/dockerProbe.js';
 
+// P-181 — provenance: source repo / commit / author per file (Epic 9).
+export {
+  ProvenanceMap,
+  buildProvenanceMap,
+  describeProvenanceWarning,
+  PROVENANCE_PAYLOAD_VERSION,
+  UNKNOWN_COMMIT,
+} from './provenance/index.js';
+export type {
+  FileOrigin,
+  ProvenanceWarning,
+  ProvenanceOptions,
+  SourceRepoLabel,
+  StitchedBy,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,
