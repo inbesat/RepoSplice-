@@ -2597,4 +2597,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-065: The Bus Is Core and the WS Adapter Is the CLI, Delivery Is Synchronous, and a Coalescible Topic Holds One Slot
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-241 (PHASES_DETAILED.md:11880-11918) makes one typed event spine that every core module publishes to and bridges it to the WebSocket hub, so the CLI progress view and the web surfaces subscribe from one place.
+
+**Decisions:**
+
+1. THE BRIDGE LOGIC IS CORE; THE ADAPTER IS THE CLI. The phase lists packages/cli/src/server/wsBridge.ts and its Owner is inbesat, so two signals conflict: AGENTS.md assigns cli/web to the other developer. Reconciled the way P-185 ADR-058 did it: core exports createBusForwarder(bus, sink), pure logic over an injected EventSink, and the CLI adapter becomes a handful of lines binding its hub. packages/cli was NOT touched, and the mandated ws-forward test drives a FAKE sink, so it tests the real logic without a server.
+2. DELIVERY IS SYNCHRONOUS, IN PUBLISH ORDER, PER TOPIC. The bus stamps a per-topic SEQUENCE itself, so two publishers cannot disagree about order and a subscriber can assert it. Async handlers are allowed but NOT awaited: a slow subscriber must never sit on the pipeline critical path.
+3. A THROWING OR REJECTING HANDLER IS REPORTED, NOT PROPAGATED. The publisher is a pipeline stage, so one bad subscriber must not abort delivery to the others or blow up the publisher; failures go to onHandlerError as values.
+4. WILDCARDS ARE ONE LEVEL: prefix.* only. No ** and no mid-string star, because a richer grammar in an event bus is a footgun nobody asked for. Matched only in matchesTopic, so the semantics have one home.
+5. A COALESCIBLE TOPIC HOLDS AT MOST ONE QUEUED SLOT, and my first version got this wrong in a way the test caught: it replaced an existing sample only when the buffer was ALREADY full, so several progress samples accumulated (expected 1, got 3). Replacing unconditionally is what makes at most one true, and it is the right semantic anyway - a progress bar wants the latest position, so any earlier sample is dead weight whether or not the client has fallen behind. A non-coalescible event is DROPPED when the buffer is full, never allowed to block, and the drop is counted so the loss is visible.
+6. ZOD VALIDATES THE ENVELOPE at the WS boundary, the one place loose data crosses, while payloads stay TS-typed in-process rather than re-parsed on every publish (the P-009 spirit). eventEnvelopeSchema is exported for the CLI and the web to share.
+7. NO NEW ERROR CODE: the bus reports failures as values and publish cannot fail.
+
+**Consequences:**
+
+- Five tests (all spec-named) cover per-topic ordering and the stamped sequence plus envelope validation, one-level wildcards and once(), idempotent unsubscribe and removing one of two subscriptions, async handlers not being awaited plus throw and rejection reporting, and the forwarder coalescing to the LATEST progress value, counting drops, honouring a hello topic filter, and detaching on close.
+- Gate: typecheck 0, lint 0, depcruise 0 (192 modules, 487 dependencies), build 0, and the core suite 165 passed / 1 skipped files, 2114 passed / 1 skipped tests, exit 0.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

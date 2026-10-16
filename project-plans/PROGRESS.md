@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-16
-**Current Phase:** P-241 - Orchestration: Event Bus
+**Current Phase:** P-242 - Orchestration: Progress Aggregation
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -16,12 +16,12 @@
 |--------|-------|
 | **Total Phases** | 365 (P-000–P-364; P-299 superseded by Epic 19) |
 | **Plan Document (deep-elaborated)** | 365/365 (9/9 FULL) |
-| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238, P-239 and P-240 (taken ahead of the aradhy CLI/Web lane) |
+| **Implemented** | core: P-000 -> P-188 contiguous, PLUS P-238 through P-241 (taken ahead of the aradhy CLI/Web lane) |
 | **Active** | 0 |
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-241 Orchestration Event Bus to WS (inbesat, Wave 3, depends on P-240 which is DONE - ADR-064). Core lane is contiguous from P-238: pipeline state machine, durable job queue, resume. Note P-238/P-239/P-240 all EMIT events already (stage:transition, job:transition, job:resumed), so P-241 has producers waiting. |
+| **Next Handoff** | P-242 Progress Aggregation (inbesat, Wave 3, depends on P-241 which is DONE - ADR-065). Core lane contiguous from P-238: state machine, job queue, resume, event bus. NOTE for P-242: the bus already marks progress and agent.reasoning as COALESCIBLE_TOPICS, so aggregation has a home; and P-238/239/240 emit through injected emit callbacks today rather than importing the shared bus, so ROUTING them onto the bus is still open (P-241 acceptance item 2). |
 
 ---
 
