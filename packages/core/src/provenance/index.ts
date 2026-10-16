@@ -21,3 +21,13 @@ export type {
   SourceRepoLabel,
   StitchedBy,
 } from './map.js';
+
+// P-182 — CREDITS.md (the human read of the map).
+export {
+  generateCredits,
+  CREDITS_FILENAME,
+  SHORT_COMMIT_LENGTH,
+  NO_COMMIT_CELL,
+  UNATTRIBUTED_HEADING,
+} from './credits.js';
+export type { CreditsOptions } from './credits.js';

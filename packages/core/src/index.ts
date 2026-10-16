@@ -1182,6 +1182,14 @@ export type {
   SourceRepoLabel,
   StitchedBy,
 } from './provenance/index.js';
+export {
+  generateCredits,
+  CREDITS_FILENAME,
+  SHORT_COMMIT_LENGTH,
+  NO_COMMIT_CELL,
+  UNATTRIBUTED_HEADING,
+} from './provenance/index.js';
+export type { CreditsOptions } from './provenance/index.js';
 
 export {
   buildDoctorChecks,

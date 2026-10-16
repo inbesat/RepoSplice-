@@ -2321,4 +2321,32 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-055: CREDITS Gets a Target Because the Acceptance Demands Both, Its Timestamp Comes From the Map Because "Stable" and "Generated Now" Cannot Both Be True, and the PII Rule Is a Scrub Rather Than a Template Convention
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-182 (`PHASES_DETAILED.md:9165-9207`) renders P-181's `ProvenanceMap` into a human-readable `CREDITS.md`: grouped by repo then `remoteUrl`, a fixed table `| File in C | Source Commit | Author |`, a `## Unattributed` section, a `## Notes` section for agent-stitched files, sorted by repo then path. Step 3 writes to `<repoC>/CREDITS.md` "and return[s] the content string too"; the acceptance repeats both, and separately demands "Output stable across runs (same map → same text)".
+
+**Decisions:**
+
+1. **`CreditsOptions` gains `repoC`, because accepting the declared shape alone would fail the acceptance.** The declared options are `{repoNameA?, repoNameB?, includeEmails?, header?}` — with no target — yet step 3 must write a file AND the acceptance requires the content "returned as string". Adding one optional `repoC` satisfies both with one function: absent ⇒ render-only (the pure path tests and the P-185/P-222 previews use), present ⇒ write-then-return. A separate `writeCredits` would have duplicated the renderer.
+2. **The header timestamp defaults to the LATEST `copiedAt` already in the map, not the wall clock.** "Title + generated timestamp" and "same map → same text" are mutually exclusive if the stamp is `Date.now()`: two renders a second apart differ, and CI diffs plus the web preview would never be stable. Deriving the stamp from P-181's own data makes it simultaneously a real "provenance as of" marker and deterministic BY CONSTRUCTION. `now?` still overrides it for a true generation stamp, documented as breaking stability — so the trade is explicit and opt-in rather than accidental.
+3. **The table stays exactly three columns, and `sourcePath` rides in the first cell only when it differs.** The handoff is explicit that "web P-222 CREDITS preview and CI checks parse it", so a fourth (or conditional) column would break consumers. A teleported file therefore renders as `` `repo-a/app.ts` (from `app.ts`) `` — the C path leads, so a parser keying on the leading backticked token is unaffected, while the original path (the thing attribution exists to record) is still visible.
+4. **`## Unattributed` keys off `repo === 'unknown'`, and P-181's retained warnings are rendered too.** `repo: 'unknown'` is the attribution failure P-181 warns about, so those files are grouped into their own section rather than dropped — nothing may silently vanish from attribution. The map's `warnings()` are additionally listed under `### Attribution warnings` with their reason, so a reader learns *why* a file is unattributed, not just that it is.
+5. **`UNKNOWN_COMMIT` renders as an explicit `—`, never a blank cell.** A blank cell reads as "no commit needed"; the dash reads as "we could not determine one", which is the truth.
+6. **`## Notes` states the negative case explicitly.** With no agent-stitched files it prints "No files were stitched by the agent." rather than emitting an empty section, because an empty section is indistinguishable from a rendering bug.
+7. **The PII rule is a SCRUB, not merely a template decision.** Email is rendered only when `includeEmails` is true, and when it is false every retained `sourceEmail` value is stripped from the finished text (`→ [redacted]`). P-181 already gates *retention* behind its own opt-in; this gates *display* independently, so a future edit to a template cannot leak an address the map legitimately holds. Two independent gates, both defaulting closed.
+8. **`license/notice.ts` was not modified.** The phase marks it "optionally reference CREDITS", and the file already documents that it is "sourced from the P-118 scan + P-181 provenance" — it needs no CREDITS reference, and editing it would add coupling without a requirement.
+9. **No new `StitchError` code.** A blank `repoC` is `CONFIG_ERROR`; a failed write is `INTERNAL`. Rendering itself is total (map → string cannot fail), so there is no third path.
+10. **Determinism covers ORDER, not just the timestamp.** Sections are ranked A → B → unknown, then by `remoteUrl`, then by file path — asserted in the `stable output` test by rendering the same origins in REVERSED input order and requiring byte-identical output.
+
+**Consequences:**
+
+- Five tests (all spec-named) plus a sixth `it('stable output')`-internal set of extra assertions cover grouping and ordering, the fixed columns, the teleport annotation, the unattributed section with its warnings, the Notes negative case, the scrub, the write-and-return equivalence (read back from disk and compared byte-for-byte), a nested target directory, the blank-target config error, the clock override, and a custom header.
+- `generateCredits` returns the content in every case, so P-185's preview and P-222's web view never have to read the file back — and the test proves the returned string and the file are identical.
+- Full gate: typecheck 0, lint 0, depcruise 0 (176 modules / 469 deps), build 0, **177 passed | 1 skipped** files / **2129 passed | 1 skipped** tests.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
