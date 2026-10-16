@@ -28,6 +28,7 @@ import { join, relative, resolve } from 'node:path';
 import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
 import { add, looksRemote, type SourceSelection } from './commands/add.js';
+import { serve } from './commands/serve.js';
 import { defaultStoreDir, openStore, type JsonValue } from './config.js';
 
 /** Clean run. */
@@ -178,6 +179,30 @@ export function buildCLI(program: Command): Command {
       });
     });
 
+  program
+    .command('serve')
+    .description('Start the local HTTP/WS server hosting the REST, WS, and built web UI')
+    .option('--host <host>', 'bind address (default 127.0.0.1)')
+    .option('--port <port>', 'HTTP port (default 3434)')
+    .option('--no-web', 'skip serving the built web UI; keep /health, /api, /ws')
+    .action(async (options: ServeCommandOptions) => {
+      const result = await serve(
+        {
+          ...globalOptionsOf(program),
+          ...(options.host !== undefined ? { host: options.host } : {}),
+          ...(options.port !== undefined ? { port: options.port } : {}),
+          ...(options.web === false ? { web: false } : {}),
+        },
+        {}
+      );
+      process.exitCode = exitCodeForResult(
+        result.map(() => undefined),
+        line => {
+          process.stderr.write(`${line}\n`);
+        }
+      );
+    });
+
   return program;
 }
 
@@ -185,6 +210,15 @@ export function buildCLI(program: Command): Command {
 interface AddCommandOptions {
   branch?: string;
   allowEmpty?: boolean;
+}
+
+/** The options commander hands `stitch serve`. */
+interface ServeCommandOptions {
+  host?: string;
+  /** A string until `serve` normalizes it (integer 1-65535). */
+  port?: string;
+  /** Commander's `--no-web` sets this to `false`. */
+  web?: boolean;
 }
 
 /**

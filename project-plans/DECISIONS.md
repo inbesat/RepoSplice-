@@ -2972,4 +2972,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-078: P-193 Reconciles the P-043 Serve Scaffold into `server/app.ts`, Hand-Weaves CORS, Keeps the `/api` Payloads Provider-Injected, and Reads "Flush Audit" as the Clean Close of `stitch.db`
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-193 (PHASES_DETAILED.md:9700) mandates `server/app.ts` + `server/ws.ts` + `commands/serve.ts` + `commands/serve.test.ts`, with five tests (`health endpoint`, `ws echo`, `static fallback`, `graceful shutdown`, `cors headers`). A 30-line scaffold (`src/serve.ts` with `createApp` and a `/ws` echo) predates the phase and names the decisive environment fact in its own header: Elysia's WebStandard adapter under vitest/Node cannot `.listen()` or open sockets.
+
+**Decisions:**
+
+1. THE SCAFFOLD IS RECONCILED, NOT DUPLICATED. `src/serve.ts` becomes a two-line re-export shim of the new `packages/cli/src/server/app.ts`, keeping the P-043-era barrel export AND its test green verbatim; `createApp` carries the scaffold's `/health` contract and the `/ws` echo forward, extended with the REST routes, static serving, CORS, and the hub wiring. `serve` is registered in `cli.ts`, the P-190-established registration point.
+
+2. THE TESTS DRIVE `app.handle`, AND THE `/ws` CASE DRIVES THE REAL FUNCTIONS THE ROUTE WIRES. `app.handle` is adapter-independent; sockets are not openable under vitest/Node. So the route's `message` handler is the exported `echoMessage` (in `ws.ts`, typed structurally as `EchoTarget`) and the hub assertion runs a real `createWsHub` round trip — `{'topic', ts, payload}` envelope — rather than faking a socket. The real `.listen()` path is Bun-only (TECH_STACK runtime) and is guarded: a listen failure maps to `INTERNAL` rather than crashing the process.
+
+3. CORS IS HAND-WOVEN BECAUSE THERE IS NO CORS DEPENDENCY. `@elysiajs/cors` is not in `packages/cli`; adding a dependency for three headers is not warranted. `onBeforeHandle` reflects `access-control-allow-origin` ONLY to the dev Vite origin (`http://localhost:5173`), a foreign origin receives NO header (a refusal, not a wildcard), and an explicit `.options('/*')` route answers preflight with 204 + allow-methods/headers. `false` disables CORS outright.
+
+4. THE `/api` PAYLOADS ARE INJECTED PROVIDERS WITH TRUTHFUL EMPTY DEFAULTS. The phase's parentheticals name the data OWNERS — P-185 (provenance/credits), P-247 (jobs), P-225 (settings) — so P-193 ships the routes and the provider seam, and the defaults state exactly what the server truthfully knows until those phases wire data: no report (`null`), no jobs (`[]`, a list stays a list), no settings (`null`).
+
+5. THE PORT COMES FROM THE CLI, BECAUSE THE SCHEMA HAS NO SERVER SECTION. The phase's context says "port from config (default 3434)", but `ConfigSchema` has no `server`/`host`/`port` key (grepped), and a config key is never invented. `--host` (default `127.0.0.1`) and `--port` (default 3434, integer 1-65535 else `CONFIG_ERROR{field:'port'}`) own the bind; a `[server]` section can be introduced by whichever phase owns the settings schema.
+
+6. "FLUSH AUDIT" IS THE CLEAN CLOSE OF THE AUDIT DATABASE. P-187's `ProvenanceAudit` appends to SQLite synchronously — there is no write buffer — and `AUDIT_ACTIONS` has no 'serve' action to invent a record for. So serve opens `<cwd>/stitch.db` (core's `openSqlite`; an open failure refuses the start, `INTERNAL`), and the SIGINT shutdown is: `app.stop()` awaited FIRST (graceful, inflight responses finish), THEN the audit handle closed (WAL checkpoint), then the report — with a once-guard so a repeated signal is a no-op.
+
+7. EVERY HEAVY EDGE IS A PORT, SO THE MANDATED CASES RUN HEADLESSLY: the port probe (a throwaway `node:net` bind), the audit open, the signal registration, and the listen. A busy port is refused BEFORE anything is opened (proven by an extra sixth case asserting nothing opens after a refused probe).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite 12 files / 61 tests passed — the five mandated cases plus the probe-refusal ordering case.
+- `stitch serve` needs the Bun runtime to actually listen (guarded); under a Node test run the orchestration is exercised through the injected ports, which is exactly how the phase's harness constraint (WebStandard adapter) required it.
+- The `/api` routes are the contract the web phases target; when P-185/P-225/P-247 land, they wire the `data` providers — no route shape change is needed.
+- Static serving traversal-guards `..` beyond URL normalisation, falls back to the SPA index for missing assets, and shows the friendly build-prompt page when `packages/web/dist` is absent or `--no-web` is passed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -26,6 +26,11 @@ export interface HubClient {
   send(text: string): void;
 }
 
+/** Anything that can receive an echoed packet — Elysia's socket implements this. */
+export interface EchoTarget {
+  send(data: string | ArrayBuffer): void;
+}
+
 /** The envelope every client receives. Matches P-241's wire shape. */
 export interface HubEnvelope<T = unknown> {
   topic: string;
@@ -158,4 +163,30 @@ export function createWsHub(opts: WsHubOptions = {}): WsHub {
       subscriptions.length = 0;
     },
   };
+}
+
+/**
+ * Echo one client packet back to the client, verbatim.
+ *
+ * The `/ws` route's `message` handler wires this directly, so the mandated
+ * `ws echo` case in `serve.test.ts` drives the REAL function the route uses
+ * (a socket cannot be opened under vitest's Node runtime — see the P-043 note
+ * in `src/serve.test.ts`). A non-string packet is spoken as JSON — the web
+ * client (P-223) speaks JSON — and a packet that cannot be stringified echoes
+ * an empty frame rather than crashing the route.
+ */
+export function echoMessage(target: EchoTarget, message: unknown): void {
+  let text: string;
+  if (typeof message === 'string') {
+    text = message;
+  } else {
+    try {
+      text = JSON.stringify(message) ?? String(message);
+    } catch {
+      // A circular payload cannot be serialised; an empty echo still proves
+      // the route is alive without taking the socket down.
+      text = '';
+    }
+  }
+  target.send(text);
 }
