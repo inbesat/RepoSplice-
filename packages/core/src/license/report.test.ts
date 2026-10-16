@@ -4,15 +4,22 @@ import { checkGpl } from './gpl.js';
 import { detectUnknown, clearLicenseDecisionsForTests } from './unknown.js';
 import {
   aggregateLicenseReport,
+  aggregateLicenseReportWithGplOpts,
+  buildLicenseReport,
   buildLicenseReportData,
   renderLicenseReportJson,
 } from './report.js';
 import type {
+  CompatibilityResult,
+  DeepScanResult,
+  GeneratedLicense,
   LicensePolicy,
   LicenseReport,
+  NoticeResult,
   DualDecision,
   GplWarning,
   DeclaredLicense,
+  UnknownLicense,
 } from './types.js';
 
 function makeDeclared(pkg: string, licenses: string): DeclaredLicense {
@@ -63,6 +70,12 @@ function makeLicenseReport(
     blocking,
     reasons,
   };
+}
+
+const allowMatrix: CompatibilityResult = { decision: 'allow', reasons: [], failingCategories: [] };
+
+function makeUnknown(pkg: string, decision: 'pending' | 'allow' | 'deny'): UnknownLicense {
+  return { package: pkg, version: '1.0.0', rawLicense: 'UNKNOWN', decision };
 }
 
 beforeEach(() => {
@@ -286,5 +299,184 @@ describe('P-128 report: annotates dual/gpl/unknown rows', () => {
       unknown: detectUnknown(unkDeclared),
     });
     expect(unkData.rows[0]?.reason).toContain('unknown-pending');
+  });
+});
+
+describe('P-123 report: per-package decisions from captures', () => {
+  it('marks a row deny when a non-compliant dual meets a deny verdict', () => {
+    const declared = [makeDeclared('foo', 'MIT OR GPL-3.0-only')];
+    const dual: DualDecision[] = [
+      {
+        expression: 'MIT OR GPL-3.0-only',
+        recommended: 'GPL-3.0-only',
+        alternatives: ['MIT'],
+        allCompliant: false,
+        reasons: ['not in allow'],
+      },
+    ];
+    const data = buildLicenseReportData(declared, makeLicenseReport('deny', true), {
+      dual,
+      gpl: [],
+      unknown: [],
+    });
+
+    expect(data.rows[0]?.decision).toBe('deny');
+    expect(data.rows[0]?.reason).toContain('dual-deny');
+    expect(data.summary.deny).toBe(1);
+  });
+
+  it('matches a dual entry by recommended branch and falls through when compliant', () => {
+    const declared = [makeDeclared('foo', 'GPL-3.0-only')];
+    const dual: DualDecision[] = [
+      {
+        expression: 'some-unrelated-expression',
+        recommended: 'GPL-3.0-only',
+        alternatives: [],
+        allCompliant: true,
+        reasons: [],
+      },
+    ];
+    const data = buildLicenseReportData(declared, makeLicenseReport('allow', false), {
+      dual,
+      gpl: [],
+      unknown: [],
+    });
+
+    expect(data.rows[0]?.decision).toBe('allow');
+    expect(data.rows[0]?.reason).toBeUndefined();
+  });
+
+  it('honors recorded allow/deny decisions on unknown rows', () => {
+    const declared = [makeDeclared('foo', 'UNKNOWN'), makeDeclared('bar', 'UNKNOWN')];
+    const data = buildLicenseReportData(declared, makeLicenseReport('deny', true), {
+      dual: [],
+      gpl: [],
+      unknown: [makeUnknown('foo', 'deny'), makeUnknown('bar', 'allow')],
+    });
+
+    const foo = data.rows.find(r => r.package === 'foo');
+    const bar = data.rows.find(r => r.package === 'bar');
+    expect(foo?.decision).toBe('deny');
+    expect(foo?.reason).toContain('unknown-denied');
+    expect(bar?.decision).toBe('allow');
+    expect(bar?.reason).toContain('unknown-resolved');
+    expect(data.summary.deny).toBe(1);
+    expect(data.summary.allow).toBe(1);
+    expect(data.summary.unknown).toBe(0);
+  });
+});
+
+describe('P-123 report: aggregateLicenseReport with injected gpl warnings', () => {
+  it('uses the provided gplWarnings array and builds dual decisions', () => {
+    const declared = [makeDeclared('foo', 'MIT OR GPL-3.0-only')];
+    const gpl = [makeGplWarning('foo', 'GPL-3.0-only')];
+
+    const report = aggregateLicenseReport(declared, permissivePolicy, allowMatrix, gpl);
+
+    expect(report.gplWarnings).toEqual(gpl);
+    expect(report.dual).toHaveLength(1);
+    expect(report.dual[0]?.expression).toBe('MIT OR GPL-3.0-only');
+  });
+});
+
+describe('P-123 report: aggregateLicenseReportWithGplOpts', () => {
+  it('uses provided gplWarnings when given', () => {
+    const declared = [makeDeclared('foo', 'GPL-3.0-only')];
+    const gpl = [makeGplWarning('foo', 'GPL-3.0-only')];
+
+    const report = aggregateLicenseReportWithGplOpts(declared, permissivePolicy, allowMatrix, {
+      gplWarnings: gpl,
+    });
+
+    expect(report.gplWarnings).toEqual(gpl);
+    expect(report.blocking).toBe(true);
+  });
+
+  it('computes gpl warnings with default isJsTs=true when omitted', () => {
+    const declared = [makeDeclared('foo', 'GPL-3.0-only')];
+
+    const report = aggregateLicenseReportWithGplOpts(declared, permissivePolicy, allowMatrix, {});
+
+    expect(report.gplWarnings.length).toBeGreaterThan(0);
+    expect(report.gplWarnings[0]?.severity).toBe('warning');
+  });
+
+  it('computes gpl warnings with isJsTs=false', () => {
+    const declared = [makeDeclared('foo', 'GPL-3.0-only')];
+
+    const report = aggregateLicenseReportWithGplOpts(declared, permissivePolicy, allowMatrix, {
+      isJsTs: false,
+    });
+
+    expect(report.gplWarnings.length).toBeGreaterThan(0);
+    expect(report.gplWarnings[0]?.severity).toBe('info');
+  });
+
+  it('builds dual decisions for OR expressions', () => {
+    const declared = [makeDeclared('foo', 'MIT OR GPL-3.0-only')];
+
+    const report = aggregateLicenseReportWithGplOpts(declared, permissivePolicy, allowMatrix, {
+      gplWarnings: [],
+    });
+
+    expect(report.dual).toHaveLength(1);
+  });
+});
+
+describe('P-128 report: buildLicenseReport pipeline', () => {
+  it('builds a report with precomputed gpl warnings and no deep scan', () => {
+    const declared = [makeDeclared('foo', 'MIT')];
+    const gpl = [makeGplWarning('foo', 'GPL-3.0-only')];
+
+    const report = buildLicenseReport(declared, permissivePolicy, allowMatrix, gpl);
+
+    expect(report.declared).toEqual(declared);
+    expect(report.gplWarnings).toEqual(gpl);
+    expect(report.deep).toBeNull();
+  });
+
+  it('computes gpl warnings when none are provided', () => {
+    const declared = [makeDeclared('foo', 'GPL-3.0-only')];
+
+    const report = buildLicenseReport(declared, permissivePolicy, allowMatrix);
+
+    expect(report.gplWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('threads deep scan, notice, generated license, and overrides through', () => {
+    const declared = [makeDeclared('foo', 'MIT OR GPL-3.0-only'), makeDeclared('bar', 'UNKNOWN')];
+    const deep: DeepScanResult = {
+      scanner: 'scancode',
+      files: [{ path: 'src/index.ts', licenses: ['MIT'], copyrights: [] }],
+      totalFiles: 1,
+      scannedAt: '2024-01-01T00:00:00.000Z',
+      optIn: true,
+    };
+    const notice: NoticeResult = { path: '/tmp/NOTICE', entries: [] };
+    const generatedLicense: GeneratedLicense = {
+      licenseId: 'MIT',
+      path: '/tmp/LICENSE',
+      year: '2024',
+      holderLines: [],
+      checksumSha256: 'abc',
+    };
+    const overrides = new Map<string, 'allow' | 'deny'>([['bar@1.0.0', 'allow']]);
+
+    const report = buildLicenseReport(
+      declared,
+      permissivePolicy,
+      allowMatrix,
+      undefined,
+      deep,
+      notice,
+      generatedLicense,
+      overrides
+    );
+
+    expect(report.dual).toHaveLength(1);
+    expect(report.deep).toBe(deep);
+    expect(report.notice).toBe(notice);
+    expect(report.generatedLicense).toBe(generatedLicense);
+    expect(report.verdict).toBeDefined();
   });
 });

@@ -1,8 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { resolve, join } from 'node:path';
 import { rm, readFile, pathExists, outputFile } from 'fs-extra';
-import { generateLicense } from './generate.js';
+import {
+  generateLicense,
+  generateLicenseWithNotice,
+  normalizeLicenseIdForTemplate,
+} from './generate.js';
 import { clearDeepScanConfigForTests } from './deepScan.js';
+import { stitchErrorMessage } from '../result/index.js';
 
 const testRepoDir = join(resolve('.'), '.generate-test-repo');
 
@@ -216,5 +221,109 @@ describe('P-125 generate: year from holders', () => {
     const content = await readLicenseFile(testRepoDir);
     expect(content).toContain('Copyright (c) 2023 Alice');
     expect(content).toContain('Copyright (c) 2023 Bob');
+  });
+});
+
+describe('P-125 generate: write/read failure paths', () => {
+  it('errors when the LICENSE path cannot be written', async () => {
+    // repoPath points at a regular file, so join(repoPath, 'LICENSE') cannot be created.
+    const blocker = join(testRepoDir, 'blocked-by-file.txt');
+    await outputFile(blocker, 'not a directory');
+
+    const result = await generateLicense('MIT', [{ name: 'Test' }], blocker);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('INTERNAL');
+      expect(stitchErrorMessage(result.error)).toMatch(/Failed to write LICENSE/i);
+    }
+  });
+
+  it('ignores malformed existing package.json', async () => {
+    await outputFile(join(testRepoDir, 'package.json'), '{ not json');
+
+    const result = await generateLicense('MIT', [{ name: 'Test' }], testRepoDir);
+
+    expect(result.isOk()).toBe(true);
+  });
+});
+
+describe('P-126 generate: generateLicenseWithNotice', () => {
+  const noticePolicy = { requireAttribution: true, targetLicense: 'MIT' };
+  const plainPolicy = { requireAttribution: false, targetLicense: 'MIT' };
+
+  it('propagates LICENSE generation errors', async () => {
+    const result = await generateLicenseWithNotice(
+      '',
+      [{ name: 'A' }],
+      testRepoDir,
+      plainPolicy,
+      []
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('CONFIG_ERROR');
+    }
+  });
+
+  it('returns only the license when requireAttribution is false', async () => {
+    const declared = [{ package: 'dep', version: '1.0.0', licenses: 'MIT' }];
+
+    const result = await generateLicenseWithNotice(
+      'MIT',
+      [{ name: 'A' }],
+      testRepoDir,
+      plainPolicy,
+      declared
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.license.licenseId).toBe('MIT');
+      expect(result.value.notice).toBeUndefined();
+    }
+  });
+
+  it('writes a NOTICE file with source entries when requireAttribution is true', async () => {
+    const declared = [
+      { package: 'dep-plain', version: '1.0.0', licenses: 'MIT' },
+      {
+        package: 'dep-full',
+        version: '2.0.0',
+        licenses: 'Apache-2.0',
+        licenseFile: '/x/LICENSE',
+        repository: 'https://example.com/repo.git',
+      },
+    ];
+
+    const result = await generateLicenseWithNotice(
+      'MIT',
+      [{ name: 'A' }],
+      testRepoDir,
+      noticePolicy,
+      declared
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.notice?.path).toBe(join(testRepoDir, 'NOTICE'));
+    }
+    const notice = await readFile(join(testRepoDir, 'NOTICE'), 'utf-8');
+    expect(notice).toContain('dep-plain');
+    expect(notice).toContain('dep-full');
+    expect(notice).toContain('LICENSE file: /x/LICENSE');
+    expect(notice).toContain('https://example.com/repo.git');
+  });
+});
+
+describe('P-125 generate: normalizeLicenseIdForTemplate', () => {
+  it('maps GPL variants and passes other ids through', () => {
+    expect(normalizeLicenseIdForTemplate('GPL-3.0-only')).toBe('GPL-3.0');
+    expect(normalizeLicenseIdForTemplate('GPL-3.0-or-later')).toBe('GPL-3.0');
+    expect(normalizeLicenseIdForTemplate('GPL-2.0')).toBe('GPL-2.0');
+    expect(normalizeLicenseIdForTemplate('LGPL-2.1')).toBe('LGPL-2.1');
+    expect(normalizeLicenseIdForTemplate('AGPL-3.0')).toBe('AGPL-3.0');
+    expect(normalizeLicenseIdForTemplate('MIT')).toBe('MIT');
   });
 });

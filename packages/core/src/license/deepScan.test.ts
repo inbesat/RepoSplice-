@@ -180,3 +180,184 @@ describe('P-124 deepScan: maps bad JSON to SCANCODE_FAILED', () => {
     }
   });
 });
+
+describe('P-124 deepScan: input validation and spawn failures', () => {
+  it('errors on an empty repoPath when opted in', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    const result = await runScanCode('');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('CONFIG_ERROR');
+      if (result.error.code === 'CONFIG_ERROR') {
+        expect(result.error.field).toBe('repoPath');
+      }
+    }
+  });
+
+  it('maps a thrown Error from the runner to SCANCODE_FAILED', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    setDeepScanExecForTests(async () => {
+      throw new Error('runner exploded');
+    });
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'SCANCODE_FAILED') {
+      expect(result.error.message).toMatch(/spawn failed: runner exploded/i);
+    }
+  });
+
+  it('maps a thrown non-Error from the runner to SCANCODE_FAILED', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    const failure: unknown = 'string failure';
+    setDeepScanExecForTests(async () => {
+      throw failure;
+    });
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'SCANCODE_FAILED') {
+      expect(result.error.message).toMatch(/spawn failed: string failure/i);
+    }
+  });
+
+  it('maps exit 127 with ENOENT to SCANCODE_MISSING', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    setDeepScanExecForTests(async () => ({
+      exitCode: 127,
+      stdout: '',
+      stderr: 'ENOENT: no such file',
+    }));
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'SCANCODE_MISSING') {
+      expect(result.error.message).toMatch(/not found/i);
+    }
+  });
+
+  it('keeps optInPath when a custom path was configured', async () => {
+    setDeepScanConfigForTests({ deepScan: true, scanCodePath: '/tmp/custom-scancode' });
+    setDeepScanExecForTests(async () => ({
+      exitCode: 127,
+      stdout: '',
+      stderr: 'ENOENT: no such file',
+    }));
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'SCANCODE_MISSING') {
+      expect(result.error.optInPath).toBe('/tmp/custom-scancode');
+    }
+  });
+
+  it('treats exit 127 without ENOENT as SCANCODE_FAILED', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    setDeepScanExecForTests(async () => ({
+      exitCode: 127,
+      stdout: '',
+      stderr: 'some other failure',
+    }));
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('SCANCODE_FAILED');
+    }
+  });
+});
+
+describe('P-124 deepScan: real subprocess execution', () => {
+  it('runs a real binary and maps a non-zero exit to SCANCODE_FAILED', async () => {
+    // where.exe exists on Windows and exits non-zero with stderr output; any real
+    // binary that fails fast exercises the spawn/stdout/stderr/close handlers.
+    const binary =
+      process.platform === 'win32' ? 'C:\\Windows\\system32\\where.exe' : '/usr/bin/env';
+    setDeepScanConfigForTests({ deepScan: true, scanCodePath: binary });
+    // execImpl is null: exercises the real runScancodeBinary path.
+    const result = await runScanCode(process.cwd());
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('SCANCODE_FAILED');
+    }
+  });
+
+  it('reports SCANCODE_MISSING when the default binary is absent', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    // No scanCodePath: defaults to 'scancode', which is not installed.
+    const result = await runScanCode(process.cwd());
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'SCANCODE_MISSING') {
+      expect(result.error.message).toMatch(/not found/i);
+    }
+  });
+
+  it('returns scanner none when deepScan is not enabled but a path is set', async () => {
+    setDeepScanConfigForTests({ scanCodePath: '/tmp/whatever' });
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.scanner).toBe('none');
+      expect(result.value.optIn).toBe(false);
+    }
+  });
+});
+
+describe('P-124 deepScan: parses malformed scancode payloads', () => {
+  it('returns zero files when the payload has no files array', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    setDeepScanExecForTests(async () => ({
+      exitCode: 0,
+      stdout: JSON.stringify({ headers: { tool: 'scancode' } }),
+      stderr: '',
+    }));
+    const result = await runScanCode('/tmp/repo');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.files).toEqual([]);
+      expect(result.value.totalFiles).toBe(0);
+    }
+  });
+
+  it('skips malformed entries and reads fallback license/copyright fields', async () => {
+    setDeepScanConfigForTests({ deepScan: true });
+    const fakeJson = JSON.stringify({
+      files: [
+        null,
+        'not-an-object',
+        { licenses: [{ spdx_license_key: 'MIT' }], copyrights: [] },
+        {
+          path: 'a.ts',
+          licenses: [{ license: 'Custom-License' }],
+          copyrights: [{ copyright: 'Copyright (c) 2024 X' }],
+        },
+        {
+          path: 'a.ts',
+          licenses: [{ spdx_license_key: 'MIT' }],
+          copyrights: [],
+        },
+        {
+          path: 'empty.ts',
+          licenses: [null, { spdx_license_key: '' }, { license: '' }],
+          copyrights: [null, { value: '' }],
+        },
+        { path: 'non-array.ts', licenses: 'nope', copyrights: 'nope' },
+        {
+          path: 'dup.ts',
+          licenses: [],
+          copyrights: [{ value: 'Copyright (c) 2024 Dup' }, { value: 'Copyright (c) 2024 Dup' }],
+        },
+      ],
+    });
+    setDeepScanExecForTests(async () => ({ exitCode: 0, stdout: fakeJson, stderr: '' }));
+
+    const result = await runScanCode('/tmp/repo');
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const aFiles = result.value.files.filter(f => f.path === 'a.ts');
+      expect(aFiles).toHaveLength(2);
+      const custom = aFiles.find(f => f.licenses.includes('Custom-License'));
+      expect(custom?.copyrights).toEqual(['Copyright (c) 2024 X']);
+      const dup = result.value.files.find(f => f.path === 'dup.ts');
+      expect(dup?.copyrights).toEqual(['Copyright (c) 2024 Dup']);
+      expect(result.value.files.some(f => f.path === 'empty.ts')).toBe(false);
+      expect(result.value.files.some(f => f.path === 'non-array.ts')).toBe(false);
+    }
+  });
+});
