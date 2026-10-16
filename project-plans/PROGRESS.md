@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-16
-**Current Phase:** BLOCKED - P-189 belongs to aradhy and appears ALREADY IMPLEMENTED in packages/cli (index.ts, index.test.ts, program.ts and commands/doctor.ts all exist and are committed by aradhy); the inbesat track resumes at P-238, which is gated on P-237
+**Current Phase:** P-238 - Orchestration Pipeline State Machine (next inbesat phase; see the Next Handoff note for its dependency status)
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free from P-000 through P-188** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | 176 (P-189 -> P-364) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | BLOCKED, with hard evidence this time. P-189 through P-237 are aradhy (CLI + Web). P-189 is NOT unimplemented: packages/cli already ships committed, tested files whose names P-189 lists as new - src/index.ts, src/index.test.ts, src/program.ts (P-189 says cli.ts), and src/commands/doctor.ts. Implementing P-189 would OVERWRITE another developer work, so it must NOT be attempted. The next inbesat block (PHASES_DETAILED.md:11738, P-238 Orchestration Pipeline) declares Depends On P-237 (Web - Perf Pass), so no inbesat phase is actionable until the CLI and Web epics land. |
+| **Next Handoff** | P-238 (Orchestration Pipeline State Machine, PHASES_DETAILED.md:11738, inbesat, Wave 3) is the next phase in OUR lane. P-189 through P-237 are aradhy and are NOT takeable: P-189 is already implemented in packages/cli (index.ts, index.test.ts, program.ts, commands/doctor.ts all committed), so implementing it would overwrite another developer work. P-238 DECLARES Depends On P-237 (Web - Perf Pass) - a WEB optimization phase that is NOT a code input for a core pipeline state machine, so that dependency reads as WAVE SEQUENCING rather than a real prerequisite; every component P-238 composes (config, fetch, select, deps, license, agent, sandbox, provenance, finalize) is complete and green through P-188. Decide explicitly at phase start: either implement P-238 and record the sequencing-dependency call in an ADR, or hold. |
 
 ---
 
