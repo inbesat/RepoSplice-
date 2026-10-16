@@ -2654,6 +2654,37 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - One test assertion was itself wrong and was fixed, not the code: a late group event from an already-passed stage re-offers that stage's generic label, which IS a model change and therefore an extra frame.
 - Gate: typecheck 0, lint 0, depcruise 0 (193 modules, 491 dependencies), build 0, and the core suite 166 passed / 1 skipped files, 2119 passed / 1 skipped tests, exit 0.
 
+## ADR-067: `ProposedPlan` Does Not Exist (So It Is Authored), the Dry Run Is Enforced by Swapping `finalize`, and the State Machine Takes a Primitive Rather Than the Config
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-244 (PHASES_DETAILED.md:12011-12050) adds dry-run mode: the pipeline runs to a verdict but C is never written and AI stays propose-only, producing one preview plan the CLI (P-192 `--json`) and the web (P-217 proposed diff) both render.
+
+**Decisions:**
+
+1. `ProposedPlan` IS A PHANTOM AND WAS AUTHORED, NOT IMPORTED. Step 2 says the agent should "generate a `ProposedPlan` (new/modify/delete ops + rationale)". A repo-wide grep finds `ProposedPlan` ONLY in that spec line (PHASES_DETAILED.md:12024); the nearest real type, P-154's `ComponentProposal`, describes one component and has no notion of a whole-run plan. So `pipeline/dryRun.ts` DEFINES `ProposedFileOp` and `DryRunPlan`. Importing a type that does not exist would have been the failure the anti-hallucination rule names.
+
+2. THE DRY RUN IS ENFORCED BY SWAPPING THE `finalize` HANDLER, NOT BY TEACHING `finalize` ABOUT DRY RUN. `runPipeline` replaces `handlers.finalize` with a handler that returns `{status:'skipped', meta:{reason:'dry-run'}}` when `cfg.flags.dryRun` is set. This keeps the ban in ONE place the machine already understands, leaves a caller's own `finalize` untouched for a real run, and makes the skip auditable in the stage record. A dry run that relied on every implementation remembering to check a flag would eventually write.
+
+3. `PipelineOptions` GAINS `cfg?: JobConfig`, BUT THE MACHINE TAKES A PRIMITIVE. The state machine receives `dryRun: boolean` (on `RunOptions`, surfaced on `PipelineCtx`), never the `JobConfig`: `jobs/jobConfig.ts` already imports `pipeline/states.js`, so importing the config back into `pipeline/stateMachine.ts` would close a `jobs → pipeline → jobs` cycle — which `analysis/circular.smoke.test.ts` fails. `runPipeline` (which may import `jobs`) derives the boolean and forwards it. The circular guard stays green.
+
+4. `finalized` IS REPORTED, NOT ASSUMED FALSE. `DryRunPlan.finalized` is computed from the `finalize` record's status, and the tests assert it is `false`; a future change that let `finalize` run through the dry-run branch could not pass silently.
+
+5. THE NO-GENERATION RULE IS A NAMED PREDICATE, NOT AN INFERENCE. `dryRunAllowsGeneration(cfg)` is exported so the agent stage has exactly one thing to consult and the test asserts the rule directly (`false` when dry run, `true` otherwise) rather than inferring it from a flag.
+
+6. STAGE METAS ARE UNTRUSTED HEADING INTO THE PLAN. `meta.proposedOps` is `Record<string, unknown>` by contract, so entries with a blank path or an unknown op are DROPPED, and only `create|modify|delete` survive. This feeds a UI that shows the user what a run would do, so a plausible-looking bad op is worse than a missing one.
+
+7. `job.dry-run-plan` GREW `TOPICS` TO 16 AND RE-BROKE P-241'S HARDCODED EXPECTATIONS A SECOND TIME. P-243's `job.config-resolved` had already forced `bus.test.ts` to 15; this topic also matches the `job.*` wildcard, so both the length AND the `topicsFor('job.*')` list move. Both are updated in the same commit — the P-241 test asserting the topic contract is doing its job, and it is cheap to keep honest.
+
+8. SANDBOX EPHEMERALITY IS NOT DUPLICATED HERE. Step 3 asks that the sandbox use ephemeral volumes (P-169/P-178). That is a property of the injected sandbox handler, which P-238 already treats as caller-supplied; the dry run surfaces that stage's `meta` as `sandboxPreview` rather than re-owning the runner. The guarantee this module makes on its own is the one it can keep: it performs no I/O.
+
+**Consequences:**
+
+- Six tests: the five spec-named cases (`skips finalize`, `no generation`, `builds plan`, `no side effects`, `plan json`) plus the step-4 `job.dry-run-plan` emit. They assert the NEGATIVE that defines a dry run — the caller's `finalize` writer is never invoked, the writer sink stays empty, `plan.finalized` is false — and that a REAL run still finalises, so the swap is conditional rather than global.
+- `--dry-run` reaches the CLI/API (P-192/P-217); that wiring is the CLI/web lane and is not part of this phase.
+- Gate: typecheck 0, lint 0, prettier clean, circular guard 3/3, full core suite 173 passed / 1 skipped files and 2279 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
