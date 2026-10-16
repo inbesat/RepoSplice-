@@ -2769,6 +2769,38 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Wiring to `/api/jobs/<id>/metrics` (P-193/P-216) and `stitch status --json` (P-194) is the CLI/web lane.
 - Gate: typecheck 0, lint 0, prettier clean, full core suite 176 passed / 1 skipped files and 2294 passed / 1 skipped tests, exit 0.
 
+## ADR-071: Tracing Auto-Parents Through Async-Local Storage, Decides Sampling at the Root, and Orders a Trace by Pre-Order Walk Rather Than Finish Time
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-248 (PHASES_DETAILED.md:12188) adds lightweight tracing: nested spans (job → stage → tool/sandbox/ai/fs) with start/end/duration/attrs, a waterfall for `--verbose`, per-job buffering, JSON export, and config-driven sampling.
+
+**Decisions:**
+
+1. NESTING COMES FROM `AsyncLocalStorage`, NOT A THREADED PARAMETER. The phase's whole premise is that an op several frames deep gets the right parent. Threading a `ctx` would make every intermediate function trace-aware; `AsyncLocalStorage.run` keeps the call sites plain, and the test asserts the parent survives an `await` — which is exactly what a threaded parameter would have to be re-passed to preserve.
+
+2. SAMPLING IS DECIDED AT THE ROOT AND INHERITED. A child of a sampled span is sampled; a child of an unsampled one is not. Per-span random sampling would produce traces with holes, which are worse than no trace at all, and the test asserts both directions. An unsampled span is still CREATED and returned, so call sites never grow an `if (sampled)` branch — it simply never reaches `onSpan`.
+
+3. A TRACE IS ORDERED BY PRE-ORDER WALK, NOT BY FINISH TIME. The first implementation appended spans in the order they FINISHED, and the tests caught it: a child closes before its parent, so the list read `deps, job`. `orderTrace` walks `parentId` from the root depth-first, so the array is already in the order a reader (and the waterfall renderer) expects. The walk is cycle-bounded, so a corrupt trace cannot hang it.
+
+4. `finish()` IS IDEMPOTENT. A stage that closes a span in both a success and an error path (a `finally`) must not emit two records for one span, so the second call returns the first result untouched. Attrs merge on finish and open-time attrs survive.
+
+5. THE COLLECTOR IS SEPARATE FROM THE TRACER. The tracer does not know what a job is; `TraceCollector.record(jobId, span)` supplies that, so one tracer can serve several jobs and "per job buffer" is a map lookup. The phase's `traceCollector(jobId)`/`getTrace(jobId)` reads as one object; splitting the two responsibilities keeps the tracer reusable and is the same shape ADR-070 used for metrics.
+
+6. `onSpan` IS AN INJECTED CALLBACK, NOT A BUS SUBSCRIPTION. The phase says spans are "linked to the event bus (P-241)". There is no `trace.span` topic in `TOPICS` (17), and adding one is a fourth edit to the P-241 contract for a consumer (the web trace view, P-224) that does not exist yet. Every other producer in this wave (P-238/239/240) also emits through injected callbacks — wiring them all onto the bus is one coherent piece of work, and doing it for tracing alone would make it inconsistent. Recorded, not hidden.
+
+7. `trace.ratio` IS A CONSTRUCTOR OPTION, NOT YET READ FROM `JobConfig`. P-243's `JobConfigSchema` has no `trace` section, and editing another phase's schema to add one is out of this phase's file mandate. The ratio arrives where the Tracer is built; that wiring is where `cfg.trace.ratio` will be read.
+
+8. NO NEW `StitchError` CODE. Tracing is infallible and side-effect-free: it allocates records and calls a callback. There is no failure mode for a caller to handle, so nothing in the phase returns a `Result` — which is the honest shape rather than wrapping infallible work in `ok()`.
+
+**Consequences:**
+
+- Five tests (all spec-named): nesting (parentage at three depths, a sibling staying a root, and parentage surviving an `await`), finish attrs (status/duration/merged attrs, idempotent double-finish, error status), per-job buffer (separate jobs, an unknown job, sampling dropping a root AND its child, release), waterfall render (depth-based indent, kind in the gutter, `(open)` for a running span, `!` for an error, seconds over 1000ms), and JSON export (flat list + `parentId`, round-trips through `JSON.stringify`, unknown job → `undefined`).
+- Two test assertions were themselves wrong and were fixed, not the code: one expected start-order insertion (fixed by `orderTrace` in the CODE, since the module header already promised start order), and one advanced the injected clock *before* opening a span and then expected a non-zero duration.
+- Wiring to `/api/jobs/<id>/trace` (P-216) and `--verbose`/`--trace` printing (P-206) is the CLI/web lane.
+- Gate: typecheck 0, lint 0, prettier clean, full core suite 177 passed / 1 skipped files and 2299 passed / 1 skipped tests, exit 0.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

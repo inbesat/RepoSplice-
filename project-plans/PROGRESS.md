@@ -4,7 +4,7 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-248 - Orchestration: Tracing
+**Current Phase:** P-249 - Orchestration: Concurrency
 
 > **Note on status:** This file tracks *code implementation* completion (each phase requires `bun run validate` green per AGENTS.md). The **plan document** (`PHASES_DETAILED.md`) is fully deep-elaborated (365/365 phases at 9/9 FULL). Implementation is **contiguous and gap-free for the core lane P-000 through P-238 (the P-189-P-237 CLI/Web lane is aradhy and is not implemented here)** - every phase in that range is implemented, tested, and covered by a green full gate. **Epic 7 (AI Agent Tools & Loop) is CLOSED.** **Epic 8 (Sandbox, P-168-P-180) is CLOSED.** **Epic 9 (Provenance, P-181-P-188) is CLOSED; P-189 opens the CLI.** Next phase: P-189.
 
@@ -21,7 +21,7 @@
 | **Blocked** | 0 (zod-to-json-schema v4 compat RESOLVED P-039 via ADR-017) |
 | **Pending (implementation)** | P-189-P-237 (aradhy lane) and P-239 -> P-364 (core) |
 | **Current Wave** | 1 — Parallel Core Logic (inbesat) |
-| **Next Handoff** | P-248 Tracing (inbesat, Wave 3, depends on P-247 DONE). P-247 shipped `jobs/metrics.ts` (`MetricsCollector` + `finalizeMetrics`/`getMetrics`/`listMetrics`, own-DDL table `pipeline_job_metrics`, ADR-070). P-248 needs: read its own phase file (§12188) — it is the TRACING counterpart and will likely want to attach to the same P-241 bus rather than re-instrument; note the collector pattern here (attach/detach + a synchronous pure `snapshot()`) is the reusable shape, and `pipeline.stage` already carries `{stage, from, to}`. Gate note: `JOB_STATUSES` (queue.test.ts transitions length) and `AuditAction`/`AUDIT_ACTIONS` (audit.test.ts length 18) both have PINNED counts — check them before growing either union. Also open from P-241: P-238/239/240 still emit through injected callbacks rather than the shared bus, and pipeline/jobs are not yet exported from the public barrel (ADR-066 section 9) — P-248 is a natural moment to wire the emit callbacks onto the bus. |
+| **Next Handoff** | P-249 Concurrency (inbesat, Wave 3, depends on P-248 DONE). P-248 shipped `tracing/spans.ts` + `tracing/tracer.ts` (`Tracer`, `TraceCollector`, `orderTrace`, `renderWaterfall`, `toTraceJson`, ADR-071). P-249 needs: read its own phase file (§12234). Two notes carried forward: (a) `TracerOptions.onSpan` is an INJECTED callback, matching the P-241-open-item pattern (P-238/239/240 also emit through callbacks) — a `trace.span` topic does NOT exist in `TOPICS` (17) yet, so wiring spans onto the bus is still open and would be the 4th P-241 count edit; (b) `trace.ratio` sampling is a Tracer constructor option, NOT yet read from P-243's `JobConfig` (its schema has no `trace` section) — the wiring that builds a Tracer is where that read belongs. Gate note: pinned counts to check before growing any union — `queue.test.ts` (`Object.keys(JOB_TRANSITIONS)` = 8) and `audit.test.ts` (`AUDIT_ACTIONS` = 18). Also open from P-241: pipeline/jobs/tracing are not yet exported from the public barrel (`core/src/index.ts`), per ADR-066 §9. |
 
 ---
 
@@ -378,7 +378,7 @@
 - [x] **P-245** Rollback whole job (inbesat) *(2026-10-17 — gate green: all 6 required cases + full core suite 2285 passed / 0 failed; grew `JOB_STATUSES` with `rolled_back` and updated P-239's terminality assertion, per ADR-068)*
 - [x] **P-246** Cancel (inbesat) *(2026-10-17 — gate green: all 4 required cases + full core suite 2289 passed / 0 failed; adds `cancelling` to `JOB_STATUSES` and `'cancel'` to `AuditAction`, per ADR-069)*
 - [x] **P-247** Metrics (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2294 passed / 0 failed; event-sourced, own-DDL `pipeline_job_metrics`, per ADR-070)*
-- [ ] **P-248** Tracing (inbesat)
+- [x] **P-248** Tracing (inbesat) *(2026-10-17 — gate green: all 5 required cases + full core suite 2299 passed / 0 failed; new `tracing/` module, per ADR-071)*
 - [ ] **P-249** Concurrency (inbesat)
 - [ ] **P-250** Idempotency (inbesat)
 - [ ] **P-251** Tests (both)
