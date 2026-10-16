@@ -1216,6 +1216,26 @@ export type {
   SbomOutput,
 } from './provenance/index.js';
 
+// P-184 — git notes (provenance that travels with the repository).
+export {
+  writeGitNotes,
+  readGitNotes,
+  fetchAllProvenanceNotes,
+  attachProvenanceNote,
+  buildProvenanceNote,
+  mapChecksum,
+  mergeNoteFragments,
+  DEFAULT_NOTES_NAMESPACE,
+  PROVENANCE_NOTE_SCHEMA_VERSION,
+  DEFAULT_NOTES_TIMEOUT_MS,
+} from './provenance/index.js';
+export type {
+  ProvenanceNote,
+  ProvenanceNoteWarning,
+  GitNotesOptions,
+  AttachOptions,
+} from './provenance/index.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

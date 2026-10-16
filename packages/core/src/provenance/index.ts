@@ -56,3 +56,23 @@ export type {
   SbomOptions,
   SbomOutput,
 } from './sbom.js';
+
+// P-184 — git notes (the durable transport that travels with the repo).
+export {
+  writeGitNotes,
+  readGitNotes,
+  fetchAllProvenanceNotes,
+  attachProvenanceNote,
+  buildProvenanceNote,
+  mapChecksum,
+  mergeNoteFragments,
+  DEFAULT_NOTES_NAMESPACE,
+  PROVENANCE_NOTE_SCHEMA_VERSION,
+  DEFAULT_NOTES_TIMEOUT_MS,
+} from './gitnotes.js';
+export type {
+  ProvenanceNote,
+  ProvenanceNoteWarning,
+  GitNotesOptions,
+  AttachOptions,
+} from './gitnotes.js';

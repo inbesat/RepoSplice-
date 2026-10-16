@@ -2379,4 +2379,32 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-057: `git notes add` Refuses to Overwrite (So Write Means Read-Merge-Force), a Note Failure Is a Property of the Wiring Rather Than the Primitive, and `map.ts` Was Deliberately Not Touched
+
+**Status:** Accepted
+**Date:** 2026-10-16
+
+**Context:** P-184 (`PHASES_DETAILED.md:9259-9298`) makes provenance travel with the repository: a `git notes` entry under `refs/notes/stitch-prov` attaches `{ schemaVersion, provenanceRef, mapChecksum, generatedAt, statistics }` to the merge commit without rewriting history. It mandates append/merge semantics, a `readGitNotes` that returns `undefined` for an absent note, `fetchAllProvenanceNotes` for audits (P-187), wiring into `map.ts` finalize, and the acceptance that a failed write WARNS rather than blocks.
+
+**Decisions:**
+
+1. **A write is read → merge → `add -f`, because `git notes add` REFUSES to overwrite.** This is the whole reason the phase asks for "append/merge JSON fragments": the naive implementation calls `add` a second time and git rejects it, losing the new fragment — or uses `-f` blind and destroys the previous note. A second write is therefore a first-class test, not an edge case.
+2. **The merge loses no KEY: an existing-only key survives, and on a conflicting scalar the NEW value wins.** Implemented as a recursive object merge, so nested fragments (e.g. `statistics`) merge rather than replace wholesale. The new-wins rule on scalars is deliberate — a re-run of the same stitch must be able to refresh `generatedAt` and `mapChecksum` — and it is asserted both ways: an existing-only key survives, a new key is added, and a nested object merges field by field.
+3. **`mapChecksum` hashes `ProvenanceMap.origins()`, which is already path-sorted (P-282).** Hashing a `Map` would hash INSERTION order, so two maps with identical content could produce different checksums — precisely the property a checksum exists to rule out.
+4. **The note REFERENCES the SBOM rather than inlining it.** `provenanceRef` defaults to P-183's `SBOM_FILENAMES.cyclonedx` (imported, not retyped) and only the checksum and statistics ride along. A note is rewritten on every merge; a note carrying the map would be rewritten with a copy of the map.
+5. **Two layers, because "non-blocking but surfaced" is a property of the WIRING, not of the primitive.** `writeGitNotes` returns a `Result` so a caller can act on a failure; `attachProvenanceNote` is the finalize-level call that degrades a failure to an `onWarning` event and reports `ok(false)`. Collapsing these into one swallowing function would make the failure unactionable; keeping only the primitive would let a lost note silently pass.
+6. **`readGitNotes` distinguishes "absent" from "corrupt".** A missing note is `ok(undefined)` — the acceptance says so, and it is the normal first-write state. A note that EXISTS but is not a JSON object is `err(GIT_ERROR)`: folding it into `undefined` would hide a corrupt record from exactly the audit (P-187) that reads these notes. The test writes a real non-JSON note to prove it.
+7. **No new `StitchError` code.** A failed git command is `GIT_ERROR` (existing); blank `repoPath`/`commitRef` is `CONFIG_ERROR`; corruption is `GIT_ERROR`. There is no new failure MODE here — a note that cannot be written is git failing at something git does.
+8. **`provenance/map.ts` was deliberately NOT modified, despite being in the phase's file list.** `buildProvenanceMap` is pure-ish and unit-tested WITHOUT a repository, so wiring a git write into it would make a pure function require a repo and break its existing tests. The phase's own step 3 says "wire into `map.ts` finalize / pipeline" — the *pipeline* is the right seam, and the exported `attachProvenanceNote` is the call it makes. Same reasoning as P-181 leaving `gitFacade.ts` alone: editing a file to satisfy a list, when the requirement belongs elsewhere, is churn.
+9. **`fetchAllProvenanceNotes` keys by the ANNOTATED commit.** `git notes list` prints `<note blob sha> <object sha>`; an audit wants the object, so the last field is the key. A namespace nobody wrote to yields an empty map — not an error — which the test asserts.
+10. **The git runner mirrors the house pattern** (`agent/gitFacade.ts:205`): `execFile` wrapped so a spawn rejection becomes data (`{ code, stdout, stderr }`), never a throw. The primitive talks to real git, and the suite drives real repositories rather than a stubbed runner, because a fake cannot prove the `add`-refuses-to-overwrite behaviour this module exists to handle.
+
+**Consequences:**
+
+- Five tests (all spec-named) run against **real temp git repositories** and cover the first write plus git-tooling readability, the second write merging without loss (and the recursive merge unit), reading JSON plus enumeration plus the corrupt-note error, absent-note-as-`undefined` across namespace and enumeration, and the failure path at BOTH layers (primitive `err` / helper warning).
+- Gate: typecheck 0, lint 0, **depcruise 0 (179 modules, 472 dependencies)**, build 0, and the **core** suite **157 passed | 1 skipped (158 files), 2074 passed | 1 skipped tests, exit 0**.
+- P-184 is the last piece of Epic 9's data layer before the UI (P-185): CREDITS is the human read, the SBOM the machine read, and the git note the copy that survives a clone.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
