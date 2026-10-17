@@ -18,7 +18,11 @@ describe('tailwind styles (P-049)', () => {
       from: cssPath,
     });
     const out = result.css;
-    expect(out).toContain('.bg-stitch-50');
+    // PIN SUPERSEDED (P-210; ADR-088 precedent): the shell consumes the
+    // P-209 semantic roles, so the stitch-SCALE pin becomes `.text-stitch-700`
+    // (the AppShell h1 brand accent) and the semantic `.bg-bg` (emitted from
+    // `@theme inline`'s --color-bg — the tokens-to-utilities proof).
+    expect(out).toContain('.bg-bg');
     expect(out).toContain('.text-stitch-700');
     expect(out).toContain('--color-stitch-900:');
     expect(out).toContain('.dark');

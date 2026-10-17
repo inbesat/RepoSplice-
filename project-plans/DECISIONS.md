@@ -3486,4 +3486,29 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+---
+
+## ADR-095: P-210 Seeds the Shell as Routes + A Stepper Whose Lock Is a UI Gate (flow.ts Is P-215's Slice Written Early; the P-047 Byte-Pin Is Superseded Structurally; the Stitch Scale Lives On as the Brand Accent; Dark Toggle Is the ClassList Mechanism P-226 Will Formalize)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-210 wires the app chrome (header + stepped sidebar + routed main) and mandates `router.tsx`, `shell/{AppShell,Stepper,Sidebar}.tsx`, five placeholder pages and the shell tests. Its dependencies name P-215 (flow store), P-216/224 (run status), P-225 (settings), P-226 (dark) — all later — so the shell must carry thin affordances without pre-building their phases. Two collisions met head-on: the P-047 App byte-pin ('renders root' — exact HTML equality) cannot survive a routed shell, and P-208's styles pins reference scale utilities the semantic shell no longer uses.
+
+**Decision:**
+
+1. THE STEP TABLE IS THE CONTRACT: `router.tsx` owns `STEPS` (id/path/label/Page for Sources→Select→Stitch→Review→Results) — the phase's own handoff note ("keep step id ↔ route mapping centralized in router.tsx") — and `AppShellRoutes` (layout route + `index → Navigate /sources` + five paths + catch-all Navigate). Route access stays OPEN: deep links render (the mandated `routes placeholders` asserts every placeholder mounts directly); the stepper's locked state is a UI affordance, not a guard — can-proceed gates belong to P-215's selectors. `RouteErrorBoundary` (P-228's boundary) lands NOW because the route table is where `errorElement` catches.
+2. THE LOCK IS SEQUENTIAL UNLOCK: a step is open when it is the first or its predecessor is in `visited` (the zustand `store/flow.ts` slice — **P-215's own file, seeded minimal now** with `visited`/`complete`/`reset` and its spec-exact shape, so P-215 grows rather than migrates; noted there). Visited steps render `<Link>` (completed = clickable), locked render an inert `span aria-disabled` — there is no navigation affordance to block, making "locked blocks nav" true by construction. `AppShell`'s location effect marks steps visited; active comes from `useLocation`.
+3. THE BYTE-PIN IS SUPERSEDED STRUCTURALLY (the ADR-088 precedent, on the record): App.test `renders root` keeps its NAME and asserts the intent — brand, tagline, stepper nav, aside, run badge, dark toggle, settings — instead of byte equality, because the phase's PURPOSE is replacing the scaffold shell. `renders shell placeholder` and `mounts providers` pass by their own contains-assertions (tagline kept verbatim in the header; `bg-stitch-50` → `bg-bg` there). styles.test's `.bg-stitch-50` expectation becomes `.bg-bg` — a STRONGER pin, since it proves the P-209 `@theme inline` tokens reach real emitted utilities.
+4. THE STITCH SCALE STAYS IN LIVE SERVICE as the brand accent: the AppShell h1 carries the scaffold's `text-stitch-700 dark:text-stitch-200`, so `--color-stitch-900:` and `.text-stitch-700` remain emitted/scannable without contrivance — scale (P-208) and roles (P-209) coexist exactly as ADR-094 planned.
+5. LATER-PHASE HOOKS ARE AFFORDANCES, NOT RE-IMPLEMENTATIONS: dark toggle flips the `.dark` class on `<html>` (the exact mechanism P-226's `@custom-variant` responds to; that phase replaces the inline handler); run status is a static `idle` badge (P-216/224 bind WS); settings is a placeholder anchor (P-225); Sidebar hosts the collapsible mini-status with 0·0 counts (P-215's selection store fills them). New deps: `react-router@8` (routing), `@testing-library/react@16` (the interactive shell tests need jsdom CRUD, already the vitest environment).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean; web `tsc --noEmit` 0, web suite **16 files / 43 tests** (`shell.test.tsx`: the four mandated names — `renders shell`, `stepper active states`, `locked blocks nav`, `routes placeholders` — with the flow store reset per test for module-state isolation).
+- Every later web phase slots INTO the shell: pages fill placeholders, P-215 swaps the sidebar counts' source, P-226 deletes three lines of toggle handler — no chrome rewrites expected.
+- Three pins updated on the record (App.test `renders root`, App.test `mounts providers`, styles.test `.bg-stitch-50`); no assertions deleted — each re-asserts its intent against the new reality.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
