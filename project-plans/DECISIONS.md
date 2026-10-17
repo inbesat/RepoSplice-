@@ -3302,4 +3302,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-088: P-203 Makes `errors.ts` the Single Error/Exit Entry (Data-Driven Map: Config 3, HIL 10, License-Deny 20, AI 40, Deps 50, Internal 70), Renders Code+Message+Hint+Next-Step in ONE Write, and Supersedes Two Pre-P-203 Exit Pins
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-203 (PHASES_DETAILED.md:10172) mandates `errors.ts` (an `ExitCode` enum, `printStitchError`, `ExitError`), the full exit map (0/1/2 + 3 config/4 path/10 HIL/20 license/30 sandbox/40 AI/50 deps/70 internal), `--trace`, `toHuman` next-steps, and five named tests. Reality: `cli.ts` already owns `EXIT_OK/EXIT_ERROR/EXIT_USAGE` + `exitCodeForResult` (which rendered core's `friendlyError` — a hint SENTENCE only) and `classifyCommanderError`; two tests PIN that output (`index.test.ts` "maps exit codes" expects a CONFIG_ERROR → 1 with one line; `merge.test.ts` "exit codes" expects INTERNAL → 1).
+
+**Decisions:**
+
+1. THE MAP IS SPARSE DATA, NOT A TOTAL FUNCTION. `EXIT_BY_CODE` lists only the classes the phase names; every unlisted `StitchErrorCode` falls to general 1, anything code-less/non-object falls to 70 (`exitFor(e: unknown)` — total, shape-safe, never throws). `LICENSE_VIOLATION` is the one SHAPE-aware row: `policy: 'deny'` → 20, `policy: 'warn'` → 1 — a warning is a note, not a denial. `ExitCode` is a const-object table (house style; TS `enum`s appear nowhere in the lane).
+
+2. THE SPEC'S CORE-CODE NAMES THAT DO NOT EXIST ARE MAPPED BY MEANING, NOT INVENTED: nothing to stitch (4) has no code (the P-192 phantom precedent) — the PATH class takes the two codes that exist (`SELECT_PATH_NOT_FOUND`, `FILE_NOT_FOUND`); "HIL abort" takes the three human-ended-the-run codes (`ABORTED`, `USER_CANCELLED`, `SANDBOX_ABORTED`); the AI class takes the provider-failure family (`AI_PROVIDER_ERROR`, `AUTH_ERROR`, `INVALID_PROVIDER`, `UNKNOWN_MODEL`, `NO_FAILOVER`). No core file was touched (inbesat-owned).
+
+3. `printStitchError` RETURNS ONE MULTILINE STRING (callers issue ONE write): `✘ <code>: <describe>` (theme 'err' — plain when color is off) + `↳ hint` (core's `friendlyError` — the WHY) + `next: …` from a static per-code table (`toHuman` — the WHAT-NEXT, e.g. license → `run stitch license --allow <id>`, kept SEPARATE from the hint so it stays translatable alone). `describeError` reads `message` first, then `details` (the carrier on `DEPENDENCY_CONFLICT` — found by test), then per-code phrases for the message-less members. `verbose`/`--trace` append the stack (`cause` chain for INTERNAL) or an explicit "(typed error — no stack attached)" so silence is never ambiguous; `--trace` adds the error's own JSON.
+
+4. THE SWITCHES RIDE MODULE STATE, THE `applyColorMode` PATTERN: cli.ts's `preAction` hook calls `setDiagnostics(trace, verbose)` so the zero-argument choke point (`exitCodeForResult`) renders by the flags without threading options through every command; `main()` RESETS both plus the color mode per run (tests/embedded runners). `main`'s catch gained the two missing arms: `ExitError` (the typed throw-boundary carrier the spec names) and an anything-else → `printStitchError(cause, {trace: true})` + 70 — the spec's "unknown → 70 with stack", which previously printed a bare message and returned 1.
+
+5. **TWO PINS SUPERSEDED, ON THE RECORD** (the P-239/P-246 update-a-pinned-test precedent — the phase REDEFINES the map): `index.test.ts` "maps exit codes" now expects CONFIG_ERROR → **3** (was 1) and asserts the decorated render (label + message + `next:`) instead of hint-only; `merge.test.ts` "exit codes" now expects INTERNAL → **70** (was 1). The pins' INTENT (friendly, never a raw dump; commander 1/2 conventions) is preserved and re-asserted. Three globals shape-pins gained `trace: false` (the new field the phase mandates).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **20 files / 128 tests** (errors.test.ts: the five mandated names — `maps exit codes`, `formats with hint`, `trace shows stack`, `usage exit 2` + `unknown exit 70` through the carriers — plus the toHuman fallback block).
+- Every command's failure now carries a typed exit code: a license-denied merge exits 20, invalid config 3 — scriptable without string-matching.
+- `friendlyError` remains core's WHY-sentence; it is consumed by `printStitchError` only (cli.ts's direct import is gone).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

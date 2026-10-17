@@ -13,7 +13,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolve, join } from 'node:path';
 import { err, ok } from 'neverthrow';
-import { EXIT_ERROR, EXIT_OK, exitCodeForResult } from '../cli.js';
+import { EXIT_OK, exitCodeForResult } from '../cli.js';
 import type { GlobalOptions } from '../globals.js';
 import {
   DEFAULT_OUT_DIR,
@@ -184,7 +184,9 @@ describe('P-192 stitch merge', () => {
       // Narrowed by code: `StitchError` is a union, and not every member has `message`.
       if (result.error.code === 'INTERNAL') expect(result.error.message).toContain('sandbox');
       const lines: string[] = [];
-      expect(exitCodeForResult(err(result.error), line => void lines.push(line))).toBe(EXIT_ERROR);
+      // P-203: INTERNAL exits 70 (the internal class), rendered with the hint.
+      expect(exitCodeForResult(err(result.error), line => void lines.push(line))).toBe(70);
+      expect(lines.join('')).toContain('✘ INTERNAL');
       expect(lines.join('')).not.toBe('');
     }
 

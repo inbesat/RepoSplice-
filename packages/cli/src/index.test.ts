@@ -115,6 +115,7 @@ describe('P-189 CLI shell', () => {
       offline: true,
       cwd: '/tmp/here',
       color: true,
+      trace: false,
     });
 
     // Defaults: everything off, colour on, and no optional path set at all. Asserted
@@ -125,6 +126,7 @@ describe('P-189 CLI shell', () => {
       yes: false,
       offline: false,
       color: true,
+      trace: false,
     });
 
     // `--no-color` arrives as `color: false` and flips exactly one thing.
@@ -136,6 +138,7 @@ describe('P-189 CLI shell', () => {
       yes: false,
       offline: false,
       color: true,
+      trace: false,
     });
   });
 
@@ -147,15 +150,19 @@ describe('P-189 CLI shell', () => {
     expect(exitCodeForResult(ok(undefined), write)).toBe(EXIT_OK);
     expect(lines).toEqual([]);
 
-    // A known error: 1, and the FRIENDLY line (P-163's hint) is what gets written.
+    // A known error renders through printStitchError (one write, multiline:
+    // code + message + hint + next step) and exits by its CLASS — P-203's
+    // config class is 3 (was the general 1 before the typed map landed).
     const code = exitCodeForResult(
       err({ code: 'CONFIG_ERROR', field: 'project', message: 'raw detail' }),
       write
     );
-    expect(code).toBe(EXIT_ERROR);
+    expect(code).toBe(3); // ExitCode.CONFIG
     expect(lines).toHaveLength(1);
-    expect(lines[0]).not.toBe('');
-    expect(lines[0]).not.toBe('raw detail'); // the hint, not the raw message
+    expect(lines[0]).not.toBe('raw detail'); // labeled and decorated, never a bare dump
+    expect(lines[0]).toContain('✘ CONFIG_ERROR');
+    expect(lines[0]).toContain('raw detail');
+    expect(lines[0]).toContain('next:');
 
     // And the commander classifier covers the three conventions directly.
     expect(classifyCommanderError(new CommanderError(1, 'commander.helpDisplayed', '')).code).toBe(

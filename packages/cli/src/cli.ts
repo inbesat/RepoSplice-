@@ -12,16 +12,17 @@
 //      option/argument faults map to 2 while `commander.unknownCommand` maps to 1.
 //      That satisfies both bullets literally instead of picking one and breaking the
 //      other.
-//   3. ERRORS ARE RENDERED, NOT DUMPED. A command's `StitchError` goes through core's
-//      `friendlyError` (P-163) so the user sees the rule's hint, and the raw code
-//      never reaches stdout.
+//   3. ERRORS ARE RENDERED, NOT DUMPED. A command's `StitchError` goes through
+//      `printStitchError` (P-203: code + message + the P-163 hint + a next
+//      step, stack under `--trace`/`-V`), and its EXIT CODE comes from
+//      `exitFor` — one typed map, one renderer, for every command.
 //
 // No-throw: `main` returns a NUMBER (the exit code) and never throws outward; a
 // `Result` maps to a code via {@link exitCodeForResult}. The only `throw` is the one
 // commander raises internally, which `main` catches.
 
 import { CommanderError, type Command } from 'commander';
-import { cloneRepo, friendlyError, listFiles, toPosix } from '@repo-stitcher/core';
+import { cloneRepo, listFiles, toPosix } from '@repo-stitcher/core';
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import { join, relative, resolve } from 'node:path';
@@ -39,7 +40,15 @@ import {
 import { deps, type DepsPromptContext } from './commands/deps.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
-import { applyColorMode } from './theme.js';
+import { applyColorMode, resetColorMode } from './theme.js';
+import {
+  exitFor,
+  ExitCode,
+  ExitError,
+  printStitchError,
+  resetDiagnostics,
+  setDiagnostics,
+} from './errors.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -174,8 +183,9 @@ export function buildCLI(program: Command): Command {
     // (`program.ts`). Re-declaring `version` here would register the flag twice and
     // commander throws on a duplicate — so this function owns only the GLOBAL
     // OPTIONS and the exit convention, which is the part P-189 is about.
-    .option('-V, --verbose', 'increase log verbosity')
+    .option('-V, --verbose', 'increase log verbosity (error render includes stacks)')
     .option('-c, --config <path>', 'override the config file')
+    .option('--trace', 'include full stack and error JSON in failure output (P-203)')
     .option('-y, --yes', 'assume yes for prompts')
     .option('--offline', 'do not reach the network')
     .option('-C, --cwd <dir>', 'working directory override')
@@ -392,6 +402,7 @@ export function buildCLI(program: Command): Command {
   // env, not options, and only deps.ts checked opts.color locally.
   program.hook('preAction', () => {
     const globals = parseGlobal(program.opts());
+    setDiagnostics(globals.trace === true, globals.verbose === true);
     if (globals.colorMode !== undefined) applyColorMode(globals.colorMode);
     else if (globals.color === false) applyColorMode('off');
   });
@@ -452,17 +463,20 @@ export function globalOptionsOf(program: Command): GlobalOptions {
 }
 
 /**
- * Map a command's `Result` to an exit code, writing the friendly line on failure.
- *
- * `write` is injected so the mapping is assertable without capturing stdout.
+ * Map a command's `Result` to an exit code, writing the rendered error on
+ * failure. P-203: the code comes from `exitFor` (the full typed map — config
+ * 3, path 4, HIL 10, license 20, sandbox 30, AI 40, deps 50, internal 70) and
+ * the render is `printStitchError` (code + message + hint + next step, stack
+ * under `--trace`/`-V`). `write` is injected so the mapping is assertable
+ * without capturing stdout.
  */
 export function exitCodeForResult(
   result: Result<void, StitchError>,
   write: (line: string) => void
 ): number {
-  if (result.isOk()) return EXIT_OK;
-  write(friendlyError(result.error));
-  return EXIT_ERROR;
+  if (result.isOk()) return ExitCode.OK;
+  write(printStitchError(result.error));
+  return exitFor(result.error);
 }
 
 /** Is this the commander fault we expect from `exitOverride`? */
@@ -483,6 +497,11 @@ export async function main(
   // The program builder is injected so this stays testable and so `program.ts`
   // (which owns the command list) is not imported here into a cycle.
   const program = buildCLI(build === undefined ? await defaultProgram() : build());
+  // P-202/P-203: fresh process state per run — color mode and diagnostic
+  // switches are sticky module state, and tests (or an embedded runner) may
+  // call main() multiple times.
+  resetColorMode();
+  resetDiagnostics();
   try {
     // Default `from` is 'node': `process.argv` carries the [node, script, ...args]
     // prefix, which is exactly what this receives.
@@ -493,14 +512,16 @@ export async function main(
       const plan = classifyCommanderError(cause);
       // commander has already written its own message; only surface ours when it
       // produced none, so an error is never printed twice.
-      if (plan.message !== undefined && plan.code === EXIT_ERROR) {
+      if (plan.message !== undefined && plan.code === ExitCode.ERROR) {
         process.stderr.write(`${plan.message}\n`);
       }
       return plan.code;
     }
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    process.stderr.write(`${detail}\n`);
-    return EXIT_ERROR;
+    if (cause instanceof ExitError) return cause.exitCode;
+    // P-203: an escape from the no-throw world is internal by definition —
+    // rendered through the one entrypoint, WITH its stack (spec: 70 + stack).
+    process.stderr.write(`${printStitchError(cause, { trace: true })}\n`);
+    return ExitCode.INTERNAL;
   }
 }
 

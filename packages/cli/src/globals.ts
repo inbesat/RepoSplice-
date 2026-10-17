@@ -19,6 +19,8 @@ export interface GlobalOptions {
   color: boolean;
   /** `--color <mode>` (P-202): auto | dark | light | off (`never` maps to off). */
   colorMode?: 'auto' | 'dark' | 'light' | 'off';
+  /** `--trace` (P-203): failure output carries stacks + the error's own JSON. Absent = off. */
+  trace?: boolean;
 }
 
 /** The raw shape commander hands back for the same flags. */
@@ -30,6 +32,7 @@ export interface RawGlobalFlags {
   cwd?: string;
   /** BOTH `--color <mode>` (a string) and `--no-color` (false) land here. */
   color?: boolean | string;
+  trace?: boolean;
 }
 
 /** A blank string is "not supplied" — `-c ''` must not shadow the default config. */
@@ -65,6 +68,7 @@ export function parseGlobal(raw: RawGlobalFlags): GlobalOptions {
     offline: raw.offline === true,
     ...(cwd !== undefined ? { cwd } : {}),
     color: rawColor !== false && rawColor !== 'off' && rawColor !== 'never',
+    trace: raw.trace === true,
     ...(colorMode !== undefined ? { colorMode } : {}),
   };
 }
