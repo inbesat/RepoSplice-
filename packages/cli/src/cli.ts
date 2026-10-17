@@ -25,11 +25,17 @@ import { cloneRepo, friendlyError, listFiles, toPosix } from '@repo-stitcher/cor
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import { join, relative, resolve } from 'node:path';
+import { createInterface } from 'node:readline/promises';
 import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
 import { add, looksRemote } from './commands/add.js';
 import { serve } from './commands/serve.js';
 import { status } from './commands/status.js';
+import {
+  license,
+  type LicensePromptContext,
+  type LicensePromptResult,
+} from './commands/license.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
 
 /** Clean run. */
@@ -54,6 +60,54 @@ const USAGE_CODES: readonly string[] = [
   'commander.invalidArgument',
   'commander.excessArguments',
 ];
+
+/**
+ * Shared selection resolver: a local dir is used as-is; `owner/repo` is
+ * shallow-cloned into the cache (P-069) so the selection is pinned to a real
+ * commit (P-181). Used by `add` and `license`.
+ */
+export async function defaultResolveSource(
+  source: string,
+  opts: { ref?: string; offline: boolean }
+): Promise<Result<string, StitchError>> {
+  if (!looksRemote(source)) return ok(resolve(source));
+  const targetDir = join(defaultStoreDir(), 'cache', source.replace(/\//g, '__'));
+  const cloned = await cloneRepo({
+    url: `https://github.com/${source}.git`,
+    targetDir,
+    shallow: true,
+    depth: 1,
+    ...(opts.ref !== undefined ? { branch: opts.ref } : {}),
+  });
+  return cloned.isOk() ? ok(targetDir) : err(cloned.error);
+}
+
+/**
+ * P-198 stand-in for the license prompt: one plain readline question per
+ * pending unknown. A closed/EOF stdin degrades to 'skip' — the entry stays
+ * pending rather than the process dying mid-question.
+ */
+async function defaultLicensePrompt(ctx: LicensePromptContext): Promise<LicensePromptResult> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question(
+      `license: ${ctx.package}@${ctx.version} declares "${ctx.rawLicense}" — [a]llow, [d]eny, [s]kip? `
+    );
+    const normalized = answer.trim().toLowerCase();
+    if (normalized.startsWith('a')) return 'allow';
+    if (normalized.startsWith('d')) return 'deny';
+    return 'skip';
+  } catch {
+    return 'skip';
+  } finally {
+    rl.close();
+  }
+}
+
+/** Repeatable-option collector: `--allow A --allow B` → ['A','B']. */
+function collectFlag(value: string, previous: string[] | undefined): string[] {
+  return [...(previous ?? []), value];
+}
 
 /** How a commander fault should end the process. */
 export interface ExitPlan {
@@ -81,7 +135,7 @@ export function classifyCommanderError(error: CommanderError): ExitPlan {
 
 /**
  * Attach the global options, the exit convention, and the `init`, `add`,
- * `serve`, and `status` commands.
+ * `serve`, `status`, and `license` commands.
  *
  * `program.ts` remains the registry for the commands it owns (`doctor`).
  * The workspace commands are registered HERE — per phase mandate for `init`
@@ -148,20 +202,7 @@ export function buildCLI(program: Command): Command {
         },
         { source, paths },
         {
-          resolveSource: async (src, o) => {
-            // A local dir is used where it is; a remote is cloned SHALLOW into the
-            // cache (P-069) so the selection is pinned to a real commit (P-181).
-            if (!looksRemote(src)) return ok(resolve(src));
-            const targetDir = join(defaultStoreDir(), 'cache', src.replace(/\//g, '__'));
-            const cloned = await cloneRepo({
-              url: `https://github.com/${src}.git`,
-              targetDir,
-              shallow: true,
-              depth: 1,
-              ...(o.ref !== undefined ? { branch: o.ref } : {}),
-            });
-            return cloned.isOk() ? ok(targetDir) : err(cloned.error);
-          },
+          resolveSource: defaultResolveSource,
           // Core's canonical glob (P-034). `listFiles` yields ABSOLUTE posix paths, so
           // they are re-based on the source dir before `add` sees them.
           expand: async (dir, patterns) => {
@@ -226,7 +267,52 @@ export function buildCLI(program: Command): Command {
       });
     });
 
+  program
+    .command('license')
+    .description('Show the license posture of the current selection (P-118–P-128)')
+    .option('--json', 'emit the full license report data as JSON')
+    .option(
+      '--allow <licenseId>',
+      'record an allowed license id (exact SPDX, validated via P-119; repeatable)',
+      collectFlag
+    )
+    .option(
+      '--deny <licenseId>',
+      'record a denied license id (exact SPDX, validated via P-119; repeatable)',
+      collectFlag
+    )
+    .action(async (options: LicenseCommandOptions) => {
+      const globals = globalOptionsOf(program);
+      const store = openStore();
+      // Interactive only when a TTY is watching and --yes did not suppress it;
+      // the prompt surface itself is the P-198 stand-in (readline).
+      const interactive = process.stdout.isTTY === true && globals.yes !== true;
+      const result = await license(
+        {
+          ...globals,
+          ...(options.json === true ? { json: true } : {}),
+          ...(options.allow !== undefined ? { allow: options.allow } : {}),
+          ...(options.deny !== undefined ? { deny: options.deny } : {}),
+        },
+        {
+          ...(store.isOk() ? { store: store.value } : {}),
+          resolveSource: defaultResolveSource,
+          ...(interactive ? { prompt: defaultLicensePrompt } : {}),
+        }
+      );
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
   return program;
+}
+
+/** The options commander hands `stitch license`. */
+interface LicenseCommandOptions {
+  json?: boolean;
+  allow?: string[];
+  deny?: string[];
 }
 
 /** The options commander hands `stitch status`. */

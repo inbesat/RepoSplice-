@@ -3068,4 +3068,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-081: P-196 Mirrors the P-128 Row Projection Locally Over the Unextended Barrel, Enters P-127 Through the License Facade's `policy` Verb, Persists Decisions in the StitchStore, and Accepts a Matrix That Keeps an Allowed-but-Unknown License Denying
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-196 (PHASES_DETAILED.md:9842) mandates `commands/license.ts` + `license.test.ts`: run the license pipeline (P-118–P-128) over the current selection, render the `LicenseReportData` (per-package table, verdict, GPL warnings, dual/unknown lists), prompt allow/deny/skill for pending unknowns, honor `--allow`/`--deny <license-id>` flags, never let an override pass a hard matrix deny, and persist decisions so the deferred merge wiring (P-192/P-205) can consume them. The core barrel exports the license primitives but NOT `buildLicenseReportData`/`LicenseReportData`/`LicenseReportRow`/`evaluatePolicy`, and both `aggregateLicenseReport` variants hard-code an empty overrides map.
+
+**Decisions:**
+
+1. THE ROW PROJECTION IS MIRRORED LOCALLY (the ADR-079 `messageOf` precedent, marked `shortcut:`). `buildLicenseReportData`/`LicenseReportData`/`LicenseReportRow`/`evaluatePolicy` are unexported from a barrel that carries foreign uncommitted edits and cannot be extended. The CLI therefore re-derives rows from the policy verdict + captures (`dual`→`gpl`→`unknown`→`allow`, core's exact branch order and reason strings), typed against the EXPORTED `LicenseReport`/`UnknownLicense`/`DualDecision`/`GplWarning`/`LicenseCategory`. Policy semantics are never re-implemented — only the display projection is.
+
+2. THE OVERRIDE-AWARE P-127 ENTRY IS `createLicenseFacade(...).policy(fields, policy, overrides)`. `complianceGate` re-scans its own single `stage` and composes its own captures per stage (wrong for a multi-source union), and the aggregators hard-code `new Map()` overrides. The facade's `policy` verb is pure evaluation over CALLER-built fields — a stage value is irrelevant to it — so the CLI composes the union fields itself: matrix over ALL normalized ids (unknown ones included — verbatim the composition core's own `policy.test.ts` uses), `checkGpl(union, true)` conservative, OR-expressions through `chooseDualLicense`. Union-level (not per-source) evaluation is deliberate: the matrix is what the merged child would face, pairing licenses ACROSS sources.
+
+3. PERSISTENCE LIVES IN THE STITCHSTORE: `licenseDecisions` = `[{package, version, decision}]` (validated entry-by-entry on read, merged replace-by `pkg@version` on write) and `licensePolicy = {allow?, warn?, deny?}` string lists (the config schema's shape — but kept in the store, because no TOML writer exists per ADR-076 and the store is already the CLI's durable surface). `--allow`/`--deny` ids are canonicalized via `normalizeLicense` (P-119) and anything resolving to `UNKNOWN` rejects with CONFIG_ERROR BEFORE any store write. The deferred merge wiring reads these keys and rebuilds the overrides map + id lists (handoff noted).
+
+4. THE FLAGS DO NOT ALTER THE RENDERED VERDICT (documented limitation, not a bug). The licensePolicy id lists are inert to this report: the compatibility matrix works on license CATEGORIES (P-120), and mapping SPDX-id lists onto categories/overrides is the deferred P-163 policy wiring. The test pins the honest behavior: `--allow AGPL-3.0-only` + a prompt-allow for the unknown are both recorded, the unknown ROW resolves to allow, and the verdict STAYS deny.
+
+5. DEPS INPUT = PER-SELECTION `scanDeclared` WITH A `node_modules` EXISTENCE GATE. A resolved source without `node_modules/` is skipped with a note (nothing installed = no licenses to report; scanning anyway would degrade into a whole-tree package.json walk with confusing output). `--offline` refuses remote `owner/repo` selections (the add command's rule); the default resolver is the extracted `defaultResolveSource` (shared with add — one clone prefix, one cache layout).
+
+6. THE PROMPT IS AN INJECTED PORT; THE SHELL WIRES A READLINE STAND-IN. P-198 (Ink) does not exist yet, so `deps.prompt` decides interactivity (tests inject fakes; the shell injects a readline question only on a TTY and without `--yes`, and a rejecting prompt degrades to 'skip' — the entry stays pending rather than the process dying). The STORE READ side squares with the overrides: recorded decisions cover-prompt (no re-asking), `'skip'` persists nothing.
+
+7. VERDICT SEMANTICS AFTER DECISIONS ARE CORE'S, NOT INVENTED. Verified and pinned by the suite: strong-copyleft vs a permissive target is a matrix REVIEW (not deny); network-copyleft (AGPL) vs a permissive target and unknown-under-`denyUnknown:true` are HARD DENIES that no override passes (P-127's "matrix deny → verdict deny regardless of overrides"); a human allow resolves ONLY the row (`unknown-resolved`) and empties the pending queue while the verdict follows the matrix. `stampUnknownDecisions` projects decisions onto DISPLAY copies only — the engine consumes the overrides independently.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **14 files / 76 tests passed** — the five mandated cases plus one extra (invalid SPDX id rejects before anything is touched). Root suite: 2424 passed / 1 failed — solely the documented pre-existing core red (`jobs/idempotency.test.ts` "mixed stages", ADR-079).
+- The `stitch license` report is the merge gate's input format: P-192/P-205 wiring should rebuild `PolicyOverrides` from the store's `licenseDecisions` and merge the `licensePolicy` lists into the policy it passes — `evaluateLicense`/`buildLicenseReportData` in `commands/license.ts` stay the import surface.
+- Known core shape to revisit in a core-lane session: an unknown-license dep is matrix-denied even after a human allowance; flipping that needs a coordinated core change (filter the matrix or consult overrides in the matrix fold), not a CLI workaround — the CLI kept core's verified semantics.
+- Normalization note pinned by the suite: `normalizeExpression('SEE LICENSE IN README')` fuzzy-corrects to `Custom: README` while staying flagged unknown — rows show that resolved form, the raw string is preserved in `unknown.rawLicense`.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
