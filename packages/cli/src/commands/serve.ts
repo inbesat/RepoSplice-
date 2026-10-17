@@ -26,6 +26,7 @@ import { err, ok, type Result } from 'neverthrow';
 import { openSqlite, STITCH_DB_FILENAME, type StitchError } from '@repo-stitcher/core';
 import type { GlobalOptions } from '../globals.js';
 import { DEFAULT_SERVE_HOST, DEFAULT_SERVE_PORT, createApp } from '../server/app.js';
+import { describePerf, parsePerfFlags, type PerfConfig, type PerfFlagsInput } from '../flags.js';
 
 /** What the command accepts, on top of the globals. */
 export interface ServeOptions extends GlobalOptions {
@@ -35,6 +36,20 @@ export interface ServeOptions extends GlobalOptions {
   port?: number | string;
   /** `--no-web` (commander sets this to `false`): skip the web UI; keep /health, /api, /ws. */
   web?: boolean;
+  // P-204 perf flags — parsed and reported, since the app itself (P-043/P-193)
+  // has no knobs to thread into yet.
+  /** `--jobs <n>`: parallel sandbox/build jobs. */
+  jobs?: number | string;
+  /** `--memory <mb>`: sandbox/agent memory cap. */
+  memory?: number | string;
+  /** `--timeout <s>`: whole-operation cap, 0 = unlimited. */
+  timeout?: number | string;
+  /** `--max-files <n>`: selection file-count cap. */
+  maxFiles?: number | string;
+  /** `--max-size <mb>`: selection byte cap. */
+  maxSize?: number | string;
+  /** `--concurrency <n>`: AI/dependency async-concurrency. */
+  concurrency?: number | string;
 }
 
 /** What the command reports once the server is listening. */
@@ -158,6 +173,23 @@ export async function serve(
   const free = await probePort(host, port);
   if (free.isErr()) return err(free.error);
 
+  // P-204: validate any perf flags BEFORE anything is opened, and report the
+  // effective values with the startup lines. Flags absent → nothing reported.
+  const raw: PerfFlagsInput = {
+    jobs: opts.jobs,
+    memory: opts.memory,
+    timeout: opts.timeout,
+    maxFiles: opts.maxFiles,
+    maxSize: opts.maxSize,
+    concurrency: opts.concurrency,
+  };
+  let perf: PerfConfig | undefined;
+  if (Object.values(raw).some(value => value !== undefined)) {
+    const parsed = parsePerfFlags(raw);
+    if (parsed.isErr()) return err(parsed.error);
+    perf = parsed.value;
+  }
+
   const cwd = opts.cwd === undefined ? process.cwd() : resolve(opts.cwd);
   const audit = await openAuditDb(join(cwd, STITCH_DB_FILENAME));
   if (audit.isErr()) return err(audit.error);
@@ -189,5 +221,7 @@ export async function serve(
   const url = `http://${host}:${port}`;
   write(`stitch serve on ${url}`);
   write('  /health  /api/*  /ws    (Ctrl-C to stop)');
+  // P-204: the effective perf values, so the user sees what was applied.
+  if (perf !== undefined) write(`  ${describePerf(perf)}`);
   return ok({ url });
 }

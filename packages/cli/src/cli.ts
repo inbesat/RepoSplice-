@@ -21,7 +21,7 @@
 // `Result` maps to a code via {@link exitCodeForResult}. The only `throw` is the one
 // commander raises internally, which `main` catches.
 
-import { CommanderError, type Command } from 'commander';
+import { CommanderError, InvalidArgumentError, type Command } from 'commander';
 import { cloneRepo, listFiles, toPosix } from '@repo-stitcher/core';
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
@@ -264,6 +264,13 @@ export function buildCLI(program: Command): Command {
     .option('--host <host>', 'bind address (default 127.0.0.1)')
     .option('--port <port>', 'HTTP port (default 3434)')
     .option('--no-web', 'skip serving the built web UI; keep /health, /api, /ws')
+    // P-204 perf flags (parse/validate shared with merge in flags.ts).
+    .option('--jobs <n>', 'parallel sandbox/build jobs (default: cpu count)', perfArg)
+    .option('--memory <mb>', 'sandbox/agent memory cap in MB (default 2048)', perfArg)
+    .option('--timeout <s>', 'whole-operation cap in seconds, 0 = unlimited (default 0)', perfArg)
+    .option('--max-files <n>', 'selection file-count cap (default 50000)', perfArg)
+    .option('--max-size <mb>', 'selection size cap in MB (default 512)', perfArg)
+    .option('--concurrency <n>', 'AI/dependency async-call concurrency (default 8)', perfArg)
     .action(async (options: ServeCommandOptions) => {
       const result = await serve(
         {
@@ -271,6 +278,12 @@ export function buildCLI(program: Command): Command {
           ...(options.host !== undefined ? { host: options.host } : {}),
           ...(options.port !== undefined ? { port: options.port } : {}),
           ...(options.web === false ? { web: false } : {}),
+          ...(options.jobs !== undefined ? { jobs: options.jobs } : {}),
+          ...(options.memory !== undefined ? { memory: options.memory } : {}),
+          ...(options.timeout !== undefined ? { timeout: options.timeout } : {}),
+          ...(options.maxFiles !== undefined ? { maxFiles: options.maxFiles } : {}),
+          ...(options.maxSize !== undefined ? { maxSize: options.maxSize } : {}),
+          ...(options.concurrency !== undefined ? { concurrency: options.concurrency } : {}),
         },
         {}
       );
@@ -442,6 +455,29 @@ interface ServeCommandOptions {
   port?: string;
   /** Commander's `--no-web` sets this to `false`. */
   web?: boolean;
+  // P-204 perf flags — commander hands strings; `parsePerfFlags` owns the
+  // range validation (out-of-range = config error, exit 3).
+  jobs?: string;
+  memory?: string;
+  timeout?: string;
+  maxFiles?: string;
+  maxSize?: string;
+  concurrency?: string;
+}
+
+/**
+ * P-204: the CLI-face guard for the perf flags. A MALFORMED value (not a plain
+ * non-negative integer) is USAGE — throwing `InvalidArgumentError` routes
+ * through commander's `invalidArgument` fault, which P-203 maps to exit 2.
+ * Well-formed integers out of RANGE are the command's `CONFIG_ERROR` (exit 3),
+ * decided by `parsePerfFlags` inside the command.
+ */
+function perfArg(value: string): string {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) {
+    throw new InvalidArgumentError(`expected a non-negative integer, got "${value}"`);
+  }
+  return trimmed;
 }
 
 /**

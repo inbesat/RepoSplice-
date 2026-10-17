@@ -3329,4 +3329,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-089: P-204 Centralizes the Perf Flags in `flags.ts` (One Parser for merge/serve; Guards Split by CLASS — Malformed = Usage 2 via `parseArg`, Out-of-Range = Config 3; Caps Practiced Pre-Run as a Best-Effort Guardrail; Defaults Are Code-Level Because No `[perf]` Section Exists)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-204 (`stitch merge`/`stitch serve` accept `--jobs`, `--memory`, `--timeout`, `--max-files`, `--max-size`, `--concurrency`) names `err('BAD_OPTION')` for bad flags (usage, exit 2), `EXCEEDS_MAX_FILES`/`EXCEEDS_MAX_SIZE` for the caps, and "defaults from `[perf]` config". None of those exist: `BAD_OPTION` and the `EXCEEDS_*` codes are not in `StitchError` (grepped; ADR-072 measured the coordinated cost of adding codes and core is inbesat-owned), and core's `ConfigSchema` has no `[perf]` section (same grep that settled the P-193 port question).
+
+**Decision:**
+
+1. ONE shared parser, `packages/cli/src/flags.ts`: `parsePerfFlags(raw, overrides)` → `Result<PerfConfig, StitchError>`, plus `checkCaps`, `describePerf` and `DEFAULT_PERF`. `PerfFlagsInput`'s keys are the FLAG spellings (`memory`, `timeout`, `maxSize`); `PerfConfig`'s are the pipeline's names (`memoryMb`, `timeoutSec`, `maxSizeMb`) — the mapping lives in one `FLAGS` table. Empty-string raw values fall to the default (which also kills the `Number('') === 0` trap that would let `--timeout ''` pass as a valid 0). Validation: integers only, floors jobs/memory/max-files/max-size/concurrency ≥ 1, timeout ≥ 0 with **0 = unlimited**.
+
+2. THE GUARD SPLITS BY CLASS, and the spec's exit 2 is honored where it belongs: a MALFORMED value (not a non-negative integer) throws `InvalidArgumentError` from the commander `parseArg` helper (`perfArg` in cli.ts), routing through commander's `invalidArgument` fault which P-203's `USAGE_CODES` maps to exit **2**. A well-formed integer that violates a RANGE is `CONFIG_ERROR{field: 'perf.<flag>'}` (the phantom-code precedent) → exit **3** via P-203's typed map — coherent with "an out-of-range value is a configuration mistake", and `BAD_OPTION` is recorded as a phantom.
+
+3. THE CAPS ARE A PRE-RUN GUARDRAIL, NOT THE AUTHORITY: when any perf flag is given, merge counts the RECORDED expanded paths (P-191) and `stat`s them (injected `statFile` dep, default `node:fs/promises.stat` with missing files counting 0 bytes — a remote source cannot be sized pre-run) against `--max-files`/`--max-size`, refusing with `CONFIG_ERROR` on `perf.max-files`/`perf.max-size` (the `EXCEEDS_*` phantoms), BEFORE the pipeline is invoked. Core's selection stage (P-148) remains the authoritative cap over what actually materializes; the CLI guardrail is the cheap early refusal.
+
+4. DEFAULTS ARE CODE-LEVEL: `DEFAULT_PERF` = jobs `max(1, cpus().length)`, memory 2048 MB, timeout 0 (unlimited), max-files 50 000, max-size 512 MB, concurrency 8. The spec's "`[perf]` config defaults" has nothing to read; the `overrides` parameter of `parsePerfFlags` is the seam for a future section. With NO perf flag given, merge threads nothing (`perf` absent, the P-192 "pipeline decides" contract preserved) and serve reports nothing.
+
+5. SERVE PARSES AND REPORTS ONLY: flags validated before anything opens (probe/db), and the effective values ride one startup line. The P-043/P-193 app has no perf knobs to thread into — inventing one would be a config key out of thin air. `merge` stays unregistered in cli.ts (the P-192 wiring deferral stands); its flags are pinned through the command module's own tests.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **21 files / 134 tests** (`flags.test.ts`: the five mandated names verbatim; `merge.test.ts` gains `threads perf flags and enforces caps` — perf reaching `runPipeline` options, the effective-values line, and a cap exceeded → CONFIG_ERROR with the pipeline never invoked).
+- The spec's badge "bad flags → exit 2" is satisfied for malformed input at the CLI face; range violations exit 3 by design (recorded deviation, the phantom-code precedent carried forward).
+- A future `[perf]` config section (or P-243's `JobConfig.perf`) plugs in by passing `overrides` — no parser changes.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

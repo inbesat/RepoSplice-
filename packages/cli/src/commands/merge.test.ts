@@ -151,6 +151,43 @@ describe('P-192 stitch merge', () => {
     expect('jobs' in (online.calls[0] ?? {})).toBe(false);
   });
 
+  // P-204: perf flags parse, thread into the pipeline options, and the caps
+  // are enforced pre-run (exceeding one is refused BEFORE the pipeline runs).
+  it('threads perf flags and enforces caps', async () => {
+    const d = deps();
+    const result = await merge(
+      { ...BASE, cwd: '/work', memory: '1024', timeout: '0', maxFiles: '10' },
+      d
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(d.calls[0]?.perf).toMatchObject({
+        memoryMb: 1024,
+        timeoutSec: 0,
+        maxFiles: 10,
+        maxSizeMb: 512,
+        concurrency: 8,
+      });
+      // The effective values are surfaced.
+      expect(d.lines.join('\n')).toContain('perf: jobs=');
+      // With NO perf flag, the pipeline still decides (and no line is added).
+      const plain = deps();
+      await merge({ ...BASE }, plain);
+      expect(plain.calls[0]?.perf).toBeUndefined();
+      expect(plain.lines.join('\n')).not.toContain('perf:');
+    }
+
+    // A cap exceeded pre-run is a CONFIG_ERROR naming the flag — the pipeline
+    // is never invoked.
+    const two = deps({ statFile: async () => 0 }, [{ source: './a', paths: ['x.ts', 'y.ts'] }]);
+    const guarded = await merge({ ...BASE, maxFiles: '1' }, two);
+    expect(guarded.isErr()).toBe(true);
+    if (guarded.isErr() && guarded.error.code === 'CONFIG_ERROR') {
+      expect(guarded.error.field).toBe('perf.max-files');
+    }
+    expect(two.calls).toEqual([]);
+  });
+
   it('errors on empty sources', async () => {
     const d = deps({}, []);
     const result = await merge({ ...BASE }, d);
