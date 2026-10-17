@@ -1,4 +1,4 @@
-﻿# DECISIONS.md â€” Architecture Decision Records (ADRs)
+# DECISIONS.md â€” Architecture Decision Records (ADRs)
 ## repo-stitcher: Chronological Log of Technical Choices
 
 **Version:** 1.0.0
@@ -3805,6 +3805,50 @@ Decisions:
 7. Zero pin supersessions this phase; ReviewPage gained one deps-store
    selector, no other P-218 behavior changed.
 
+
+## ADR-105: Web license panel (P-220)
+
+Date: 2026-10-18. Phase: P-220 - Web - License Panel (aradhy lane, Web Epic 11).
+
+1. Client contracts: GET /api/licenses/report (core P-128 LicenseReportData)
+   and POST /api/licenses/decide {licenseId, verdict allow|deny} (core P-127
+   overrides) have NO server implementation yet (serve has provenance/jobs/
+   settings only); fetchLicenseReport/decideUnknown throw describeFailure on
+   !ok, tests mock fetch. Wire types live locally in api/licenses.ts mirroring
+   core license/types.ts structurally - this package's tsconfig rootDir cannot
+   import the @repo-stitcher/core barrel (TS6059; ADR-104 evidence).
+2. licenseId synthesis: core UnknownLicense has no id field; the POST body's
+   licenseId is encoded as `${package}@${version}` (licenseIdOf helper in
+   LicenseUnknownRow) - sufficient to identify a pending unknown and matches
+   the spec's {licenseId, verdict} text verbatim.
+3. licensesClear / blockers emission (spec step 5): useLicensesStore slice
+   (mirror of the P-219 deps pattern) stores {loaded, clear, blockers}.
+   LicensePanel recomputes outcome after every mutation: blockers = one
+   message per hard matrix deny row (decision==='deny') + one per pending
+   unknown without a decision; clear = blockers.length === 0. Unloaded
+   reports do NOT block approve - the server is the final authority at
+   POST /api/merge/approve (same rule as deps, ADR-104).
+4. Skip is UI-only (deviation): core has no 'skip' verdict, so
+   LicenseUnknownRow's Skip button collapses the row to an inline
+   'skipped - decision still pending' note WITHOUT a POST; it does not
+   change blocking state. Only allow/deny POST. Allow/deny flip the row
+   into a resolved state (data-decision + 'decided: <verdict>').
+5. Hard-matrix deny rows are rendered locked, not flip-unsafe: matrix rows
+   expose no allow control at all; deny rows carry the in-cell note
+   'locked: hard matrix deny cannot be allowed' (P-196 parity) plus a panel
+   -level warning that names the count. 'Never present a hard-deny as
+   allowed' is structurally guaranteed (no control exists to flip).
+6. ReviewPage integration: one selector - licensesBlockers is unioned into
+   the blockers array after depsBlockers; ApprovalBar keeps gating from
+   blockers.length (empty by default, so P-218 pins stay intact).
+7. Verdict banner: color map allow->text-success, review->text-warning,
+   deny->text-danger (P-209 tokens) with '(blocking)' suffix when
+   report.blocking; counts line data-testid license-counts mirrors the
+   report.summary fields.
+8. Zero pin supersessions this phase. Gate: web tsc 0; web vitest 25 files /
+   94 tests (SourcesPage 'advances on success' flaked once in-suite, passed
+   in isolation AND on full rerun - ADR-098 timing family); root typecheck 0;
+   eslint 0 after --fix (6 prettier-shape errors); prettier clean.
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

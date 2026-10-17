@@ -12,6 +12,7 @@ import { approveMerge, rejectMerge } from '../api/merge.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ApprovalBar } from '../components/ApprovalBar.js';
 import { useDepsStore } from '../store/deps.js';
+import { useLicensesStore } from '../store/licenses.js';
 import { useSourcesStore } from '../store/selection.js';
 import { useRunStore } from '../store/run.js';
 
@@ -24,6 +25,7 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
   const { sourcesA, sourcesB, selectionA, selectionB } = useSourcesStore();
   const setRunStatus = useRunStore(s => s.setRunStatus);
   const depsBlockers = useDepsStore(s => s.blockers);
+  const licensesBlockers = useLicensesStore(s => s.blockers);
   const navigate = useNavigate();
 
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -41,6 +43,9 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
     // authority at POST /api/merge/approve) — only a loaded report's
     // unresolved error-level conflicts do.
     ...depsBlockers,
+    // P-220: same rule for the license report — loaded reports gate on hard
+    // denies + pending unknowns (ADR-105).
+    ...licensesBlockers,
   ];
   const blocked = blockers.length > 0;
 
