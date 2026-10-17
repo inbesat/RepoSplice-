@@ -63,6 +63,17 @@ export type { HealthBody } from './serve.js';
 export { theme, colorsEnabled } from './theme.js';
 export type { ThemeLevel } from './theme.js';
 export {
+  createLogger,
+  parseLogFilter,
+  levelFor,
+  LOG_LEVELS,
+  type LogLevel,
+  type LogFilter,
+  type Logger,
+  type LoggerOptions,
+  type LogSink,
+} from './log.js';
+export {
   openStore,
   redactValue,
   defaultStoreDir,

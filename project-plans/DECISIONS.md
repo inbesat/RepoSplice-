@@ -3383,4 +3383,29 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-091: P-206 Makes `log.ts` the Single Logging Entry (Threshold Table with `silent` as a Special; Redaction Means Values, Chained `bearer` in the Separator, SNAKE_CASE Keys Keyed by the TRAILING Boundary; Sink Is Injected and Defaults to STDERR; Core P-010/P-162 Adoption Is the Other Lane)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-206 (`--log deps=debug,sandbox=warn`, `-q`/`-V`, `--log-json`, `***` redaction) says the logger IS "the sink for the core logger (P-010) and P-162 events" and its handoff note forbids ad-hoc `console.log`. The P-010 sink adapter and the P-162 event render live in core — inbesat's lane — while globals/flags are ours (the same ADR-090/ADR-087 split).
+
+**Decision:**
+
+1. **Levels** are the phase's six words with a priority table (`silent`=0 → `trace`=5); a line emits when its level's priority is ≤ the EFFECTIVE threshold (the module's `--log` override, else the global). `silent` is a THRESHOLD, not a filter level: everything but `error` is dropped, and `--quiet-error` seals even the error lane (spec step 4's exact semantics). `levelFor({verbose, quiet})` maps the globals with `-q` outranking `-V` — a both-flagged run is quiet.
+
+2. **Redaction is value-shaped, learned from two live failures:** (a) a prefix `\b` kills SNAKE_CASE keys (`OPENROUTER_API_KEY` never matched `api[_-]?key`), so the guard is only TRAILING (`(?![a-zA-Z0-9])`) — `tokens`/`passwordless` still fail as keys; (b) a value group that swallowed following words ate prose (`api_key=*** leaked?` → `api_key=***`) while ALSO leaking the second pair of a chain (`Authorization: Bearer tok_999` — `Bearer` was consumed as the value). The settled shape: the SEPARATOR alternation absorbs a chained `bearer\s+`, the VALUE is exactly ONE token — `Authorization: ***`, prose intact, zero leaks. The key list = `api[_-]?key|token|secret|password|authorization|bearer` + caller-supplied verbatim names (the P-200 config-key seam), all escaped.
+
+3. **The sink is injected** and defaults to `process.stderr` — stdout stays machine-parseable, the house rule since P-201. Colour stays OUTSIDE (`paint?: (level, line) => string`): the P-202 decision rides in as a function argument, so the logger itself never reads env and tests never touch process streams. `--log-json` emits one `{ts, level, module?, msg}` object per line — redaction runs BEFORE shaping, so NDJSON cannot leak what text does not.
+
+4. **CLI wiring is flag-level in our lane:** `globals.ts` grows `log?: string[]`, `logJson?`, `quiet?`, `quietError?`, each OMITTED when absent (the spread-conditional pattern — no shape-pin churn), and cli.ts registers `--log <spec>` (repeatable through the local `collectFlag`, the P-196 helper exactly as `--allow`/`--deny` use it), `--log-json`, `-q, --silent`, `--quiet-error` as ROOT options. `createLogger`/`parseLogFilter`/`levelFor` export through the package barrel. What does NOT exist yet: commands migrating their ad-hoc writes onto the logger, and core's P-010/P-162 adopting the sink — recorded as the progressive adoption the next CLI phases (and core's agent) perform, not a silent skip.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **23 files / 146 tests** (`log.test.ts`: the six mandated names verbatim — `filters levels`, `module filter`, `redacts secrets`, `silent mode`, `json logs`, `child modules`; `parseLogFilter`'s bare-default and bad-level cases ride in `module filter`).
+- Two redaction bugs were caught by the mandated tests live (the prefix-boundary leak, the chain leak) — the suite is the contract.
+- `stitch serve`'s NDJSON readiness (spec step 5's CI use) now has a structured mode one flag away.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

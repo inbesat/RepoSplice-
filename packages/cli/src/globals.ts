@@ -21,6 +21,14 @@ export interface GlobalOptions {
   colorMode?: 'auto' | 'dark' | 'light' | 'off';
   /** `--trace` (P-203): failure output carries stacks + the error's own JSON. Absent = off. */
   trace?: boolean;
+  /** `--log <spec>` (P-206), repeatable: per-module log levels (`deps=debug,sandbox=warn`). */
+  log?: string[];
+  /** `--log-json` (P-206): structured NDJSON log lines. */
+  logJson?: boolean;
+  /** `-q, --silent` (P-206): suppress non-error log output (errors still show). */
+  quiet?: boolean;
+  /** `--quiet-error` (P-206): at the silent threshold, even errors are suppressed. */
+  quietError?: boolean;
 }
 
 /** The raw shape commander hands back for the same flags. */
@@ -33,6 +41,14 @@ export interface RawGlobalFlags {
   /** BOTH `--color <mode>` (a string) and `--no-color` (false) land here. */
   color?: boolean | string;
   trace?: boolean;
+  /** `--log <spec>` (P-206), repeatable — commander hands an array via `collectFlag`. */
+  log?: string[];
+  /** `--log-json` (P-206). */
+  logJson?: boolean;
+  /** `-q, --silent` (P-206). */
+  quiet?: boolean;
+  /** `--quiet-error` (P-206). */
+  quietError?: boolean;
 }
 
 /** A blank string is "not supplied" — `-c ''` must not shadow the default config. */
@@ -69,6 +85,12 @@ export function parseGlobal(raw: RawGlobalFlags): GlobalOptions {
     ...(cwd !== undefined ? { cwd } : {}),
     color: rawColor !== false && rawColor !== 'off' && rawColor !== 'never',
     trace: raw.trace === true,
+    // P-206 flags are OMITTED when absent — the shape pins assert only what
+    // the flags existed for, exactly like `configPath`/`cwd`.
+    ...(raw.log !== undefined ? { log: Array.isArray(raw.log) ? raw.log : [raw.log] } : {}),
+    ...(raw.logJson === true ? { logJson: true } : {}),
+    ...(raw.quiet === true ? { quiet: true } : {}),
+    ...(raw.quietError === true ? { quietError: true } : {}),
     ...(colorMode !== undefined ? { colorMode } : {}),
   };
 }

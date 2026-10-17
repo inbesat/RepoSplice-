@@ -191,6 +191,16 @@ export function buildCLI(program: Command): Command {
     .option('-C, --cwd <dir>', 'working directory override')
     .option('--color <mode>', 'color mode: auto, dark, light, or off (P-202; default auto)')
     .option('--no-color', 'disable coloured output')
+    // P-206 log controls. The LOG level is `levelFor`-derived (quiet > verbose);
+    // --log/--log-json feed createLogger, the single logging entrypoint.
+    .option(
+      '--log <spec>',
+      'log filter: module=level pairs or a bare level, repeatable (P-206)',
+      collectFlag
+    )
+    .option('--log-json', 'emit structured NDJSON log lines (P-206)')
+    .option('-q, --silent', 'suppress non-error log output; errors still show')
+    .option('--quiet-error', 'with --silent, suppress even error output')
     .showHelpAfterError()
     .showSuggestionAfterError()
     .exitOverride();
