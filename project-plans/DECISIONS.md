@@ -3462,4 +3462,28 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-094: P-209 Tokens Are Roles-in-CSS with a Typed TS Mirror (Tailwind v4 `@theme inline` Is the "Tailwind Config"; `.dark` Class Beats the Spec's `[data-theme]`; Inter Loads in main.tsx; Contrast Is Enforced by Test, Not by Eyeball)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-209 mandates `theme/tokens.css` + `theme/tokens.ts`, "modify the tailwind config", `[data-theme=dark]` for the dark palette, a ≥4.5:1 contrast test, and `[web]`-config configurability. The repo's reality from P-208: Tailwind **v4** (no `tailwind.config.js` exists to modify — customization lives in CSS), P-226's dark variant is already **class-based** (`@custom-variant dark (&:where(.dark,.dark *))`), core's `ConfigSchema` has no `[web]` section (and core is inbesat-owned), and the P-208 `@theme` block already emits the stitch blue SCALE (`--color-stitch-*`).
+
+**Decision:**
+
+1. ROLES OVER SCALES: the P-208 scale stays untouched — P-209 adds the nine semantic ROLES (`--bg/--surface/--text/--muted/--border/--primary/--success/--warning/--danger`) as raw CSS custom properties on `:root` and `.dark`, then re-exports them to Tailwind through **`@theme inline`** (`--color-primary: var(--primary)` → utilities `bg-bg`, `text-primary`, …). `inline` resolves the var at USE-SITE, so a single `.dark` class flip re-themes live. This block IS the deviation from "modify tailwind config" — in v4 there is nothing else to modify. Spacing deliberately stays OUT of `@theme` (v4 spacing utilities derive from the single `--spacing` multiplier); the mandated `--space-1..8` ramp stays plain vars consumed via `var()`/arbitrary values.
+2. `.dark` CLASS, NOT `[data-theme=dark]`: tokens are only values; P-226's variant keys off a class already, and a second dark mechanism would fork the switch. Recorded deviation; the shell (P-210) decides how the class gets set.
+3. PALETTE (enforced, not asserted by eye): light `#ffffff/#f5f7ff/#1c2540/#5c6579/#d8dfef/#3a5bd0(stitch-600)/#1a7f37/#9a6700/#b42318`, dark `#10142a/#1c2342(stitch-950)/#e8edff/#97a1c0/#303a5e/#7095f2(stitch-400)/#3fb950/#d29922/#f85149`. All six text roles clear 4.5:1 on their own block's `--bg` — `tokens.test.ts` computes WCAG luminance/ratio and fails below the floor (the spec's own GitHub-style `#cf222e` measures ~4.49 on white, so light danger is the darker `#b42318`).
+4. ONE SOURCE OF TRUTH, TWO VIEWS: `tokens.css` is the truth; `tokens.ts` mirrors it as typed constants (`LIGHT_TOKENS`/`DARK_TOKENS` records over `TokenRole`, `TYPOGRAPHY` display/title/body/caption, `SPACING` 1–8 rem, `RADIUS`, `SHADOWS`, `FONT_SANS`) so code imports values without parsing CSS, and a fifth test (`ts mirror matches tokens.css`) fails on any hex/scale value present in one file but not the other.
+5. INTER LOADS IN `main.tsx` (`import '@fontsource-variable/inter'`, new dependency `@fontsource-variable/inter@5`), not in CSS — the styles.test postcss pipeline resolving package imports from stylesheets is unproven, and the entry import is plain Vite module resolution. The root `--font-sans-stack` var feeds the `@theme inline` `--font-sans`, avoiding a same-name circular reference.
+6. `[web]` CONFIGURABILITY IS THE CSS-VAR CASCADE: with no `[web]` section in core's ConfigSchema, overrides are plain CSS (`:root { --primary: … }` after the import wins); growing core is inbesat-lane work, recorded as the standing pattern.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean; web `tsc --noEmit` 0, web suite **15 files / 39 tests** (`tokens.test.ts`: the four mandated names — `defines all semantic roles`, `contrast light vars`, `contrast dark vars`, `spacing monotonic` — plus the sync guard); P-208's `styles.test` pins (stitch utilities, `.dark`, vendor prefixes) all still pass through the combined pipeline with the new `@import` present.
+- Light/dark switch = one class on any ancestor; components consume semantic utilities, never the stitch scale directly.
+- Contrast is now a unit-tested invariant: any palette change that breaks 4.5:1 fails the suite.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

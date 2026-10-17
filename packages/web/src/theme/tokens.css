@@ -1,0 +1,93 @@
+/* P-209 — semantic design tokens.
+ *
+ * ROLES OVER SCALES: the P-208 `@theme` block keeps the stitch blue SCALE
+ * (paint-by-step: bg-stitch-900 etc.); this file adds the semantic ROLES
+ * (--bg, --surface, --text, --muted, --border, --primary, --success,
+ * --warning, --danger) that components must consume, so a theme switch or a
+ * future `[web]` config override changes one variable, not every class.
+ *
+ * TWO-LAYER MECHANIC (Tailwind v4 — there is NO tailwind.config.js to edit,
+ * so the deviation from the spec's "modify tailwind config" is this block):
+ *   :root/.dark hold the raw values; `@theme inline` re-exports them as
+ *   Tailwind utilities (bg-bg, text-primary, …). `inline` means utilities
+ *   resolve var() AT USE-SITE, so flipping `.dark` re-themes live.
+ * Spacing is deliberately NOT in `@theme` — v4 spacing utilities derive from
+ * the single --spacing multiplier — so the spec's --space-* stay plain vars,
+ * consumed via var() or arbitrary values (p-[var(--space-3)]).
+ *
+ * DARK SELECTION: `.dark` (a class) instead of the spec's `[data-theme=dark]`,
+ * because P-226's variant is already class-based; the tokens below are only
+ * values — how the class gets set belongs to the shell (P-210).
+ *
+ * CONTRAST: every text role (text, muted, primary, success, warning, danger)
+ * clears WCAG AA 4.5:1 on its block's --bg — enforced by tokens.test.ts, not
+ * by this comment (light --danger is #b42318, darker than GitHub's #cf222e
+ * which measures ~4.49 against white).
+ */
+
+:root {
+  --bg: #ffffff;
+  --surface: #f5f7ff;
+  --text: #1c2540;
+  --muted: #5c6579;
+  --border: #d8dfef;
+  --primary: #3a5bd0; /* stitch-600 */
+  --success: #1a7f37;
+  --warning: #9a6700;
+  --danger: #b42318;
+
+  /* Spacing: a 4px-base ramp of EIGHT named steps. */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Radius + elevation. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --shadow-sm: 0 1px 2px rgb(28 37 64 / 0.08);
+  --shadow-md: 0 2px 8px rgb(28 37 64 / 0.12);
+  --shadow-lg: 0 8px 24px rgb(28 37 64 / 0.16);
+
+  /* Type: one sans stack + a four-step scale (size / leading). */
+  --font-sans-stack: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --text-display: 2.25rem;
+  --lh-display: 2.75rem;
+  --text-title: 1.25rem;
+  --lh-title: 1.75rem;
+  --text-body: 1rem;
+  --lh-body: 1.5rem;
+  --text-caption: 0.875rem;
+  --lh-caption: 1.25rem;
+}
+
+.dark {
+  --bg: #10142a;
+  --surface: #1c2342; /* stitch-950 */
+  --text: #e8edff;
+  --muted: #97a1c0;
+  --border: #303a5e;
+  --primary: #7095f2; /* stitch-400 */
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+}
+
+/* Role → Tailwind utility (bg-bg, text-primary, border-border, …). */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans-stack);
+}

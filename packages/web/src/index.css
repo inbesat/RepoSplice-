@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './theme/tokens.css';
 
 /* Design tokens (P-209): the stitch blue scale, emitted as CSS variables
    (--color-stitch-*) for utilities like bg-stitch-900. */
