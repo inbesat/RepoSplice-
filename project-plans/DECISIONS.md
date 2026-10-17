@@ -3208,4 +3208,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-085: P-200 Loads the Project Config In `config.ts` Over smol-toml (Bun.TOML Cannot Run Under Vitest), Reports Schema Failures as `CONFIG_INVALID`, Overlays Env From the Defaults' Own Shape, and Resolves Only `paths.*` Against the Config Dir
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-200 (PHASES_DETAILED.md, line 10028) mandates "new" `packages/cli/src/config.ts` (`loadConfig`, `writeConfig`, `configPaths`), a `config.test.ts` with six named cases, an optional `config-schema.ts`, TOML parsing "e.g. `@iarna/toml`", env overlay (`STITCH_*`, `OPENROUTER_API_KEY`, …), relative-path resolution, `writeConfig` round-trip, `emitConfig` JSON, and a per-process cache. The phase assumed a config module did not exist; after P-045 and P-190/P-194/P-195, `config.ts` is the USER-LEVEL store (config.json, redaction, `readSources`, `providerNames`) and core already ships a TH `ConfigSchema`/`defaultConfig` (P-009) plus a THROWING `loadConfig` (ADR-079).
+
+**Decisions:**
+
+1. EXTEND `config.ts` IN PLACE; `config-schema.ts` IS NOT CREATED (recorded deviation). The phase's file list is illustrative and the store proved extensions-in-place are this repo's reconciliation pattern (P-195's doctor, P-194's `readSources` move). The project config joins the user store in one module because the anti-ad-hoc-TOML handoff note ("all commands obtain config through loadConfig") wants exactly one import surface, and a second config file would split that. No CLI-side schema bits exist to put in `config-schema.ts`, so there is nothing for it to hold.
+
+2. smol-toml (NEW DEPENDENCY), not `@iarna/toml` and not Bun.TOML. Bun 1.3.11 exposes `Bun.TOML.parse` but vitest runs the suite under NODE, where `Bun` does not exist (the P-193 Node-runtime precedent), and Bun.TOML has no stringify for `writeConfig`. `smol-toml` is a single-purpose ESM package that parses AND serializes under both runtimes, so both halves of the phase come from one dependency; the hand-rolled serializer written first was deleted when the dependency landed. `@iarna/toml` is CJS-era and would have needed the serializer anyway.
+
+3. INVALIDITY IS CORE'S `CONFIG_INVALID`. The P-243-residue commit (73628aa) added exactly the error shape the phase needs — `{ code: 'CONFIG_INVALID'; issues: {path, message}[]; message }` — so zod's issues flow through verbatim (dotted path per issue); a TOML syntax failure is the same code with a single root issue. core's throwing `loadConfig` is NOT reused: its env/credential layers are user-store concerns, and its throwing contract is forbidden at the CLI boundary (ADR-079). A `--config`-named MISSING file is `CONFIG_ERROR` (explicit user intent), while "no project config found" is NOT an error — defaults + env run.
+
+4. ENV OVERLAY IS DERIVED FROM THE DEFAULTS' SHAPE, NOT PARSED FROM FREE TEXT. `PROVIDER_ENV_KEYS` covers provider keys but only into sections the schema has; generic `STITCH_*` names are generated from every `SECTION_FIELD` pair that exists in `defaultConfig` (`appId` → `APPID` — joined, matched exactly, never segmented), coerced by the template leaf's type (number/boolean), and validated by the SAME CONFIG_INVALID path because overlay runs before `safeParse`. Unknown `STITCH_*` names are ignored, not invented.
+
+5. ONLY `paths.*` ARE RESOLVED AGAINST THE CONFIG DIR. They are the schema's only path-valued fields; relative paths in the FILE become absolute (cwd-independent meaning); when no project file exists the relative defaults stay relative (there is no dir to mean). `writeConfig` writes whatever it is given — the round-trip test locks that written-relative reads-back-resolved.
+
+6. `writeConfig` simply prepends nothing and serializes with smol-toml; its throw-on-impossible-shapes (functions, arrays of tables — none exist in the schema) surfaces as `CONFIG_ERROR{field:'config'}` through the existing toMessage catch. Per-process cache is keyed by (explicit config, cwd) — env is deliberately excluded because in-process env is read-only in the house model — with `resetConfigCache()` as the test seam.
+
+7. THE CLI SURFACE IS A MINIMAL `stitch config` COMMAND PRINTING `emitConfig` JSON — the phase's step 4 gives the choice of a `--config-json` flag or a command, and P-201 (`stitch config --edit`) builds directly on a named command rather than a hidden flag. Globals `-c/--config` and `-C/--cwd` drive it; output is JSON-only by design (CI/debug), because humanized rendering is P-201/P-202 territory.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **18 files / 113 tests** (12 new: the six mandated names verbatim — `discovers upward`, `fails invalid`, `merges defaults`, `overlays env`, `resolves paths`, `round trips write` — plus `stops at a .git boundary`, `fails when --config names a missing file`, `merges defaults with no project file at all`, `fails invalid on a bad env value`, `emits effective JSON`, `caches per-process until reset`). Root suite: 2454 passed / 1 failed — solely the documented pre-existing core red (`jobs/idempotency.test.ts` "mixed stages", ADR-079).
+- P-201 (`stitch config`/`merge --edit` editor integration) consumes `configPaths` + `loadConfig` directly; P-190's init and P-196/P-197's decision persistence can migrate to `writeConfig` when touched, but are not forced to in this phase (their gates are pinned).
+- smol-toml is the CLI's first runtime dep added in the aradhy lane; the P-317 dep-request flow is satisfied by this ADR + the committed lockfile.
+- Bun.TOML joins ADR-083/084's ink findings as a "probe once, recorded" runtime fact: platform parsers exist but cannot reach the test runtime.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

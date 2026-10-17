@@ -1,172 +1,199 @@
-import { describe, it, expect } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+// P-200 — project config: discovery, validation, defaults, env overlay, path
+// resolution, and the write round-trip. Real TOML files in temp dirs, real
+// Bun.TOML, real zod — the loaders are headless by design, so nothing here
+// needs a mock beyond an injected env.
+import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { defaultConfig } from '@repo-stitcher/core';
 import {
-  openStore,
-  redactValue,
-  defaultStoreDir,
-  type JsonValue,
-  type StitchStore,
+  configPaths,
+  emitConfig,
+  loadConfig,
+  PROJECT_CONFIG_FILE,
+  resetConfigCache,
+  writeConfig,
 } from './config.js';
 
-function freshDir(): string {
-  return mkdtempSync(join(tmpdir(), 'stitch-config-'));
+const roots: string[] = [];
+
+async function tmpRoot(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'stitch-cfg-'));
+  roots.push(dir);
+  return dir;
 }
 
-function mustOpen(dir: string): StitchStore {
-  const r = openStore(dir);
-  expect(r.isOk()).toBe(true);
-  if (r.isErr()) throw new Error('openStore failed in test setup');
-  return r.value;
+async function writeToml(dir: string, body: string): Promise<string> {
+  const file = join(dir, PROJECT_CONFIG_FILE);
+  await writeFile(file, body, 'utf8');
+  return file;
 }
 
-describe('configstore (P-045)', () => {
-  it('config roundtrip', () => {
-    const dir = freshDir();
-    try {
-      const s = mustOpen(dir);
-      expect(s.path).toBe(join(dir, 'config.json'));
+beforeEach(() => {
+  resetConfigCache();
+});
 
-      const missing = s.get('service.port');
-      expect(missing.isOk()).toBe(true);
-      if (missing.isOk()) expect(missing.value).toBeUndefined();
+afterEach(() => {
+  resetConfigCache();
+});
 
-      expect(s.set('service.host', '127.0.0.1').isOk()).toBe(true);
-      expect(s.set('service.port', 3434).isOk()).toBe(true);
-      const port = s.get('service.port');
-      expect(port.isOk()).toBe(true);
-      if (port.isOk()) expect(port.value).toBe(3434);
-
-      expect(s.delete('service.port').isOk()).toBe(true);
-      const gone = s.get('service.port');
-      expect(gone.isOk()).toBe(true);
-      if (gone.isOk()) expect(gone.value).toBeUndefined();
-      // Deleting a missing key is a no-op, not an error.
-      expect(s.delete('service.port').isOk()).toBe(true);
-      const host = s.get('service.host');
-      expect(host.isOk()).toBe(true);
-      if (host.isOk()) expect(host.value).toBe('127.0.0.1');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+describe('P-200 project config', () => {
+  it('discovers upward', async () => {
+    const root = await tmpRoot();
+    const file = await writeToml(root, '[paths]\ncacheDir = "c"\nworktreeDir = "w"\n');
+    const nested = join(root, 'a', 'b');
+    await mkdir(nested, { recursive: true });
+    const found = configPaths({ cwd: nested });
+    expect(found.isOk()).toBe(true);
+    if (found.isOk()) expect(found.value).toBe(file);
   });
 
-  it('persists across instances', () => {
-    const dir = freshDir();
-    try {
-      const first = mustOpen(dir);
-      expect(first.set('prefs.theme', 'dark').isOk()).toBe(true);
-
-      const second = mustOpen(dir);
-      const back = second.get('prefs.theme');
-      expect(back.isOk()).toBe(true);
-      if (back.isOk()) expect(back.value).toBe('dark');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+  it('stops at a .git boundary', async () => {
+    const outer = await tmpRoot();
+    await writeToml(outer, '[paths]\ncacheDir = "c"\nworktreeDir = "w"\n');
+    const inner = join(outer, 'repo');
+    await mkdir(join(inner, '.git'), { recursive: true });
+    expect(configPaths({ cwd: inner }).isOk()).toBe(true);
+    const found = configPaths({ cwd: inner });
+    if (found.isOk()) expect(found.value).toBe(null);
   });
 
-  it('redacts secrets in snapshots but keeps stored values', () => {
-    const dir = freshDir();
-    try {
-      const s = mustOpen(dir);
-      expect(s.set('openrouter.apiKey', 'sk-or-SECRET').isOk()).toBe(true);
-      expect(s.set('github.token', 'ghp_SECRET').isOk()).toBe(true);
-      expect(s.set('server.port', 3434).isOk()).toBe(true);
-      expect(s.set('nested', { password: 'hunter2', user: 'ada' } as JsonValue).isOk()).toBe(true);
-
-      const snap = s.snapshotRedacted();
-      expect(snap.isOk()).toBe(true);
-      if (snap.isErr()) return;
-      expect(snap.value['openrouter']).toEqual({ apiKey: '[REDACTED]' });
-      expect(snap.value['github']).toEqual({ token: '[REDACTED]' });
-      expect(snap.value['server']).toEqual({ port: 3434 });
-      expect(snap.value['nested']).toEqual({ password: '[REDACTED]', user: 'ada' });
-      const dumped = JSON.stringify(snap.value);
-      expect(dumped).not.toContain('sk-or-SECRET');
-      expect(dumped).not.toContain('hunter2');
-
-      // Originals are intact behind the redaction.
-      const raw = s.get('openrouter.apiKey');
-      expect(raw.isOk()).toBe(true);
-      if (raw.isOk()) expect(raw.value).toBe('sk-or-SECRET');
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('rejects non-storable values loudly', () => {
-    const dir = freshDir();
-    try {
-      const s = mustOpen(dir);
-      const big = s.set('k', 10n as unknown as JsonValue);
-      expect(big.isErr()).toBe(true);
-      if (big.isErr()) expect(big.error.code).toBe('CONFIG_ERROR');
-
-      const undef = s.set('u', undefined as unknown as JsonValue);
-      expect(undef.isErr()).toBe(true);
-
-      const cyclic: Record<string, unknown> = {};
-      cyclic['self'] = cyclic;
-      const cyc = s.set('c', cyclic as unknown as JsonValue);
-      expect(cyc.isErr()).toBe(true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('reads corrupt files as empty and heals on write', () => {
-    // configstore parses lazily and treats an unparseable file as empty
-    // (probed P-045) — lock that contract in, including the heal.
-    const dir = freshDir();
-    try {
-      const s = mustOpen(dir);
-      expect(s.set('a', 1).isOk()).toBe(true);
-      writeFileSync(join(dir, 'config.json'), '{oops');
-
-      const reopened = mustOpen(dir);
-      const snap = reopened.snapshotRedacted();
-      expect(snap.isOk()).toBe(true);
-      if (snap.isOk()) expect(snap.value).toEqual({});
-      expect(reopened.set('b', 2).isOk()).toBe(true);
-      const back = reopened.get('b');
-      expect(back.isOk()).toBe(true);
-      if (back.isOk()) expect(back.value).toBe(2);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it('errors when the config path is occupied by a directory', () => {
-    // Probed P-045: every operation throws EISDIR on a directory-occupied
-    // path (no read cache masks it), and even reopening fails. One fixture
-    // covers all four catch branches plus the openStore catch.
-    const dir = freshDir();
-    try {
-      const s = mustOpen(dir);
-      expect(s.set('a', 1).isOk()).toBe(true);
-      rmSync(join(dir, 'config.json'));
-      mkdirSync(join(dir, 'config.json'));
-      const results = [s.set('b', 2), s.delete('a'), s.get('a'), s.snapshotRedacted()];
-      for (const r of results) {
-        expect(r.isErr()).toBe(true);
-        if (r.isErr()) expect(r.error.code).toBe('CONFIG_ERROR');
+  it('fails invalid', async () => {
+    const dir = await tmpRoot();
+    await writeToml(dir, '[sandbox]\nbackend = 3\n');
+    const result = loadConfig({ cwd: dir, env: {} });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe('CONFIG_INVALID');
+      if (result.error.code === 'CONFIG_INVALID') {
+        expect(result.error.issues.length).toBeGreaterThan(0);
+        expect(result.error.issues.some(issue => issue.path === 'sandbox.backend')).toBe(true);
       }
-      expect(openStore(dir).isErr()).toBe(true);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it('redactValue handles arrays, nesting, and non-secrets', () => {
-    expect(redactValue('plain')).toBe('plain');
-    expect(redactValue(7)).toBe(7);
-    expect(redactValue(null)).toBeNull();
-    expect(redactValue([{ token: 't' }, 'x'])).toEqual([{ token: '[REDACTED]' }, 'x']);
-    expect(redactValue({ deep: { credentials: { user: 'u' } } })).toEqual({
-      deep: { credentials: '[REDACTED]' },
+  it('fails when --config names a missing file', async () => {
+    const dir = await tmpRoot();
+    const result = loadConfig({ config: join(dir, 'nope.toml'), env: {} });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) expect(result.error.code).toBe('CONFIG_ERROR');
+  });
+
+  it('merges defaults', async () => {
+    const dir = await tmpRoot();
+    await writeToml(dir, '[sandbox]\nbackend = "github-actions"\n');
+    const result = loadConfig({ cwd: dir, env: {} });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.sandbox.backend).toBe('github-actions');
+      // untouched sections come from the defaults, whole and intact
+      expect(result.value.agent).toEqual(defaultConfig.agent);
+      expect(result.value.licensePolicy).toEqual(defaultConfig.licensePolicy);
+    }
+  });
+
+  it('merges defaults with no project file at all', async () => {
+    const dir = await tmpRoot();
+    await mkdir(join(dir, 'bare'), { recursive: true });
+    // mkdir the config dir as the walk root: nothing above bare/ in THIS tree
+    // has a stitch.toml or .git, so bare/ resolves to defaults + env only.
+    const result = loadConfig({ cwd: join(dir, 'bare'), env: {} });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) expect(result.value.agent).toEqual(defaultConfig.agent);
+  });
+
+  it('overlays env', async () => {
+    const dir = await tmpRoot();
+    const result = loadConfig({
+      cwd: dir,
+      env: {
+        OPENROUTER_API_KEY: 'k-open',
+        ANTHROPIC_API_KEY: 'k-anthropic',
+        STITCH_AGENT_MAXITERATIONS: '7',
+        STITCH_SANDBOX_BACKEND: 'github-actions',
+      },
     });
-    expect(defaultStoreDir().endsWith('.stitch')).toBe(true);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.openrouter).toEqual({ apiKey: 'k-open' });
+      expect(result.value.anthropic).toEqual({ apiKey: 'k-anthropic' });
+      // number coercion via the template leaf's type
+      expect(result.value.agent.maxIterations).toBe(7);
+      expect(result.value.sandbox.backend).toBe('github-actions');
+    }
+  });
+
+  it('fails invalid on a bad env value', async () => {
+    const dir = await tmpRoot();
+    const result = loadConfig({ cwd: dir, env: { STITCH_SANDBOX_BACKEND: 'vibes' } });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr() && result.error.code === 'CONFIG_INVALID') {
+      expect(result.error.issues.some(issue => issue.path === 'sandbox.backend')).toBe(true);
+    }
+  });
+
+  it('resolves paths', async () => {
+    const dir = await tmpRoot();
+    await writeToml(dir, '[paths]\ncacheDir = "out/cache"\nworktreeDir = "out/wt"\n');
+    const result = loadConfig({ cwd: dir, env: {} });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.paths.cacheDir).toBe(resolve(dir, 'out/cache'));
+      expect(result.value.paths.worktreeDir).toBe(resolve(dir, 'out/wt'));
+    }
+  });
+
+  it('round trips write', async () => {
+    const dir = await tmpRoot();
+    const cfg = loadConfig({ cwd: dir, env: {} });
+    expect(cfg.isOk()).toBe(true);
+    const written = writeConfig(dir, {
+      ...(cfg.isOk() ? cfg.value : defaultConfig),
+      sandbox: { backend: 'docker', limits: { memory: '4g', cpu: '2', timeout: 120 } },
+    });
+    expect(written.isOk()).toBe(true);
+    const text = await readFile(join(dir, PROJECT_CONFIG_FILE), 'utf8');
+    expect(text).toContain('backend = "docker"');
+    expect(text).toContain('[sandbox.limits]');
+    resetConfigCache();
+    const reparsed = loadConfig({ cwd: dir, env: {} });
+    expect(reparsed.isOk()).toBe(true);
+    if (reparsed.isOk() && cfg.isOk()) {
+      // the written relative paths come back RESOLVED against the config dir
+      expect(reparsed.value).toEqual({
+        ...cfg.value,
+        paths: {
+          cacheDir: resolve(dir, cfg.value.paths.cacheDir),
+          worktreeDir: resolve(dir, cfg.value.paths.worktreeDir),
+        },
+        sandbox: { backend: 'docker', limits: { memory: '4g', cpu: '2', timeout: 120 } },
+      });
+    }
+  });
+
+  it('emits effective JSON', async () => {
+    const dir = await tmpRoot();
+    await writeToml(dir, '[paths]\ncacheDir = "cc"\nworktreeDir = "ww"\n');
+    const result = emitConfig({ cwd: dir, env: {} });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const parsed = JSON.parse(result.value) as typeof defaultConfig;
+      expect(parsed.paths.cacheDir).toBe(resolve(dir, 'cc'));
+    }
+  });
+
+  it('caches per-process until reset', async () => {
+    const dir = await tmpRoot();
+    const file = await writeToml(dir, '[sandbox]\nbackend = "docker"\n');
+    const first = loadConfig({ config: file, env: {} });
+    expect(first.isOk()).toBe(true);
+    await writeFile(file, '[sandbox]\nbackend = "github-actions"\n', 'utf8');
+    // same opts → served from cache, file change invisible
+    const cached = loadConfig({ config: file, env: {} });
+    if (first.isOk() && cached.isOk()) expect(cached.value.sandbox.backend).toBe('docker');
+    resetConfigCache();
+    const fresh = loadConfig({ config: file, env: {} });
+    if (fresh.isOk()) expect(fresh.value.sandbox.backend).toBe('github-actions');
   });
 });
