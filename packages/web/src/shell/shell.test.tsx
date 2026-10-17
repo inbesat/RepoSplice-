@@ -9,10 +9,12 @@
 // store is module state, so each test resets it.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { AppShellRoutes, STEPS } from '../router.js';
+import { Stepper } from './Stepper.js';
 import { useFlowStore } from '../store/flow.js';
+import { useSourcesStore } from '../store/selection.js';
 
 function shell(initial: string): ReturnType<typeof render> {
   return render(
@@ -22,9 +24,19 @@ function shell(initial: string): ReturnType<typeof render> {
   );
 }
 
+/** Render ONLY the stepper (no AppShell, no data gates, no Sources effect). */
+function stepperOnly(initial: string): ReturnType<typeof render> {
+  return render(
+    <MemoryRouter initialEntries={[initial]}>
+      <Stepper />
+    </MemoryRouter>
+  );
+}
+
 describe('P-210 shell layout', () => {
   beforeEach(() => {
     useFlowStore.getState().reset();
+    useSourcesStore.getState().reset();
   });
   afterEach(cleanup);
 
@@ -42,7 +54,11 @@ describe('P-210 shell layout', () => {
   });
 
   it('stepper active states', () => {
-    shell('/sources');
+    // P-212: inside the full shell, Select is ALSO data-gated — this test
+    // exercises the SEQUENTIAL unlock in isolation (stepper + flow store only;
+    // the AppShell gate is pinned separately in 'locked blocks nav').
+    useFlowStore.getState().complete('sources');
+    stepperOnly('/sources');
     // The current route's step carries aria-current="step"…
     const sources = screen.getByRole('link', { name: /Sources/ });
     expect(sources.getAttribute('aria-current')).toBe('step');
@@ -54,7 +70,6 @@ describe('P-210 shell layout', () => {
     expect(select.getAttribute('aria-current')).toBe('step');
     // Visited steps stay unlocked (completed steps clickable).
     expect(screen.getByRole('link', { name: /Sources/ })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Select' })).toBeTruthy();
   });
 
   it('locked blocks nav', () => {
@@ -64,6 +79,13 @@ describe('P-210 shell layout', () => {
     expect(screen.queryByRole('link', { name: /Review/ })).toBeNull();
     const locked = screen.getByText('Review').closest('span');
     expect(locked?.getAttribute('aria-disabled')).toBe('true');
+    // P-212: Select is gated on BOTH source slots (the store is empty here),
+    // so it is locked EVEN THOUGH its sequential predecessor was visited —
+    // and the lock hint names that reason.
+    expect(screen.queryByRole('link', { name: /Select/ })).toBeNull();
+    const gated = screen.getByText('Select').closest('span');
+    expect(gated?.getAttribute('aria-disabled')).toBe('true');
+    expect(gated?.getAttribute('title')).toBe('Add both repo A and B first');
     // Clicking it changes nothing: the A picker is still shown.
     fireEvent.click(locked ?? document.body);
     expect(screen.getByLabelText('repo A picker')).toBeTruthy();
@@ -74,7 +96,6 @@ describe('P-210 shell layout', () => {
     // Deep links render every placeholder directly (route access stays open;
     // the stepper's lock is the UI gate).
     const expected = [
-      ['/sources', 'add one below'], // P-211 landed: the live picker's empty state
       ['/select', 'coming in phases P-213/P-214'],
       ['/stitch', 'coming in phases P-217/P-218'],
       ['/review', 'coming in phases P-219/P-220'],
@@ -84,6 +105,16 @@ describe('P-210 shell layout', () => {
       shell(path);
       // The marker is a substring of the placeholder paragraph — match loosely.
       expect(screen.getByText(marker, { exact: false })).toBeTruthy();
+    }
+    // P-212: /sources now renders BOTH pickers, each with the empty-state
+    // paragraph — assert the marker per picker instead of globally.
+    shell('/sources');
+    for (const slot of ['A', 'B'] as const) {
+      expect(
+        within(screen.getByLabelText(`repo ${slot} picker`)).getByText('add one below', {
+          exact: false,
+        })
+      ).toBeTruthy();
     }
     expect(STEPS).toHaveLength(5);
   });

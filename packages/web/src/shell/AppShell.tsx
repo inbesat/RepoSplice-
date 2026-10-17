@@ -17,11 +17,15 @@ import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
 import { stepForPath } from '../router.js';
 import { useFlowStore } from '../store/flow.js';
+import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
 
 export function AppShell(): JSX.Element {
   const { pathname } = useLocation();
   const complete = useFlowStore(state => state.complete);
   const activeId = stepForPath(pathname)?.id;
+  // P-212: the Select step is data-gated — both source slots must hold a
+  // resolved source (the stepper also keeps its sequential visited unlock).
+  const selectReady = useSourcesStore(state => canProceedSourceSelection(state));
 
   // Every route the user lands on becomes visited (drives the stepper unlock).
   useEffect(() => {
@@ -54,7 +58,7 @@ export function AppShell(): JSX.Element {
         </a>
       </header>
       <div className="flex">
-        <Stepper />
+        <Stepper gates={{ select: selectReady }} />
         <Sidebar />
         <main className="flex-1 p-6">
           <Outlet />

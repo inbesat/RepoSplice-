@@ -19,26 +19,35 @@ import { useFlowStore } from '../store/flow.js';
 /** Which steps are reachable from the visited set (sequential unlock). */
 export function unlockedSteps(
   steps: readonly { id: string }[],
-  visited: readonly string[]
+  visited: readonly string[],
+  // P-212: per-step feature gates (`false` = locked regardless of visited),
+  // e.g. Select opens only when BOTH source slots hold a resolved source.
+  gates: Readonly<Record<string, boolean>> = {}
 ): ReadonlySet<string> {
   const open = new Set<string>();
   steps.forEach((step, index) => {
-    if (index === 0 || visited.includes(steps[index - 1]?.id ?? '')) open.add(step.id);
+    const sequential = index === 0 || visited.includes(steps[index - 1]?.id ?? '');
+    if (sequential && gates[step.id] !== false) open.add(step.id);
   });
   return open;
 }
 
-export function Stepper(): JSX.Element {
+export function Stepper({
+  gates = {},
+}: {
+  gates?: Readonly<Record<string, boolean>>;
+}): JSX.Element {
   const { pathname } = useLocation();
   const visited = useFlowStore(state => state.visited);
   const activeId = stepForPath(pathname)?.id;
-  const open = unlockedSteps(STEPS, visited);
+  const open = unlockedSteps(STEPS, visited, gates);
 
   return (
     <nav aria-label="stitch steps">
       <ol className="space-y-1">
         {STEPS.map((step, index) => {
           const isActive = step.id === activeId;
+          const gated = gates[step.id] === false;
           const isUnlocked = open.has(step.id);
           const stateClass = isActive
             ? 'text-primary font-semibold'
@@ -51,6 +60,9 @@ export function Stepper(): JSX.Element {
               {step.label}
             </>
           );
+          // The lock hint names the actual reason: a failed gate beats the
+          // generic sequential message.
+          const title = gated ? 'Add both repo A and B first' : 'Finish the previous step first';
           return (
             <li key={step.id}>
               {isUnlocked ? (
@@ -65,7 +77,7 @@ export function Stepper(): JSX.Element {
                 <span
                   className={`block px-2 py-1 ${stateClass}`}
                   aria-disabled="true"
-                  title="Finish the previous step first"
+                  title={title}
                 >
                   {inner}
                 </span>

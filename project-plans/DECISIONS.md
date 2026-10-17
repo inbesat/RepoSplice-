@@ -3536,4 +3536,33 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-097: P-212 Owns the Whole A/B Selection Slice in `selection.ts` ('Chosen Ref' = a RESOLVED Source; Advance Is Page-Owned on Both-Ready; the Stepper Gains Data Gates Beside Sequential Unlock; Stale Clearing = Prune the Visited Set)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-212 (repo B picker) names `store/selection.ts` with `sourcesA`/`sourcesB`/`canProceed` — but P-211 had already seeded the sources slice in `store/sources.ts`, its `SourceRecord` has no "chosen ref" field (a local source carries a `path`, not a `ref`), and the stepper (P-210) knows only a sequential visited unlock.
+
+**Decision:**
+
+1. THE SLICE MOVES, THE SHIM STAYS: `selection.ts` now OWNS sourcesA/sourcesB, `addSource` (per-slot id-dedupe — the same record MAY sit in both slots; they are independent lists), `swapAB`, `reset`, plus `hasResolvedSource` and the derived `canProceedSourceSelection`. P-211's `sources.ts` re-exports it — the P-211 imports (RepoPicker, tests) stand untouched.
+
+2. 'CHOSEN REF' MEANS RESOLVED: `canProceedSourceSelection` = BOTH slots hold at least one `status === 'ready'` record. Reading it as "has a `ref`" would deadlock the local-path flow (local records have no ref) — the phrase is read as "a usable source", and a `pending`/`error` record never satisfies a slot.
+
+3. THE PAGE OWNS THE ADVANCE: `SourcesPage` renders BOTH pickers and navigates to `/select` through an effect on `canProceed` — never per-picker. A resolved A alone keeps the user on the screen (the merge needs both; a per-picker callback yanked the user mid-setup). `RepoPicker` itself is UNTOUCHED: its `onResolved` was already optional, and its `listSources` hydration is a workspace-known CATALOG shown in both regions, while the STORE lists stay the slot boundary.
+
+4. THE STEPPER GAINS DATA GATES BESIDE SEQUENTIAL UNLOCK: `unlockedSteps(steps, visited, gates)` — a step is open when its predecessor was visited AND `gates[step.id] !== false`; AppShell passes `select: canProceedSourceSelection`. The lock hint names the REASON ('Add both repo A and B first' vs 'Finish the previous step first'). Routes themselves stay OPEN (the P-210 deep-link contract) — the gate is the stepper's UI affordance.
+
+5. SWAP = THE ARRAY EXCHANGE + PRUNE: `swapAB` exchanges the two lists and prunes downstream state; the swap control is disabled until both slots are non-empty (exchanging with `[]` is a no-op shape). 'Persists' is satisfied by construction — the store IS the persistence until P-215 adds a backend.
+
+6. STALE CLEARING (spec step 5) TODAY PRUNES `flow.visited` PAST 'sources' (spec step 5): any slot change or swap un-visits select/stitch/review/results, so a stale tree can never be "reached". P-215's files/resolutions will extend the same prune to their own state — the selection slice's contract documents that obligation.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, web suite **18 files / 53 tests** (`selection.test.ts`: the four mandated names verbatim).
+- Pin updates ON RECORD: `SourcesPage.test` locators are region-scoped (`within(picker('A'|'B'))` — twin markup made global locators ambiguous), 'advances on success' is the two-slot flow; `shell.test` 'stepper active states' renders the Stepper DIRECTLY (seeding both slots inside the full shell now auto-advances — sequential behavior is tested in isolation, and the AppShell gate is pinned separately in 'locked blocks nav'), and 'routes placeholders' asserts the `/sources` empty state per picker.
+- P-213/P-214 (file trees) inherit: build on `sourcesA`/`sourcesB` refs only, and register their state in the prune.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

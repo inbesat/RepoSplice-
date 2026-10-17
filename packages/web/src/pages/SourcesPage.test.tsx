@@ -1,18 +1,24 @@
-// P-211 — the Sources screen (repo A picker) tests.
+// P-211/P-212 — the Sources screen tests.
 //
-// The six required scenarios from the phase spec (fetch mocked throughout):
+// P-211's six mandated scenarios, now over the TWO-picker layout (P-212):
+// every locator is scoped to its picker region (`repo A picker` / `repo B
+// picker`) because both slots render identical markup. 'advances on success'
+// now means the FULL two-slot flow: A alone does not advance (the merge needs
+// both — the P-212 gate); B completing flips `canProceed` and the page
+// navigates.
 //
 //   it('renders sources')      it('validates owner repo')   it('adds from url')
 //   it('adds local path')      it('advances on success')    it('surfaces error')
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { cleanup, render, screen, fireEvent } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { AppShellRoutes } from '../router.js';
 import { useSourcesStore } from '../store/sources.js';
 import { useFlowStore } from '../store/flow.js';
 
 type FetchMock = ReturnType<typeof vi.fn>;
+type PickerRegion = ReturnType<typeof within>;
 
 function mockFetch(handler: (url: string, init?: RequestInit) => unknown): FetchMock {
   const urlOf = (input: RequestInfo | URL): string =>
@@ -52,16 +58,30 @@ function page(): ReturnType<typeof render> {
   );
 }
 
-/** Fill the GitHub form and its optional ref, then submit. */
-async function submitGithub(ownerRepo: string, ref = ''): Promise<void> {
-  fireEvent.change(screen.getByPlaceholderText('vercel/ai'), { target: { value: ownerRepo } });
-  if (ref !== '') {
-    fireEvent.change(screen.getByPlaceholderText('main'), { target: { value: ref } });
-  }
-  fireEvent.click(screen.getByRole('button', { name: /Add source/ }));
+/** A picker's region — all per-slot locators go through this. */
+function picker(slot: 'A' | 'B'): PickerRegion {
+  return within(screen.getByLabelText(`repo ${slot} picker`));
 }
 
-describe('P-211 repo A picker', () => {
+/** Fill the GitHub form and its optional ref, then submit. */
+async function submitGithub(ownerRepo: string, ref = '', slot: 'A' | 'B' = 'A'): Promise<void> {
+  const region = picker(slot);
+  fireEvent.change(region.getByPlaceholderText('vercel/ai'), { target: { value: ownerRepo } });
+  if (ref !== '') {
+    fireEvent.change(region.getByPlaceholderText('main'), { target: { value: ref } });
+  }
+  fireEvent.click(region.getByRole('button', { name: /Add source/ }));
+}
+
+/** Fill the local-path form and submit. */
+function submitLocal(path: string, slot: 'A' | 'B' = 'A'): void {
+  const region = picker(slot);
+  fireEvent.click(region.getByRole('tab', { name: 'Local path' }));
+  fireEvent.change(region.getByPlaceholderText('repos/team-a'), { target: { value: path } });
+  fireEvent.click(region.getByRole('button', { name: /Add source/ }));
+}
+
+describe('P-211/P-212 repo pickers', () => {
   beforeEach(() => {
     useSourcesStore.getState().reset();
     useFlowStore.getState().reset();
@@ -73,23 +93,29 @@ describe('P-211 repo A picker', () => {
 
   it('renders sources', async () => {
     // The API's known sources merge into the list; the store's own (empty
-    // here) would render identically.
+    // here) would render identically. Both pickers show the known catalog;
+    // the store slots stay EMPTY until a source is added to that slot.
     const fetchMock = mockFetch(url =>
       url.includes('/api/repos/sources') ? OK({ sources: [RECORD] }) : FAIL(404, 'unexpected')
     );
     page();
-    expect(await screen.findByText('vercel/ai@main')).toBeTruthy();
-    expect(screen.getByLabelText('repo A picker')).toBeTruthy();
+    expect(await picker('A').findByText('vercel/ai@main')).toBeTruthy();
+    expect(screen.getByLabelText('repo B picker')).toBeTruthy();
     expect(fetchMock).toHaveBeenCalled();
+    // The P-212 gate: known-but-not-added sources do NOT advance the flow.
+    expect(useSourcesStore.getState().sourcesA).toHaveLength(0);
   });
 
   it('validates owner repo', () => {
     mockFetch(() => FAIL(500, 'must not be called'));
     page();
-    fireEvent.change(screen.getByPlaceholderText('vercel/ai'), { target: { value: 'no-slash' } });
-    fireEvent.click(screen.getByRole('button', { name: /Add source/ }));
-    // The validation note shows and NO fetch POST fired (the store-list GET is fine).
-    expect(screen.getByRole('note').textContent).toContain('owner/repo');
+    fireEvent.change(picker('A').getByPlaceholderText('vercel/ai'), {
+      target: { value: 'no-slash' },
+    });
+    fireEvent.click(picker('A').getByRole('button', { name: /Add source/ }));
+    // The validation note shows (scoped to the A region) and NO fetch POST
+    // fired (the store-list GET is fine).
+    expect(picker('A').getByRole('note').textContent).toContain('owner/repo');
     const posts = vi
       .mocked(fetch)
       .mock.calls.filter(call => (call[1] as RequestInit | undefined)?.method === 'POST');
@@ -101,14 +127,17 @@ describe('P-211 repo A picker', () => {
       url.includes('/api/repos/sources') ? OK({ sources: [] }) : OK({ ...RECORD, ref: 'v2' })
     );
     page();
-    await screen.findByText('No sources yet', { exact: false });
+    picker('A').getByText('No sources yet', { exact: false });
     await submitGithub('vercel/ai', 'v2');
-    // The submit chain is async: wait for its observable effect (the router
-    // lands on Select), THEN the record is in the A-slot store.
-    await screen.findByRole('heading', { level: 2, name: 'Select' });
+    // The record lands after the async POST chain — the rendered row is the
+    // waitable effect.
+    await picker('A').findByText('vercel/ai@v2');
+    // The record is in the A-slot store (the page does NOT advance — B is
+    // still empty, the P-212 gate).
     expect(useSourcesStore.getState().sourcesA).toEqual([
       { id: 'src-1', kind: 'github', repo: 'vercel/ai', ref: 'v2', status: 'ready' },
     ]);
+    expect(screen.queryByRole('heading', { level: 2, name: 'Select' })).toBeNull();
     const post = vi
       .mocked(fetch)
       .mock.calls.find(call => String(call[0]).includes('/api/repos/from-url'));
@@ -129,11 +158,9 @@ describe('P-211 repo A picker', () => {
           })
     );
     page();
-    await screen.findByText('No sources yet', { exact: false });
-    fireEvent.click(screen.getByRole('tab', { name: 'Local path' }));
-    fireEvent.change(screen.getByPlaceholderText('repos/team-a'), { target: { value: 'repos/a' } });
-    fireEvent.click(screen.getByRole('button', { name: /Add source/ }));
-    expect(await screen.findByText('repos/a')).toBeTruthy();
+    picker('A').getByText('No sources yet', { exact: false });
+    submitLocal('repos/a');
+    expect(await picker('A').findByText('repos/a')).toBeTruthy();
     expect(useSourcesStore.getState().sourcesA[0]?.kind).toBe('local');
     const post = vi
       .mocked(fetch)
@@ -144,14 +171,23 @@ describe('P-211 repo A picker', () => {
   it('advances on success', async () => {
     mockFetch(url => (url.includes('/api/repos/sources') ? OK({ sources: [] }) : OK(RECORD)));
     page();
-    await screen.findByText('No sources yet', { exact: false });
+    picker('A').getByText('No sources yet', { exact: false });
+
+    // A resolves: the store holds it, and the page STAYS (B is still empty —
+    // the merge flow needs both; this is the P-212 gate made observable).
     await submitGithub('vercel/ai');
-    // The stepper's next step is the observable "advance": the router lands
-    // on Select, and the flow store marks it visited (the P-210 effect).
+    await picker('A').findByText('vercel/ai@main');
+    expect(useSourcesStore.getState().sourcesA).toHaveLength(1);
+    expect(screen.getByRole('heading', { level: 2, name: 'Repo B' })).toBeTruthy();
+
+    // B resolves: now BOTH slots hold a resolved source, and the page
+    // advances to Select (the canProceed effect).
+    await submitGithub('vercel/ai', 'main', 'B');
     expect(await screen.findByRole('heading', { level: 2, name: 'Select' })).toBeTruthy();
     // MemoryRouter owns the location — window.location is NOT the router's,
     // so the advance is asserted through the rendered page + the flow store.
     expect(useFlowStore.getState().visited).toContain('select');
+    expect(useSourcesStore.getState().sourcesB).toHaveLength(1);
   });
 
   it('surfaces error', async () => {
@@ -159,11 +195,11 @@ describe('P-211 repo A picker', () => {
       url.includes('/api/repos/sources') ? OK({ sources: [] }) : FAIL(404, 'repository not found')
     );
     page();
-    await screen.findByText('No sources yet', { exact: false });
+    picker('A').getByText('No sources yet', { exact: false });
     await submitGithub('ghost/nope');
     // The server's message is surfaced in the alert region, and the page
     // stays put (no navigation, no crash).
-    expect(await screen.findByRole('alert').then(node => node.textContent)).toContain(
+    expect(await (await picker('A').findByRole('alert')).textContent).toContain(
       'repository not found'
     );
     expect(useSourcesStore.getState().sourcesA).toHaveLength(0);
