@@ -37,7 +37,8 @@ import {
   type LicensePromptResult,
 } from './commands/license.js';
 import { deps, type DepsPromptContext } from './commands/deps.js';
-import { defaultStoreDir, emitConfig, openStore, readSources, type JsonValue } from './config.js';
+import { configCommand, type ConfigCommandOptions } from './commands/config.js';
+import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -359,17 +360,25 @@ export function buildCLI(program: Command): Command {
   program
     .command('config')
     .description('Print the merged effective project config (defaults + stitch.toml + env) as JSON')
-    .action(async () => {
-      // P-200: emitConfig IS the command — the effective config is JSON by
-      // design (CI/debug). Globals `-c/--config` and `-C/--cwd` drive it.
+    .option('--edit', 'open stitch.toml in $VISUAL/$EDITOR and validate on close (P-201)')
+    .option('--no-loop', 'with --edit: validate once, do not re-open on an invalid save')
+    .action(async (options: ConfigCommandOptions) => {
       const globals = globalOptionsOf(program);
-      const result = emitConfig({
-        ...(globals.configPath !== undefined ? { config: globals.configPath } : {}),
-        ...(globals.cwd !== undefined ? { cwd: globals.cwd } : {}),
-      }).map(() => undefined);
-      process.exitCode = exitCodeForResult(result, line => {
-        process.stderr.write(`${line}\n`);
-      });
+      const result = await configCommand(
+        {
+          ...(options.edit === true ? { edit: true } : {}),
+          ...(options.loop === false ? { loop: false } : {}),
+          ...(globals.configPath !== undefined ? { config: globals.configPath } : {}),
+          ...(globals.cwd !== undefined ? { cwd: globals.cwd } : {}),
+        },
+        {}
+      );
+      process.exitCode = exitCodeForResult(
+        result.map(() => undefined),
+        line => {
+          process.stderr.write(`${line}\n`);
+        }
+      );
     });
 
   return program;

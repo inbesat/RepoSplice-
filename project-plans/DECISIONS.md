@@ -3240,4 +3240,35 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-086: P-201 Builds the Editor Over Argument-Array `spawn` (Injection Safe by Construction), Reads "Saved" Off mtime, Refuses to Rename `NO_EDITOR` Into Core, and Puts `stitch config --edit` Behind the Same `loadConfig` the Loop Validates With
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-201 (PHASES_DETAILED.md, line 10075) mandates `editor.ts` (`openInEditor`: `$VISUAL` → `$EDITOR` → platform default, save detection, safe quoting per P-205), a real `commands/config.ts` with `--edit` + `--no-loop`, a re-parse loop validating on close, `NO_EDITOR` with a hint, and an optional `merge --preflight` wiring. The phase names five tests across `editor.test.ts` + `commands/config.test.ts`. Runtime landmines from the lane so far: error codes are a coordinated core change (ADR-072), and vitest runs Node (ADR-085).
+
+**Decisions:**
+
+1. INJECTION SAFETY IS CONSTRUCTIONAL, NOT QUOTING: `spawn(editor, [path], { stdio: 'inherit', shell: false })` — the editor name and the path travel as separate argv entries and no shell ever parses them, so a path full of `& ; $ ( )` spaces is inert (the `safe arg quoting` test drives a NTFS-legal metacharacter path — Windows forbids raw `"` in names — and asserts the array form plus `shell: false`). There is no escaper to get wrong because there is no string command line.
+
+2. "WATCH FOR SAVE" IS SIMPLER THAN A WATCHER: `openInEditor` stats the file before launching, awaits editor exit, stats again — `{saved: mtimeMoved, mtime}`. A watch-during-open adds complexity for zero information (the decision point is exactly "did the user save before closing"), and the returned `mtime` is what a future external watcher would need anyway. A non-zero exit with an UNCHANGED file is the user aborting — `ok({saved:false})`, not an error; a changed-but-never-validated file is what the loop's re-parse catches.
+
+3. `NO_EDITOR` IS A PHANTOM — RESOLVED AS `CONFIG_ERROR{field:'editor'}` WITH THE HINT IN THE MESSAGE. Grepping core's `StitchError` union: no such code. Adding one is the coordinated multi-file change (RULES/ERROR_RULES/doctor/contract test) that ADR-072 measured at three breakages for one trial code, and core is inbesat-owned for this lane. The message carries everything the phase wanted from the hint: the tried command, its failure, and `set $VISUAL or $EDITOR to an editor on PATH`.
+
+4. THE PLATFORM DEFAULT IS `notepad` (win32) / `vi` (unix) — NOT `code`. The spec lists `code` but VS Code is not on every machine's PATH; a missing default binary would read as "no editor" for users who never set `$EDITOR`, which is the exact `no editor error` case. `vi` survives on minimal unix; `notepad` always exists on Windows. Resolution order stays the spec's: `$VISUAL` → `$EDITOR` → default (blank strings skipped).
+
+5. `commands/config.ts` IS THE REAL COMMAND MODULE (the phase's file list was right; P-200's inline cli.ts body MOVES there). Output contract: stdout stays PARSEABLE JSON — the resolved-config-path note goes to stderr — and `--edit` loops: on each editor close, `loadConfig({config: path})` runs (the same P-200 surface every command uses, so validation cannot drift); `CONFIG_INVALID` prints every issue with its dotted path and re-opens, capped at 10 attempts (default; injectable) so an unattended process cannot spin forever. `--no-loop` validates exactly once.
+
+6. NO PROJECT FILE + `--edit` SCAFFOLDS A STARTER rather than refusing: editing nothing is a no-op, so the loop writes `writeConfig(cwd, defaults)` first and says so on stderr. Explicit `--config` files are never scaffolded (the user named a file that must exist — P-200's `CONFIG_ERROR`).
+
+7. STEP 4 (`merge --preflight`) IS SKIPPED, ON THE RECORD: the spec marks it optional "to avoid blocking automation", and `stitch merge` is not CLI-reachable until the deferred P-192 handler map (PROGRESS, decision of 2026-10-17) — nothing exists to preflight. The editor surface is command-agnostic, so wiring it later is one port away.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **19 files / 117 tests** (editor: `opens and edits`, `resolves VISUAL then EDITOR then the platform default`, `no editor error`, `safe arg quoting`, nonzero-exit-abort; config: print path+JSON, valid-after-one-save, `rescues parser restart on invalid`, `no loop mode`, typed no-editor propagation, starter scaffold). Root suite: 2465 passed / 1 failed — solely the documented pre-existing core red (`jobs/idempotency.test.ts`, ADR-079).
+- The `EditorSpawn` seam accepts Node's `spawn` directly, so P-207's binary build and CI need no further editor work; `serve` (P-193) must never call `openInEditor` synchronously (the handoff note) — it is `async` and awaits child exit, so it composes with server-safe promises already.
+- P-202 (theme) is next; the config command's stderr/stdout split is the pattern feedback surfaces should keep.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
