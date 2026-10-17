@@ -1,12 +1,21 @@
-// P-211 — Sources picker placeholder (P-210 mounts it in the flow).
+// P-211 — the Sources screen: the A slot's picker; success advances the flow
+// to the Select step (P-213 fills that screen).
 
+import { useNavigate } from 'react-router';
 import type { JSX } from 'react';
+import { RepoPicker } from '../components/RepoPicker.js';
 
 export function SourcesPage(): JSX.Element {
+  const navigate = useNavigate();
+
   return (
-    <section>
-      <h2 className="text-title font-semibold">Sources</h2>
-      <p className="text-muted">Pick repos A and B — coming in phase P-211.</p>
-    </section>
+    <RepoPicker
+      slot="A"
+      onResolved={() => {
+        // The resolved source is in the store; the stepper's next step unlocks via
+        // the flow-visited effect AppShell already runs on navigation.
+        navigate('/select');
+      }}
+    />
   );
 }

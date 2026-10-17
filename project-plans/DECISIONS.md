@@ -3511,4 +3511,29 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+---
+
+## ADR-096: P-211 Sets the `/api/repos/*` Contract Client-First (Sources Slice Seeded Ahead of P-215; Slot-Agnostic Picker with Form-Owned Validation and Picker-Owned Errors; Success Navigates — so the Store, Not the Row, Is the Assertion)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-211 builds the repo-A picker and its handoff says "The `/api/repos/*` contract is set here." The P-193 server currently serves `/health`, `/api/provenance|jobs|settings` only — the repos endpoints do not exist, and P-211's file list is web-only, so the server side lands in a later CLI phase against THIS contract. P-215 (selection store) is also later.
+
+**Decision:**
+
+1. CONTRACT FIRST, CLIENT-SIDE: `api/repos.ts` fixes `SourceRecord` (`id`, `kind: 'github'|'local'`, `repo?`, `path?`, `ref?`, `status: 'ready'|'pending'|'error'`) and the three verbs — `listSources()` GET `/api/repos/sources` (`{sources: SourceRecord[]}`), `addSourceUrl` POST `/api/repos/from-url` (`{ownerRepo, ref?}`), `addSourcePath` POST `/api/repos/local` (`{path}`) — plain async functions that THROW on non-ok with the server's JSON `message` (fetch rejection IS the web-side error path; neverthrow stays a CLI-side convention). Until the server implements them, a live `stitch serve` 404s into the picker's error surface — harmless by design.
+2. THE STORE IS SEEDED, NOT PRE-BUILT: `store/sources.ts` is P-215's sources slice (`sourcesA`/`sourcesB` + `addSource(slot, record)` + `reset`) with the same seed-as-spec-exact-shape pattern as P-210's flow slice; P-215 combines it under the umbrella unchanged.
+3. SLOT-AGNOSTIC BY CONTRACT: `RepoPicker` takes `slot: 'A' | 'B'` — the store list, the aria labels and the title all key off it; P-212 reuses it for B with no component changes. The sources list MERGES the store's records with a best-effort `listSources()` fetch (API failure degrades to the store list, a note — not a crash).
+4. VALIDATION IN THE FORM, ERRORS IN THE PICKER: `RepoSourceForm` owns the GitHub-slug/ref/local-path checks (blocking, with the `role="note"` guidance) and the pending state (disabled submit, `aria-busy` + spinner); API failures are CAUGHT in the form and handed to `onError` — an early draft re-threw, leaving an unhandled rejection and no surface (found by the `surfaces error` test). The picker owns the `role="alert"` message.
+5. SUCCESS ADVANCES THE FLOW: the page navigates to `/select` on resolution (the stepper unlocks via P-210's visited effect). Consequence for tests: the source record must be asserted in the STORE, not as a DOM row — the row's page is gone by then.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean; web `tsc --noEmit` 0, web suite **17 files / 49 tests** (`SourcesPage.test.tsx`: the six mandated names — `renders sources`, `validates owner repo`, `adds from url`, `adds local path`, `advances on success`, `surfaces error` — `vi.stubGlobal('fetch', spy)` mocked; MemoryRouter owns the location, so the advance asserts through the rendered page + flow store, never `window.location`).
+- P-212 reuses the picker for slot B in one line; the server's `/api/repos/*` phase implements against the frozen shapes in `api/repos.ts`.
+- Two P-210 shell pins touched again ON THE RECORD: `locked blocks nav` anchors on the picker label and `routes placeholders` asserts the live picker's empty state (`add one below`) where the P-211 marker used to be — the placeholder is now a real screen.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

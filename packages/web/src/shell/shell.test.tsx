@@ -64,9 +64,9 @@ describe('P-210 shell layout', () => {
     expect(screen.queryByRole('link', { name: /Review/ })).toBeNull();
     const locked = screen.getByText('Review').closest('span');
     expect(locked?.getAttribute('aria-disabled')).toBe('true');
-    // Clicking it changes nothing: the Sources page is still shown.
+    // Clicking it changes nothing: the A picker is still shown.
     fireEvent.click(locked ?? document.body);
-    expect(screen.getByRole('heading', { level: 2, name: 'Sources' })).toBeTruthy();
+    expect(screen.getByLabelText('repo A picker')).toBeTruthy();
     expect(useFlowStore.getState().visited).toEqual(['sources']);
   });
 
@@ -74,7 +74,7 @@ describe('P-210 shell layout', () => {
     // Deep links render every placeholder directly (route access stays open;
     // the stepper's lock is the UI gate).
     const expected = [
-      ['/sources', 'coming in phase P-211'],
+      ['/sources', 'add one below'], // P-211 landed: the live picker's empty state
       ['/select', 'coming in phases P-213/P-214'],
       ['/stitch', 'coming in phases P-217/P-218'],
       ['/review', 'coming in phases P-219/P-220'],
