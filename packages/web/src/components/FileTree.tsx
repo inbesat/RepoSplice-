@@ -22,6 +22,10 @@ export interface FileTreeProps {
   readonly source: SourceRecord;
   /** Called with the sorted list of checked FILE paths after every change. */
   readonly onSelectionChange?: (paths: readonly string[]) => void;
+  /** Called once per successful load with the flat entry list (P-214 cross-highlight). */
+  readonly onLoaded?: (entries: readonly TreeEntry[]) => void;
+  /** FILE paths to spotlight (present in both sources — P-214 cross-highlight). */
+  readonly highlightPaths?: readonly string[];
   /** Viewport height in px (virtualization) — default 400. */
   readonly height?: number;
 }
@@ -75,7 +79,13 @@ function dirsFirst(a: TreeNodeData, b: TreeNodeData): number {
   return a.name.localeCompare(b.name);
 }
 
-export function FileTree({ source, onSelectionChange, height = 400 }: FileTreeProps): JSX.Element {
+export function FileTree({
+  source,
+  onSelectionChange,
+  onLoaded,
+  highlightPaths,
+  height = 400,
+}: FileTreeProps): JSX.Element {
   const [entries, setEntries] = useState<readonly TreeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
@@ -86,7 +96,9 @@ export function FileTree({ source, onSelectionChange, height = 400 }: FileTreePr
     setError(null);
     getTree(source.id, source.ref)
       .then(result => {
-        if (!cancelled) setEntries(result);
+        if (cancelled) return;
+        setEntries(result);
+        onLoaded?.(result);
       })
       .catch(cause => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
@@ -94,6 +106,9 @@ export function FileTree({ source, onSelectionChange, height = 400 }: FileTreePr
     return () => {
       cancelled = true;
     };
+    // onLoaded is omitted from deps on purpose: the parent's handler is
+    // stable and a re-call on its identity change would double-fire the
+    // load report.
   }, [source.id, source.ref]);
 
   const treeData = useMemo(() => buildTree(entries ?? []), [entries]);
@@ -129,6 +144,7 @@ export function FileTree({ source, onSelectionChange, height = 400 }: FileTreePr
   };
 
   const filePaths = fileEntries.map(entry => entry.path);
+  const highlightSet = useMemo(() => new Set(highlightPaths ?? []), [highlightPaths]);
   const allSelected = filePaths.length > 0 && filePaths.every(path => checked.has(path));
   const toggleAll = (): void => {
     applyChecked(allSelected ? new Set() : new Set(filePaths));
@@ -173,6 +189,7 @@ export function FileTree({ source, onSelectionChange, height = 400 }: FileTreePr
         <TreeNode
           {...rowProps}
           check={{ kind: 'file', checked: checked.has(node.data.path), onToggle: toggleFile }}
+          cross={highlightSet.has(node.data.path)}
         />
       );
     }

@@ -3592,4 +3592,30 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-099: P-214 The A/B Selection Contract Is the SORTED RAW PATHS in `selectionA`/`selectionB`; SplitTreeView Composes Two Unchanged FileTrees; Cross-Highlight Rides `onLoaded` + a Row-Level `data-cross`; the Continue Gate Reads STORE Lengths
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-214 (file tree B) binds the P-213 tree to slot B, adds the split view, per-slot counts, the combined "Continue to Merge" gate, and the cross-highlight toggle — and its handoff demands store keys STABLE for merge P-192/provenance P-181 while core's P-148 `FileSelection` needs a `SourceRepo` per `SelectedFile` (merge-time data the web store does not have).
+
+**Decision:**
+
+1. THE CONTRACT IS PATHS, NOT core's FILE OBJECTS: `selectionA`/`selectionB` hold the sorted repo-relative paths (a rename of P-213's internal `filesA`/`filesB` — nothing outside `selection.ts`/`SelectPage` consumed them; `setSelection` replaces `setFiles`). Core's `FileSelection.files[SourceRepo, path]` is CONSTRUCTED at merge time by P-192/P-216 — the store keeps the stable raw shape, satisfying "persist both selections" without fabricating `SourceRepo`s in the browser.
+
+2. SPLITVIEW COMPOSES, NEVER MODIFIES: `SplitTreeView` renders TWO unchanged `FileTree`s in a `md:grid-cols-2` grid (stacks on small widths — the P-212 pattern) with independently scrollable panes; the component owns only (a) the two loaded entry lists via the new `FileTree.onLoaded` (fired once per successful fetch, from the cancelled-flag effect), and (b) the cross-toggle state.
+
+3. CROSS-HIGHLIGHT IS A ROW ATTRIBUTE: the intersection of loaded FILE paths flows down as `FileTree.highlightPaths` (spread-conditional, only when the toggle is on) and lights rows through `TreeNode`'s `cross` → `data-cross="true"` + the `text-warning` token. The toggle appears only when shared paths exist — its seed for the P-217/P-219 conflict preview.
+
+4. THE CONTINUE GATE READS THE STORE: the sticky footer's button is enabled only when BOTH `selectionA`/`selectionB` are non-empty (explanation text names the empty slot); the click navigates `/stitch`. Reading store lengths (not component state) keeps the gate P-215-reusable.
+
+5. PINS/FLAKE ON RECORD: ADR-098's `SourcesPage.test` 'advances on success' heading name is superseded — 'Select files — repo A' → 'Select files' (the Select page now hosts BOTH slots). The web suite intermittently fails SourcesPage 'advances on success' under 19-parallel-jsdom load (passed 6/6 isolated AND full-suite green on re-run — the ADR-098 flake family, timing not logic; its 5 s await kept).
+
+**Consequences:**
+
+- Gate green: web tsc 0, web suite **19 files / 59 tests** (the four mandated `SelectPage.test` names verbatim: renders both trees / counts per slot / gates continue / cross highlight toggle), root typecheck 0, eslint 0, prettier clean.
+- P-213-state root suite note: a background `bun run test` died on `FileTree.test 'selects file'` while P-214 files were being written CONCURRENTLY (edit race artifact — the same test passes in every post-write run, full suite included); 2523 passed otherwise, sole genuine red the documented ADR-079 idempotency test.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

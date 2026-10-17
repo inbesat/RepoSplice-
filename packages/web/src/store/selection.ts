@@ -17,10 +17,14 @@ import { create } from 'zustand';
 import type { SourceRecord } from '../api/repos.js';
 import { useFlowStore } from './flow.js';
 
-// P-213 FILE SELECTIONS: `filesA`/`filesB` hold the repo-relative FILE paths
-// the user checked per slot (sorted). Raw paths for now — P-215 maps them to
-// the P-148 FileSelection contract for merge. Clearing a slot's source also
-// clears its file selection (a selection without a source is meaningless).
+// P-214 SELECTIONS: `selectionA`/`selectionB` hold the repo-relative FILE
+// paths the user checked per slot (sorted) — the path-keyed, slot-keyed
+// contract finalized HERE per the handoff ("keep the store keys stable for
+// merge P-192/provenance P-181"). Core's P-148 `FileSelection`
+// (`files: SelectedFile[]` with a `SourceRepo` each) is built at MERGE time by
+// P-192/P-216; the store carries the stable raw shape. Clearing a slot's
+// source also clears its selection (a selection without a source is
+// meaningless).
 
 export type SourceSlot = 'A' | 'B';
 
@@ -28,8 +32,8 @@ export interface SourcesState {
   readonly sourcesA: readonly SourceRecord[];
   readonly sourcesB: readonly SourceRecord[];
   /** Repo-relative checked file paths per slot (sorted). */
-  readonly filesA: readonly string[];
-  readonly filesB: readonly string[];
+  readonly selectionA: readonly string[];
+  readonly selectionB: readonly string[];
   /** Append a resolved source to the slot's list (first call per record wins). */
   addSource: (slot: SourceSlot, record: SourceRecord) => void;
   /** Exchange the two slots (used when the sources were entered in the wrong order). */
@@ -37,7 +41,7 @@ export interface SourcesState {
   /** P-215's `reset` seed. */
   reset: () => void;
   /** Replace the slot's checked file paths (sorted). */
-  setFiles: (slot: SourceSlot, paths: readonly string[]) => void;
+  setSelection: (slot: SourceSlot, paths: readonly string[]) => void;
 }
 
 /** A slot is usable when it holds at least one RESOLVED source. */
@@ -61,35 +65,35 @@ function pruneDownstream(): void {
 export const useSourcesStore = create<SourcesState>()(set => ({
   sourcesA: [],
   sourcesB: [],
-  filesA: [],
-  filesB: [],
+  selectionA: [],
+  selectionB: [],
   addSource: (slot, record) =>
     set(state => {
       const list = slot === 'A' ? state.sourcesA : state.sourcesB;
       if (list.some(existing => existing.id === record.id)) return state;
       pruneDownstream();
-      const files = { filesA: [], filesB: [] }; // source changed — selections are stale
+      const cleared = { selectionA: [], selectionB: [] }; // source changed — selections are stale
       return slot === 'A'
-        ? { sourcesA: [...state.sourcesA, record], ...files }
-        : { sourcesB: [...state.sourcesB, record], ...files };
+        ? { sourcesA: [...state.sourcesA, record], ...cleared }
+        : { sourcesB: [...state.sourcesB, record], ...cleared };
     }),
   swapAB: () => {
     pruneDownstream();
     set(state => ({
       sourcesA: state.sourcesB,
       sourcesB: state.sourcesA,
-      filesA: [],
-      filesB: [],
+      selectionA: [],
+      selectionB: [],
     }));
   },
-  reset: () => set({ sourcesA: [], sourcesB: [], filesA: [], filesB: [] }),
-  setFiles: (slot, paths) =>
+  reset: () => set({ sourcesA: [], sourcesB: [], selectionA: [], selectionB: [] }),
+  setSelection: (slot, paths) =>
     set(state => {
       const next = [...paths].sort();
-      const current = slot === 'A' ? state.filesA : state.filesB;
+      const current = slot === 'A' ? state.selectionA : state.selectionB;
       if (current.length === next.length && current.every((path, index) => path === next[index])) {
         return state; // identical content — skip the re-render loop
       }
-      return slot === 'A' ? { filesA: next } : { filesB: next };
+      return slot === 'A' ? { selectionA: next } : { selectionB: next };
     }),
 }));

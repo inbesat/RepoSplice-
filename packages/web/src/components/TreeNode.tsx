@@ -43,6 +43,8 @@ interface CheckDirState {
 
 export type TreeNodeProps = NodeRendererProps<TreeNodeData> & {
   check: CheckState | CheckDirState;
+  /** File present in BOTH sources (P-214 cross-highlight) — spotlight the row. */
+  cross?: boolean;
 };
 
 /** Tri-state native checkbox: `indeterminate` is a DOM property, not an attr. */
@@ -71,11 +73,15 @@ function Check({
   );
 }
 
-export function TreeNode({ style, node, check }: TreeNodeProps): JSX.Element {
+export function TreeNode({ style, node, check, cross = false }: TreeNodeProps): JSX.Element {
   const isDir = !node.isLeaf;
   const data = node.data;
   return (
-    <div style={style} className="flex h-full items-center gap-1 text-body">
+    <div
+      style={style}
+      data-cross={cross || undefined}
+      className={`flex h-full items-center gap-1 text-body${cross ? ' text-warning' : ''}`}
+    >
       {isDir ? (
         <>
           <button

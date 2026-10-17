@@ -187,11 +187,7 @@ describe('P-211/P-212 repo pickers', () => {
     // h2 is the per-source title, not the bare 'Select' placeholder. The 5s
     // timeout rides out suite-load lag (auto-advance is an async effect).
     expect(
-      await screen.findByRole(
-        'heading',
-        { level: 2, name: 'Select files — repo A' },
-        { timeout: 5000 }
-      )
+      await screen.findByRole('heading', { level: 2, name: 'Select files' }, { timeout: 5000 })
     ).toBeTruthy();
     // MemoryRouter owns the location — window.location is NOT the router's,
     // so the advance is asserted through the rendered page + the flow store.
