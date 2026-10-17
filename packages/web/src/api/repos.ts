@@ -57,7 +57,7 @@ export async function addSourcePath(input: { path: string }): Promise<SourceReco
 }
 
 /** The server's `message` when it speaks JSON, else the status line. */
-async function describeFailure(response: Response): Promise<string> {
+export async function describeFailure(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { message?: string };
     if (body.message !== undefined) return body.message;

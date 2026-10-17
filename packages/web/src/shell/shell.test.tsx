@@ -97,9 +97,12 @@ describe('P-210 shell layout', () => {
     // the stepper's lock is the UI gate).
     // P-213: /select renders the file-tree empty state — the marker is a
     // substring of the placeholder paragraph shown with no repo A source.
+    // P-216: /stitch now renders the gated Run Merge page — the marker is a
+    // substring of its paragraph (supersedes the P-217/P-218 placeholder pin;
+    // on record in ADR-101).
     const expected = [
       ['/select', 'file tree loads here'],
-      ['/stitch', 'coming in phases P-217/P-218'],
+      ['/stitch', 'Run the merge'],
       ['/review', 'coming in phases P-219/P-220'],
       ['/results', 'coming in phase P-221'],
     ] as const;

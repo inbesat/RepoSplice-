@@ -3652,4 +3652,45 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-101: P-216 — AI thinking stream: client contracts, cap, coalesced tool rows
+
+Context: P-216 (Web — AI Thinking Stream) renders live reasoning tokens, tool
+calls, and pipeline progress during a merge. The serve WS hub (P-193) and the
+`POST /api/merge` handler (P-192 handler-map) do not exist yet, so the client
+side defines the contract shapes and the plan's server phases implement them.
+
+Decisions:
+
+1. `/ws` and `/api/merge` are CLIENT CONTRACTS like P-211's `/api/repos/*`.
+   `defaultConnect` opens a WebSocket to `origin.replace(/^http/, 'ws')/ws`
+   (through the vite `/ws` proxy); `runMerge` POSTs `{selectionA, selectionB}`
+   and expects `MergeSummary {files, deps[], licenses[]}` on success. Both are
+   inert against the current dev server (fetch mock or 404) — no throw.
+2. The token cap lives ONLY in `ThinkingStream` (exported
+   `MAX_STREAM_EVENTS = 2000`, renders the last 2000 entries); the hook keeps
+   the full log. Cap-at-render keeps the hook a dumb accumulator (spec: "cap
+   rendering") and lets P-218's review view decide its own window.
+3. The connection is ACTIVE-GATED: `useMergeStream({active})` opens the socket
+   only while `run.status === 'running'`. Idle pages and test environments
+   hold no connection; `defaultConnect` also guards
+   `typeof WebSocket === 'undefined'` so jsdom/SSR stay inert.
+4. Auto-reconnect is a fixed-2s reopen stub (`shortcut:` comment in code);
+   P-223 replaces it with real backoff/jitter. Malformed frames are dropped,
+   not fatal.
+5. A tool's status transition (running → done/failed) UPDATES its row: the
+   render coalesces tool events by `toolName` (latest event wins, row stays at
+   its first-seen position) instead of stacking duplicates. Rationale: the
+   merged log stays append-only in the hook while the UI reads like a status
+   board; finding: two same-name rows broke `getByRole` uniqueness in tests.
+6. Denial is MESSAGE-SNIFFED (`/denie[sd]/` on the error message) until
+   P-160/P-120 emit a typed denial payload the server can pass through —
+   `shortcut:` comment on the sniff line; upgrade then.
+7. `describeFailure` is exported from `api/repos.ts` (was module-private) and
+   re-exported by `api/merge.ts` — one error-shaping helper across api modules.
+8. Superseded pin on record: the shell `/stitch` placeholder marker
+   ('coming in phases P-217/P-218') is now `'Run the merge'` — the page is
+   real this phase (same pattern as P-212's `/sources` pin).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
