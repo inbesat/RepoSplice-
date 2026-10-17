@@ -6,6 +6,7 @@
 import type { JSX } from 'react';
 import { useNavigate } from 'react-router';
 import { SplitTreeView } from '../components/SplitTreeView.js';
+import { canProceedSelection } from '../store/selectors.js';
 import { useSourcesStore } from '../store/selection.js';
 
 export function SelectPage(): JSX.Element {
@@ -25,7 +26,7 @@ export function SelectPage(): JSX.Element {
     );
   }
 
-  const ready = selectionA.length > 0 && selectionB.length > 0;
+  const ready = canProceedSelection({ selectionA, selectionB });
   return (
     <section aria-label="Select files">
       <div className="mb-2 flex items-center justify-between">

@@ -3616,6 +3616,40 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 - Gate green: web tsc 0, web suite **19 files / 59 tests** (the four mandated `SelectPage.test` names verbatim: renders both trees / counts per slot / gates continue / cross highlight toggle), root typecheck 0, eslint 0, prettier clean.
 - P-213-state root suite note: a background `bun run test` died on `FileTree.test 'selects file'` while P-214 files were being written CONCURRENTLY (edit race artifact — the same test passes in every post-write run, full suite included); 2523 passed otherwise, sole genuine red the documented ADR-079 idempotency test.
 
+## ADR-100: P-215 selection state (store umbrella + run slice + selectors)
+
+1. **Slices reconciled, not re-created.** The spec's file list names `sources.ts`, `selection.ts`, and
+   `flow.ts` as "new slices", but all three pre-date the phase (`selection.ts` has owned the whole
+   sources+selection slice since P-212; `sources.ts` is its re-export shim; `flow.ts` was seeded in
+   P-210). P-215 keeps them and adds the umbrella: `store/index.ts` re-exports types/selection/
+   flow/run/selectors in one entry point (NOT `sources.js` — a star re-export would collide with
+   `selection.js`'s identical names).
+2. **Selection shape stays the ADR-099 contract.** The spec's `Record<path, SelectedEntry>` is
+   superseded by the sorted repo-relative path arrays (`selectionA`/`selectionB`) finalized in P-214 —
+   these keys must stay byte-stable for merge P-192/provenance P-181; core's P-148 `FileSelection`
+   keeps being built at merge time. The store gains the spec's `togglePath(slot, path)` action
+   (sorted add/remove; deliberately no flow prune — only SOURCE changes invalidate downstream state,
+   selection edits do not). SelectPage's footer gate now reads `canProceedSelection` so screens
+   consume the shared derivation instead of recomputing it.
+3. **Run slice.** `store/run.ts`: `RunStatus = 'idle' | 'running' | 'approved' | 'rejected' |
+   'succeeded' | 'failed'` (the P-160 HIL decision states fold into the same lifecycle) plus
+   `currentStep: string | undefined`. `setRunStatus(status, currentStep?)` with an omitted step keeps
+   the previous one (status-only updates); `reset()` clears both. P-216 grows this slice with progress
+   events and the AI stream state.
+4. **Devtools yes, persist no.** All three stores (`stitch-sources`, `stitch-flow`, `stitch-run`) are
+   wrapped in zustand's `devtools` middleware per spec step 4 (jsdom-safe, no-op without the
+   extension). The AC's "persisted via Zustand" is read as "state lives in the store"; the `persist`
+   middleware is deliberately not added — localStorage-caching sources/selections could desync with
+   server-side state and no deployment target for that was identified.
+5. **Selectors are the single derivation point.** `store/selectors.ts`:
+   `canProceedSources` (alias of P-212's `canProceedSourceSelection` — same predicate, the phase's
+   name), `canProceedSelection` (both selections non-empty), `canStartMerge` (sources resolved AND
+   selections non-empty AND `status !== 'running'` — the running guard also blocks double
+   submission), curried `fileCount(slot)`, and `conflictPaths` = A∩B (both inputs stored sorted, so
+   the intersection is sorted — the P-217 conflict surface). Spec-specified "can-proceed gates every
+   screen uses" starts with SelectPage's footer this phase; later screens import from
+   `store/index.js`.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

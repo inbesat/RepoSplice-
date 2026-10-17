@@ -14,6 +14,7 @@
 // own state when it lands.
 
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import type { SourceRecord } from '../api/repos.js';
 import { useFlowStore } from './flow.js';
 
@@ -42,6 +43,8 @@ export interface SourcesState {
   reset: () => void;
   /** Replace the slot's checked file paths (sorted). */
   setSelection: (slot: SourceSlot, paths: readonly string[]) => void;
+  /** Add/remove one repo-relative path from the slot's selection (sorted). */
+  togglePath: (slot: SourceSlot, path: string) => void;
 }
 
 /** A slot is usable when it holds at least one RESOLVED source. */
@@ -62,38 +65,54 @@ function pruneDownstream(): void {
   useFlowStore.setState(state => ({ visited: state.visited.filter(id => id === 'sources') }));
 }
 
-export const useSourcesStore = create<SourcesState>()(set => ({
-  sourcesA: [],
-  sourcesB: [],
-  selectionA: [],
-  selectionB: [],
-  addSource: (slot, record) =>
-    set(state => {
-      const list = slot === 'A' ? state.sourcesA : state.sourcesB;
-      if (list.some(existing => existing.id === record.id)) return state;
-      pruneDownstream();
-      const cleared = { selectionA: [], selectionB: [] }; // source changed — selections are stale
-      return slot === 'A'
-        ? { sourcesA: [...state.sourcesA, record], ...cleared }
-        : { sourcesB: [...state.sourcesB, record], ...cleared };
-    }),
-  swapAB: () => {
-    pruneDownstream();
-    set(state => ({
-      sourcesA: state.sourcesB,
-      sourcesB: state.sourcesA,
+export const useSourcesStore = create<SourcesState>()(
+  devtools(
+    set => ({
+      sourcesA: [],
+      sourcesB: [],
       selectionA: [],
       selectionB: [],
-    }));
-  },
-  reset: () => set({ sourcesA: [], sourcesB: [], selectionA: [], selectionB: [] }),
-  setSelection: (slot, paths) =>
-    set(state => {
-      const next = [...paths].sort();
-      const current = slot === 'A' ? state.selectionA : state.selectionB;
-      if (current.length === next.length && current.every((path, index) => path === next[index])) {
-        return state; // identical content — skip the re-render loop
-      }
-      return slot === 'A' ? { selectionA: next } : { selectionB: next };
+      addSource: (slot, record) =>
+        set(state => {
+          const list = slot === 'A' ? state.sourcesA : state.sourcesB;
+          if (list.some(existing => existing.id === record.id)) return state;
+          pruneDownstream();
+          const cleared = { selectionA: [], selectionB: [] }; // source changed — selections are stale
+          return slot === 'A'
+            ? { sourcesA: [...state.sourcesA, record], ...cleared }
+            : { sourcesB: [...state.sourcesB, record], ...cleared };
+        }),
+      swapAB: () => {
+        pruneDownstream();
+        set(state => ({
+          sourcesA: state.sourcesB,
+          sourcesB: state.sourcesA,
+          selectionA: [],
+          selectionB: [],
+        }));
+      },
+      reset: () => set({ sourcesA: [], sourcesB: [], selectionA: [], selectionB: [] }),
+      setSelection: (slot, paths) =>
+        set(state => {
+          const next = [...paths].sort();
+          const current = slot === 'A' ? state.selectionA : state.selectionB;
+          if (
+            current.length === next.length &&
+            current.every((path, index) => path === next[index])
+          ) {
+            return state; // identical content — skip the re-render loop
+          }
+          return slot === 'A' ? { selectionA: next } : { selectionB: next };
+        }),
+      togglePath: (slot, path) =>
+        set(state => {
+          const current = slot === 'A' ? state.selectionA : state.selectionB;
+          const next = current.includes(path)
+            ? current.filter(existing => existing !== path)
+            : [...current, path].sort();
+          return slot === 'A' ? { selectionA: next } : { selectionB: next };
+        }),
     }),
-}));
+    { name: 'stitch-sources' }
+  )
+);

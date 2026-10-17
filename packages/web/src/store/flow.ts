@@ -5,6 +5,7 @@
 // P-215 spec's ("steps metadata + activeStep, visited — powers P-210 stepper").
 
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import type { StepDef } from '../router.js';
 
 export interface FlowState {
@@ -16,9 +17,14 @@ export interface FlowState {
   reset: () => void;
 }
 
-export const useFlowStore = create<FlowState>()(set => ({
-  visited: [],
-  complete: id =>
-    set(state => (state.visited.includes(id) ? state : { visited: [...state.visited, id] })),
-  reset: () => set({ visited: [] }),
-}));
+export const useFlowStore = create<FlowState>()(
+  devtools(
+    set => ({
+      visited: [],
+      complete: id =>
+        set(state => (state.visited.includes(id) ? state : { visited: [...state.visited, id] })),
+      reset: () => set({ visited: [] }),
+    }),
+    { name: 'stitch-flow' }
+  )
+);
