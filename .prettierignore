@@ -12,3 +12,5 @@ coverage/
 project-plans/
 PRESENTATION_3D.html
 .playwright-mcp/
+.serena/
+templates/

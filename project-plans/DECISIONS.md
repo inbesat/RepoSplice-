@@ -3004,4 +3004,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-079: P-194 `stitch status` Verifies Checksums From the Manifest File, Reads Strictly Open-Only-If-Exists, Degrades a Throwing Bare `loadConfig` to `defaultConfig`, and Registers Through `buildCLI` After Moving `readSources` Into `config.ts`
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-194 (PHASES_DETAILED.md:9746) mandates `commands/status.ts` + `status.test.ts` with five tests (`renders status summary`, `emits json`, `shows sandbox availability`, `shows checksum verify`, `read only exit 0`), a summary whose sections cover config, store, sources, HIL queue, pipeline jobs, recent activity, sandbox availability, and checksum verification — emitting JSON under `--json` and never writing anything.
+
+**Decisions:**
+
+1. CHECKSUM VERDICTS COME FROM THE MANIFEST FILE, NOT `verifyChecksums`. Core's `verifyChecksums(repoPath, manifest, {concurrency})` requires a `ChecksumManifest` object — `{algorithm, entries, sizeBytes, manifestSha256}` — but the P-186 file `checksums.sha256` stores ONLY `<sha256>␠␠<relative-path>` lines, from which `sizeBytes` and `manifestSha256` are unrecoverable. So status parses the file itself (`parseChecksumFile`, strict: any line that is not a sha256sum line is a corrupt manifest → `unreadable`, never silently skipped) and re-hashes the recorded paths (`sha256File`, the same streaming shape `checksums.ts` uses). Verdicts: `verified`, `drift` (the sorted list of mismatched paths — a RECORDED file that is missing counts as a mismatch, the same rule `verifyChecksums` applies), `unreadable`, `no-manifest`.
+
+2. `sandbox.dockerHost` MAPS TO THE TWO REAL CLIENT SHAPES. A value starting with `/` is a Nix socket → `socketPath`; anything else (defaults to `/var/run/docker.sock` per P-168) → `host`. Those are exactly the two `DockerClientOptions` shapes `createDockerClient` accepts.
+
+3. PROVIDERS ARE DERIVED FROM BOTH REDACTED STORE KEYS AND ENV NAMES — NEVER FROM VALUES. configstore NESTS dotted keys (`anthropic.apiKey` is stored as `{anthropic:{apiKey}}`), so "a provider configured in the store" = a TOP-LEVEL object in `store.snapshotRedacted()` that carries an `apiKey` property (its value already redacted); unioned with `PROVIDER_ENV_KEYS` names present in the environment, sorted. Values are never read or printed. Known limitation recorded: a provider stored some other flat way would not show.
+
+4. THE CONFIG SECTION DEGRADES TO `defaultConfig` WHEN THE BARE LOAD THROWS. `loadConfig()` is synchronous-throwing and — since nothing in the repo yet builds the env layer that would carry a real GitHub token (P-200's loader's caller, a later phase) — it ALWAYS throws on a token-less machine (`authType='pat' requires a token`). The row would be permanently "config load failed" if status treated that as section death. Instead the dashboard degrades to `defaultConfig` — exactly the same defaults `loadConfig` starts from, with no layers to miss — and keeps the reason visible as a `(config load failed: …)` note under the config rows. There is no TOML parser in the repo, so `stitch.toml` is reported as path + presence (`existsSync`) only; the model row is `loadConfig().openrouter.defaultModel ?? null`.
+
+5. STRICT READ-ONLY = OPEN-ONLY-IF-EXISTS (status creates nothing). The state db is opened ONLY when the file exists — `openDb` mkdirs the home and runs migrate even when `readonly`, and its Bun-only client would create the file — so the `existsSync` gate is mandatory, and the injected `openStoreDb` receives the path only after it. `HilQueue`/`ProvenanceAudit` are constructed only after a `sqlite_master` pre-check confirms their tables exist (their DDL is then a no-op, and status never writes). The user store is opened only when `~/.stitch/config.json` exists (`openStore` would create it). The db handle is closed at the end of the pass; with injection, ownership transfers — the test suite seeds a FILE-backed db and reopens it for after-counts.
+
+6. NO-THROW AT THE COMMAND BOUNDARY EVEN FOR INJECTED CALLER CODE. `loadConfig` is wrapped (decision 4); the injected `openStoreDb` is `await`ed inside its own try/catch so a rejecting opener degrades to the same `dbError` note as a `Result` failure — surfaced by a debug harness during self-test and fixed before the gate.
+
+7. REGISTRATION FOLLOWS THE ESTABLISHED PATTERN, AND THE CYCLE IS BROKEN BY MOVING `readSources`. `readSources`/`SourceSelection` moved from `cli.ts` into `config.ts` (breaking the static status→cli import cycle); `status` is registered in `cli.ts`'s `buildCLI` (the P-190/P-191 pattern); the P-043-era `program.ts` scaffold entry (`runStatus` skeleton) was REMOVED, not duplicated — `program.ts` again owns only `doctor` + version, rewritten to its two tests. Core's `stitchErrorMessage` (result/index.ts:318) is not barrel-exported and the barrel itself carries foreign uncommitted edits, so the CLI module mirrors its 3-line accessor locally as `messageOf` (shortcut: import from the barrel once core exports it).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **13 files / 65 tests passed** — the five mandated cases plus one extra case (`reports zero state without touching an absent store db`, whose `openStoreDb` injection throws if ever called).
+- Root suite has ONE core-side red outside this lane: `jobs/idempotency.test.ts` "mixed stages" — after `evictLru(db, 1)` the most-recently-used entry `new` fails `hasCache` (LRU recency tracking evicts the MRU entry). All of that test's imports are committed-clean files and the concurrent foreign core diffs are purely additive (P-243 export blocks + a `CONFIG_INVALID` code), so the failure pre-exists P-194; recorded as a core-lane defect for a core session, deliberately not blended into a CLI commit.
+- `.prettierignore` gained `.serena/` (foreign untracked tool state, the same class as `.playwright-mcp/`) and `templates/` — prettier's YAML formatter DESTROYS that file's mustache placeholders (`{{timeoutMinutes}}` → `{ { timeoutMinutes } }`), which would have broken core's `fallback.test.ts` render assertions on a committed-unmodified template.
+- Status remains genuinely read-only: verified through the absence-piece of the hash chain (source bullets, HIL line, jobs lines, recent-activity line, sandbox line, checksums line) and the `--json` report's typed mirrors.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

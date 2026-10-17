@@ -50,8 +50,9 @@ function renderCheckHuman(outcome: CheckOutcome): string[] {
 }
 
 /**
- * renderDoctorReport: pure render behind the action (same split as
- * runStatus in program.ts, so tests assert without capturing stdout).
+ * renderDoctorReport: pure render behind the action (the same split the
+ * `status` command uses in commands/status.ts, so tests assert without
+ * capturing stdout).
  * `--json` emits the stable DoctorReport shape; human mode paints
  * PASS/FAIL per check (P-044 theme) plus fix lines and a tally.
  */

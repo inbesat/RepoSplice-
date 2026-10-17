@@ -6,8 +6,16 @@ import { fileURLToPath } from 'node:url';
 // Imported (not just re-exported): a `export … from` does not create a local binding,
 // and the direct-invocation guard below needs to call it.
 import { main } from './cli.js';
-export { createProgram, runStatus, STITCH_VERSION } from './program.js';
-export type { StatusOptions } from './program.js';
+export { createProgram, STITCH_VERSION } from './program.js';
+// P-194 — the status dashboard (the program.ts scaffold is gone; this is the command).
+export { status, RECENT_AUDIT_LIMIT } from './commands/status.js';
+export type {
+  StatusOptions,
+  StatusReport,
+  StatusDeps,
+  StatusSourceRow,
+  ChecksumVerdict,
+} from './commands/status.js';
 
 // P-189 — the CLI shell: global options, exit-code convention, error mapping.
 export {

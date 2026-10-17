@@ -27,9 +27,10 @@ import type { StitchError } from '@repo-stitcher/core';
 import { join, relative, resolve } from 'node:path';
 import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
-import { add, looksRemote, type SourceSelection } from './commands/add.js';
+import { add, looksRemote } from './commands/add.js';
 import { serve } from './commands/serve.js';
-import { defaultStoreDir, openStore, type JsonValue } from './config.js';
+import { status } from './commands/status.js';
+import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -79,13 +80,16 @@ export function classifyCommanderError(error: CommanderError): ExitPlan {
 }
 
 /**
- * Attach the global options, the exit convention, and the `init` command.
+ * Attach the global options, the exit convention, and the `init`, `add`,
+ * `serve`, and `status` commands.
  *
- * `program.ts` remains the registry for the commands it owns (`status`, `doctor`).
- * `init` is registered HERE because P-190 step 4 says so and because `program.ts`
- * importing this module would close a cycle (`this` already imports `STITCH_VERSION`
- * from `program.ts`). Registration is additive, so the globals stay testable on their
- * own via {@link buildCLI} on a bare `Command`.
+ * `program.ts` remains the registry for the commands it owns (`doctor`).
+ * The workspace commands are registered HERE — per phase mandate for `init`
+ * (P-190 step 4: registering inside `program.ts` would close a cycle, since
+ * `cli.ts` already imports `STITCH_VERSION` from it) and for consistency with
+ * it: each registration wires the same global options via {@link globalOptionsOf}.
+ * Registration is additive, so the globals stay testable on their own via
+ * {@link buildCLI} on a bare `Command`.
  */
 export function buildCLI(program: Command): Command {
   program
@@ -203,7 +207,31 @@ export function buildCLI(program: Command): Command {
       );
     });
 
+  program
+    .command('status')
+    .description('Show workspace status: config, sources, HIL gates, jobs, sandbox, checksums')
+    .option('--json', 'emit the structured status report as JSON')
+    .action(async (options: StatusCommandOptions) => {
+      const result = await status(
+        {
+          ...globalOptionsOf(program),
+          ...(options.json === true ? { json: true } : {}),
+        },
+        {}
+      );
+      // Informational by mandate: status itself always resolves ok (section
+      // failures are printed in their section), so this stays 0 in practice.
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
   return program;
+}
+
+/** The options commander hands `stitch status`. */
+interface StatusCommandOptions {
+  json?: boolean;
 }
 
 /** The options commander hands `stitch add`. */
@@ -222,38 +250,10 @@ interface ServeCommandOptions {
 }
 
 /**
- * Read the stored `sources` array.
- *
- * Validated entry by entry rather than cast: the store is a JSON file a user can edit,
- * so a malformed selection must be dropped rather than trusted into a merge.
+ * readSources has moved to `config.ts` (P-194): it validates a store shape, so
+ * it belongs beside `StitchStore` — and `commands/status.ts` imports it from
+ * there, keeping the command free of a shell import.
  */
-function readSources(stored: Result<unknown, StitchError>): Result<SourceSelection[], StitchError> {
-  if (stored.isErr()) return err(stored.error);
-  const value = stored.value;
-  if (value === undefined || value === null) return ok([]);
-  if (!Array.isArray(value)) {
-    return err({
-      code: 'CONFIG_ERROR',
-      field: 'sources',
-      message: 'add: the stored "sources" value is not an array',
-    });
-  }
-  const out: SourceSelection[] = [];
-  for (const entry of value) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const record = entry as Record<string, unknown>;
-    const source = record['source'];
-    const paths = record['paths'];
-    const ref = record['ref'];
-    if (typeof source !== 'string' || !Array.isArray(paths)) continue;
-    out.push({
-      source,
-      paths: paths.filter((p): p is string => typeof p === 'string'),
-      ...(typeof ref === 'string' ? { ref } : {}),
-    });
-  }
-  return ok(out);
-}
 
 /** The options commander hands `stitch init`. */
 interface InitCommandOptions {

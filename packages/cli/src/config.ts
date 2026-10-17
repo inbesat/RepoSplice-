@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import Configstore from 'configstore';
 import { err, ok, type Result, type StitchError } from '@repo-stitcher/core';
+import type { SourceSelection } from './commands/add.js';
 
 /** Directory name for stitch state under the user's home (P-200). */
 export const STITCH_CONFIG_DIR = '.stitch';
@@ -127,4 +128,42 @@ export function openStore(dir: string = defaultStoreDir()): Result<StitchStore, 
       }
     },
   });
+}
+
+/**
+ * readSources: read the stored `sources` array.
+ *
+ * Validated entry by entry rather than cast: the store is a JSON file a user can
+ * edit, so a malformed selection must be dropped rather than trusted into a merge
+ * (or a `status` dashboard). Lives beside the store it validates (P-194 moved it
+ * out of `cli.ts`, which keeps the status command free of a shell import).
+ */
+export function readSources(
+  stored: Result<unknown, StitchError>
+): Result<SourceSelection[], StitchError> {
+  if (stored.isErr()) return err(stored.error);
+  const value = stored.value;
+  if (value === undefined || value === null) return ok([]);
+  if (!Array.isArray(value)) {
+    return err({
+      code: 'CONFIG_ERROR',
+      field: 'sources',
+      message: 'add: the stored "sources" value is not an array',
+    });
+  }
+  const out: SourceSelection[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const record = entry as Record<string, unknown>;
+    const source = record['source'];
+    const paths = record['paths'];
+    const ref = record['ref'];
+    if (typeof source !== 'string' || !Array.isArray(paths)) continue;
+    out.push({
+      source,
+      paths: paths.filter((p): p is string => typeof p === 'string'),
+      ...(typeof ref === 'string' ? { ref } : {}),
+    });
+  }
+  return ok(out);
 }

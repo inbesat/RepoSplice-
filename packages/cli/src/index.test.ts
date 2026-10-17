@@ -88,6 +88,9 @@ describe('P-189 CLI shell', () => {
 
   it('parses global flags', async () => {
     const program = buildCLI(createProgram());
+    // P-194: `status` is a real command now — stub its registered action so this
+    // test exercises only the GLOBAL FLAG parsing, never the machine reads.
+    program.commands.find(c => c.name() === 'status')?.action(() => undefined);
     await program.parseAsync(
       [
         'node',
