@@ -1,136 +1,217 @@
-import type { JSX } from 'react';
-import { useCallback, useState } from 'react';
-import { Tree, type NodeApi, type NodeRendererProps } from 'react-arborist';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+// P-213 — the slot-agnostic file tree. Loads the flat entry list for a source
+// via api/tree.ts, derives the hierarchy here (the flat list stays the single
+// source of truth), and renders it through react-arborist's virtualized Tree.
+//
+// OWNERSHIP: the LIB owns expand/collapse state (its open-slice) and the
+// indent; this component owns only the CHECKED file paths. P-214 binds a
+// second instance to slot B unchanged. Selection changes are emitted from the
+// click handlers (not an effect) so the parent store update can't loop back
+// into this component's state.
 
-/**
- * FileNode: the flat-entry hierarchy react-arborist consumes. The default
- * `id`/`children` accessors match these field names, so no accessor props
- * are needed. P-213 derives this shape from the flattened `/tree` API
- * entries (one source of truth: derive hierarchy in the component).
- */
-export interface FileNode {
-  id: string;
-  name: string;
-  children?: FileNode[];
-}
+import { useEffect, useMemo, useState } from 'react';
+import type { JSX } from 'react';
+import { Tree } from 'react-arborist';
+import type { NodeRendererProps } from 'react-arborist';
+import type { SourceRecord } from '../api/repos.js';
+import { getTree } from '../api/tree.js';
+import type { TreeEntry } from '../api/tree.js';
+import { TreeNode } from './TreeNode.js';
+import type { TreeNodeData } from './TreeNode.js';
 
 export interface FileTreeProps {
-  /** Forest roots; folders carry `children`, files omit it (leaf). */
-  data: FileNode[];
-  /** Fires with the full selected id set on every check/uncheck (P-215 binds this to the store). */
-  onSelectionChange?: (ids: string[]) => void;
-  ariaLabel?: string;
-  /** Fixed viewport height in px — required for react-window virtualization (P-232). */
-  height?: number;
-  /** Fixed row height in px — virtualization needs uniform rows. */
-  rowHeight?: number;
-  /** Pixels of indent per tree level, applied by the row renderer. */
-  indent?: number;
-  /** Open every folder on mount (P-213 takes over expansion state later). */
-  defaultOpen?: boolean;
+  readonly source: SourceRecord;
+  /** Called with the sorted list of checked FILE paths after every change. */
+  readonly onSelectionChange?: (paths: readonly string[]) => void;
+  /** Viewport height in px (virtualization) — default 400. */
+  readonly height?: number;
 }
 
-/**
- * FileTree scaffold (P-058) for the repo A/B pickers (P-213/214). Thin over
- * react-arborist's `Tree`: checkbox multi-selection (additive selectMulti /
- * deselect, mirroring the library's own ctrl-click semantics), expand
- * toggles, a live selection count, and fixed-height virtualized rendering
- * so tens of thousands of nodes stay cheap. Drag, drop, and editing stay
- * disabled until a later phase needs them. Nothing here throws: selection
- * flows through callbacks, never exceptions.
- */
-export function FileTree({
-  data,
-  onSelectionChange,
-  ariaLabel = 'File tree',
-  height = 400,
-  rowHeight = 32,
-  indent = 20,
-  defaultOpen = true,
-}: FileTreeProps): JSX.Element {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+/** Derive the hierarchy from the flat list: dirs synthesized from segments,
+ * explicit dir entries merged in, dirs before files, alphabetical. */
+export function buildTree(entries: readonly TreeEntry[]): TreeNodeData[] {
+  const nodes = new Map<string, TreeNodeData>();
+  const ensureDir = (path: string): TreeNodeData => {
+    let dir = nodes.get(path);
+    if (!dir) {
+      dir = { id: path, name: lastSegment(path), path, type: 'dir', size: 0, children: [] };
+      nodes.set(path, dir);
+    }
+    return dir;
+  };
+  for (const entry of entries) {
+    const segments = entry.path.split('/');
+    segments.forEach((segment, index) => {
+      const path = segments.slice(0, index + 1).join('/');
+      if (index === segments.length - 1 && entry.type === 'file') {
+        nodes.set(path, { id: path, name: segment, path, type: 'file', size: entry.size });
+      } else {
+        ensureDir(path);
+      }
+    });
+  }
+  const childrenOf = (prefix: string): TreeNodeData[] => {
+    const own = [...nodes.values()].filter(node => {
+      const relative =
+        prefix === ''
+          ? node.path
+          : node.path.startsWith(`${prefix}/`)
+            ? node.path.slice(prefix.length + 1)
+            : null;
+      return relative !== null && !relative.includes('/');
+    });
+    return own
+      .sort(dirsFirst)
+      .map(node => (node.type === 'dir' ? { ...node, children: childrenOf(node.path) } : node));
+  };
+  return childrenOf('');
+}
 
-  const handleSelect = useCallback(
-    (nodes: NodeApi<FileNode>[]): void => {
-      const ids = nodes.map(node => node.id);
-      setSelectedIds(ids);
-      onSelectionChange?.(ids);
-    },
-    [onSelectionChange]
+function lastSegment(path: string): string {
+  return path.split('/').at(-1) ?? path;
+}
+
+function dirsFirst(a: TreeNodeData, b: TreeNodeData): number {
+  if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+  return a.name.localeCompare(b.name);
+}
+
+export function FileTree({ source, onSelectionChange, height = 400 }: FileTreeProps): JSX.Element {
+  const [entries, setEntries] = useState<readonly TreeEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    setEntries(null);
+    setError(null);
+    getTree(source.id, source.ref)
+      .then(result => {
+        if (!cancelled) setEntries(result);
+      })
+      .catch(cause => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [source.id, source.ref]);
+
+  const treeData = useMemo(() => buildTree(entries ?? []), [entries]);
+  const fileEntries = useMemo(
+    () => (entries ?? []).filter(entry => entry.type === 'file'),
+    [entries]
   );
 
-  const renderNode = useCallback(
-    ({ node, style }: NodeRendererProps<FileNode>): JSX.Element => {
-      const name = node.data.name;
-      const checked = node.isSelected;
-      const toggleSelection = (): void => {
-        // Additive checkbox semantics: checking adds, unchecking removes.
-        // node.select() would REPLACE the set — only selectMulti() adds.
-        if (checked) node.deselect();
-        else node.selectMulti();
-      };
+  const applyChecked = (next: ReadonlySet<string>): void => {
+    setChecked(next);
+    onSelectionChange?.([...next].sort());
+  };
+
+  const toggleFile = (path: string): void => {
+    const next = new Set(checked);
+    if (next.has(path)) next.delete(path);
+    else next.add(path);
+    applyChecked(next);
+  };
+
+  const descendantsOf = (dirPath: string): string[] =>
+    fileEntries.filter(entry => entry.path.startsWith(`${dirPath}/`)).map(entry => entry.path);
+
+  const toggleDir = (dirPath: string): void => {
+    const descendants = descendantsOf(dirPath);
+    const allChecked = descendants.every(path => checked.has(path));
+    const next = new Set(checked);
+    for (const path of descendants) {
+      if (allChecked) next.delete(path);
+      else next.add(path);
+    }
+    applyChecked(next);
+  };
+
+  const filePaths = fileEntries.map(entry => entry.path);
+  const allSelected = filePaths.length > 0 && filePaths.every(path => checked.has(path));
+  const toggleAll = (): void => {
+    applyChecked(allSelected ? new Set() : new Set(filePaths));
+  };
+
+  if (error !== null) {
+    return (
+      <div role="alert" className="text-danger">
+        ✘ {error}
+      </div>
+    );
+  }
+  if (entries === null) {
+    return <p className="text-muted">Loading tree…</p>;
+  }
+  if (fileEntries.length === 0) {
+    return <p className="text-muted">No files in this source.</p>;
+  }
+
+  const selectedBytes = fileEntries
+    .filter(entry => checked.has(entry.path))
+    .reduce((sum, entry) => sum + entry.size, 0);
+  const header = (
+    <div className="mb-2 flex items-center gap-2">
+      <input
+        type="checkbox"
+        aria-label="Select all"
+        checked={allSelected}
+        onChange={toggleAll}
+        className="h-4 w-4 cursor-pointer"
+      />
+      <span className="text-body text-muted" data-testid="tree-counts">
+        {fileEntries.length} files, {checked.size} selected, {formatBytes(selectedBytes)}
+      </span>
+    </div>
+  );
+
+  const rowRenderer = (rowProps: NodeRendererProps<TreeNodeData>): JSX.Element => {
+    const { node } = rowProps;
+    if (node.isLeaf) {
       return (
-        <div
-          style={{ ...style, paddingLeft: (node.level + 1) * indent }}
-          role="treeitem"
-          aria-selected={checked}
-          aria-level={node.level + 1}
-          aria-expanded={node.isLeaf ? undefined : node.isOpen}
-          data-file-row={node.id}
-          className="text-stitch-900 dark:text-stitch-50"
-        >
-          {node.isLeaf ? (
-            <span aria-hidden="true" className="toggle-spacer" />
-          ) : (
-            <button
-              type="button"
-              aria-label={node.isOpen ? `Collapse ${name}` : `Expand ${name}`}
-              aria-expanded={node.isOpen}
-              onClick={() => node.toggle()}
-              className="text-stitch-700 dark:text-stitch-200"
-            >
-              {node.isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </button>
-          )}
-          {/*
-            Stop the click here: the tree wraps every row in its default row,
-            whose onClick is node.handleClick (plain click = REPLACE the
-            selection). Without this, checking a box would add the id and the
-            bubbled click would immediately replace the whole set with it.
-          */}
-          <input
-            type="checkbox"
-            aria-label={`Select ${name}`}
-            checked={checked}
-            onChange={toggleSelection}
-            onClick={event => event.stopPropagation()}
-          />
-          <span>{name}</span>
-        </div>
+        <TreeNode
+          {...rowProps}
+          check={{ kind: 'file', checked: checked.has(node.data.path), onToggle: toggleFile }}
+        />
       );
-    },
-    [indent]
-  );
+    }
+    const descendants = descendantsOf(node.data.path);
+    const state =
+      descendants.length > 0 && descendants.every(path => checked.has(path))
+        ? 'all'
+        : descendants.some(path => checked.has(path))
+          ? 'some'
+          : 'none';
+    return <TreeNode {...rowProps} check={{ kind: 'dir', state, onToggle: toggleDir }} />;
+  };
 
   return (
-    <div role="tree" aria-label={ariaLabel}>
-      <p aria-live="polite">{`${selectedIds.length} selected`}</p>
-      <Tree<FileNode>
-        data={data}
-        openByDefault={defaultOpen}
-        width="100%"
+    <div>
+      {header}
+      <Tree
+        data={treeData}
+        openByDefault={false}
+        rowHeight={28}
+        indent={16}
         height={height}
-        rowHeight={rowHeight}
-        indent={indent}
+        width="100%"
         disableDrag
         disableDrop
         disableEdit
-        onSelect={handleSelect}
-        aria-label={ariaLabel}
+        disableMultiSelection
+        aria-label="File tree"
       >
-        {renderNode}
+        {rowRenderer}
       </Tree>
     </div>
   );
+}
+
+/** Same formatting as TreeNode's file rows, reused for the header total. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
 }

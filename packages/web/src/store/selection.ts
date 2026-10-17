@@ -17,17 +17,27 @@ import { create } from 'zustand';
 import type { SourceRecord } from '../api/repos.js';
 import { useFlowStore } from './flow.js';
 
+// P-213 FILE SELECTIONS: `filesA`/`filesB` hold the repo-relative FILE paths
+// the user checked per slot (sorted). Raw paths for now — P-215 maps them to
+// the P-148 FileSelection contract for merge. Clearing a slot's source also
+// clears its file selection (a selection without a source is meaningless).
+
 export type SourceSlot = 'A' | 'B';
 
 export interface SourcesState {
   readonly sourcesA: readonly SourceRecord[];
   readonly sourcesB: readonly SourceRecord[];
+  /** Repo-relative checked file paths per slot (sorted). */
+  readonly filesA: readonly string[];
+  readonly filesB: readonly string[];
   /** Append a resolved source to the slot's list (first call per record wins). */
   addSource: (slot: SourceSlot, record: SourceRecord) => void;
   /** Exchange the two slots (used when the sources were entered in the wrong order). */
   swapAB: () => void;
   /** P-215's `reset` seed. */
   reset: () => void;
+  /** Replace the slot's checked file paths (sorted). */
+  setFiles: (slot: SourceSlot, paths: readonly string[]) => void;
 }
 
 /** A slot is usable when it holds at least one RESOLVED source. */
@@ -51,18 +61,35 @@ function pruneDownstream(): void {
 export const useSourcesStore = create<SourcesState>()(set => ({
   sourcesA: [],
   sourcesB: [],
+  filesA: [],
+  filesB: [],
   addSource: (slot, record) =>
     set(state => {
       const list = slot === 'A' ? state.sourcesA : state.sourcesB;
       if (list.some(existing => existing.id === record.id)) return state;
       pruneDownstream();
+      const files = { filesA: [], filesB: [] }; // source changed — selections are stale
       return slot === 'A'
-        ? { sourcesA: [...state.sourcesA, record] }
-        : { sourcesB: [...state.sourcesB, record] };
+        ? { sourcesA: [...state.sourcesA, record], ...files }
+        : { sourcesB: [...state.sourcesB, record], ...files };
     }),
   swapAB: () => {
     pruneDownstream();
-    set(state => ({ sourcesA: state.sourcesB, sourcesB: state.sourcesA }));
+    set(state => ({
+      sourcesA: state.sourcesB,
+      sourcesB: state.sourcesA,
+      filesA: [],
+      filesB: [],
+    }));
   },
-  reset: () => set({ sourcesA: [], sourcesB: [] }),
+  reset: () => set({ sourcesA: [], sourcesB: [], filesA: [], filesB: [] }),
+  setFiles: (slot, paths) =>
+    set(state => {
+      const next = [...paths].sort();
+      const current = slot === 'A' ? state.filesA : state.filesB;
+      if (current.length === next.length && current.every((path, index) => path === next[index])) {
+        return state; // identical content — skip the re-render loop
+      }
+      return slot === 'A' ? { filesA: next } : { filesB: next };
+    }),
 }));

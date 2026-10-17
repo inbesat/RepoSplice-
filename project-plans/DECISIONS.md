@@ -3565,4 +3565,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-098: P-213 The File Tree Is SLOT-AGNOSTIC over a CLIENT-CONTRACT Endpoint; react-arborist Owns Expansion; Selections Are RAW SORTED PATHS Until P-215 Maps Them to `FileSelection`; Emission Happens in Click Handlers, Not Effects
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-213 (file tree A) requires an expandable, virtualized, checkbox-driven tree for repo A — but the serve side has no `/api/repos/:id/tree` endpoint yet (P-193 ships only provenance/jobs/settings), the spec's "expanded set" clashes with how tree libraries manage open state, and P-215 will later formalize selections as core's P-148 `FileSelection`.
+
+**Decision:**
+
+1. THE ENDPOINT IS A CLIENT CONTRACT: `api/tree.ts#getTree(repoId, ref?)` GETs `/api/repos/:id/tree?ref=` and expects a FLATTENED `{entries: TreeEntry[]}` (`{path, type: 'file'|'dir', size, blobSha?}`). The P-193 server does not implement it yet; `getTree` throws with `describeFailure` on `!ok` (the P-211 `api/repos.ts` pattern — plain async throw, no neverthrow on web). The component derives hierarchy from the FLAT list (dirs synthesized from path segments, explicit dir entries merged, dirs-first alpha sort) — one source of truth, exactly as the handoff requires.
+
+2. REACT-ARBORIST OWNS EXPANSION: the spec's "expanded set" is realized by react-arborist 3.16's internal open-slice (`openByDefault={false}`), NOT a custom set — building our own would fight the lib. Virtualization comes from the same dep (a direct dependency; NO react-window addition). An explicit numeric `height` renders rows in jsdom (the lib reads height/width from props, no ResizeObserver), and its typeahead reads `n.data.name`, so `TreeNodeData` carries `name`.
+
+3. SELECTIONS ARE RAW SORTED PATHS UNTIL P-215: `filesA`/`filesB` in `store/selection.ts` hold repo-relative FILE paths (sorted); `setFiles` no-ops on identical content (render-loop guard). Core's P-148 `FileSelection`/`include[]` mapping is P-215's job, as the spec's "persist selection set in store (P-215)" defers. Folder checks = ALL descendant file paths; folder checkboxes are tri-state (indeterminate via ref).
+
+4. EMISSION IN CLICK HANDLERS, NOT EFFECTS: `onSelectionChange([...next].sort())` fires directly from check/uncheck handlers. An effect keyed on a derived set would ping-pong with the parent's `setFiles` (which re-renders the tree); handler emission keeps the data flow one-directional.
+
+5. PINS SUPERSEDED ON RECORD: `shell.test` '/select' marker is now `file tree loads here` (SelectPage is no longer the P-210 placeholder); `SourcesPage.test` 'advances on success' asserts the RE-TITLED heading 'Select files — repo A' with a 5000 ms timeout on its final await — under 18 parallel jsdom environments the default 1 s query timeout loses to suite-load lag (the auto-advance is an async effect); 4/4 isolated runs were green before the timeout, and the full suite passed after it.
+
+**Consequences:**
+
+- Gate green: web tsc 0, web suite **18 files / 55 tests** (the five mandated `FileTree.test` names verbatim: expands collapses / selects file / selects folder / shows counts / error surface), root typecheck 0, eslint 0, prettier clean.
+- P-214 binds the SAME slot-agnostic `FileTree` to slot B (split-view on `SelectPage`); the store's raw-path slices are the single handoff surface.
+- The header counts (`N files, M selected, X KB`) reflect the SELECTION's bytes — not the tree's.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

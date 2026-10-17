@@ -95,8 +95,10 @@ describe('P-210 shell layout', () => {
   it('routes placeholders', () => {
     // Deep links render every placeholder directly (route access stays open;
     // the stepper's lock is the UI gate).
+    // P-213: /select renders the file-tree empty state — the marker is a
+    // substring of the placeholder paragraph shown with no repo A source.
     const expected = [
-      ['/select', 'coming in phases P-213/P-214'],
+      ['/select', 'file tree loads here'],
       ['/stitch', 'coming in phases P-217/P-218'],
       ['/review', 'coming in phases P-219/P-220'],
       ['/results', 'coming in phase P-221'],

@@ -183,7 +183,16 @@ describe('P-211/P-212 repo pickers', () => {
     // B resolves: now BOTH slots hold a resolved source, and the page
     // advances to Select (the canProceed effect).
     await submitGithub('vercel/ai', 'main', 'B');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Select' })).toBeTruthy();
+    // P-213 SUPERSEDED: the Select page now hosts repo A's file tree, so its
+    // h2 is the per-source title, not the bare 'Select' placeholder. The 5s
+    // timeout rides out suite-load lag (auto-advance is an async effect).
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 2, name: 'Select files — repo A' },
+        { timeout: 5000 }
+      )
+    ).toBeTruthy();
     // MemoryRouter owns the location — window.location is NOT the router's,
     // so the advance is asserted through the rendered page + the flow store.
     expect(useFlowStore.getState().visited).toContain('select');
