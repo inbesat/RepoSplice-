@@ -193,6 +193,7 @@ function describeError(error: StitchError): string {
     case 'SANDBOX_LOG_LIMIT':
     case 'SANDBOX_ARTIFACT_LIMIT':
     case 'SBOM_INVALID':
+    case 'CONFIG_INVALID':
     case 'SANDBOX_TIMEOUT':
     case 'SANDBOX_ABORTED':
       return `${error.code}: ${error.message}`;

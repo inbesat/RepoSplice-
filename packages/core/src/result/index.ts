@@ -114,6 +114,12 @@ export type StitchError =
   // than a broken artifact.
   | { code: 'SBOM_INVALID'; format: string; detail: string; message: string }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
+  // P-243: the merged PER-JOB config failed its zod schema, so the run never
+  // started. Distinct from `CONFIG_ERROR` (P-009), which reports ONE bad field
+  // while LOADING the project config: this one carries EVERY issue zod found in a
+  // config assembled from three layers (project <- flags <- overrides), which is
+  // what makes a bad API body diagnosable instead of merely "invalid config".
+  | { code: 'CONFIG_INVALID'; issues: { path: string; message: string }[]; message: string }
   // P-174: a sandbox run exceeded its wall-clock budget. Distinct from
   // `DOCKER_ERROR` and from `SANDBOX_ABORTED` because P-163 routes them
   // differently: a timeout is the runaway-build class, an abort is a human.
@@ -257,6 +263,7 @@ export const STITCH_ERROR_CODES = [
   'SANDBOX_TIMEOUT',
   'SANDBOX_ABORTED',
   'CONFIG_ERROR',
+  'CONFIG_INVALID',
   'USER_CANCELLED',
   'INTERNAL',
   'AUTH_ERROR',

@@ -1341,6 +1341,41 @@ export type {
   ProgressAggregatorOptions,
 } from './events/progress.js';
 
+// P-243 — per-job config: the single read source for every stage, plus the hash
+// P-240 compares on resume and the redacted `config-resolved` event.
+export {
+  resolveJobConfig,
+  section,
+  configHash,
+  redactConfig,
+  emitConfigResolved,
+  JobConfigSchema,
+  ResolvedSourceSchema,
+  SelectionSectionSchema,
+  AiSectionSchema,
+  SandboxSectionSchema,
+  LicensesSectionSchema,
+  PerfSectionSchema,
+  ProgressSectionSchema,
+  FlagsSectionSchema,
+  PIPELINE_RELEVANT_KEYS,
+} from './jobs/jobConfig.js';
+export type {
+  JobConfig,
+  JobConfigInput,
+  JobConfigLayer,
+  JobSectionKey,
+  ResolveJobConfigInput,
+  ResolvedSource,
+  SelectionSection,
+  AiSection,
+  SandboxSection,
+  LicensesSection,
+  PerfSection,
+  ProgressSection,
+  FlagsSection,
+} from './jobs/jobConfig.js';
+
 export {
   buildDoctorChecks,
   makeDockerCheck,

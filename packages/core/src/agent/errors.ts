@@ -183,6 +183,11 @@ const RULES = {
     action: 'abort',
     hint: 'The generated SBOM failed schema validation, so it was not written. This is a composition defect for this dependency/license shape, not something a retry fixes.',
   },
+  CONFIG_INVALID: {
+    cls: 'config',
+    action: 'abort',
+    hint: 'The resolved per-job config failed validation; the error lists every offending field. A retry cannot repair a config, because the same invalid value would be merged again - fix the field.',
+  },
   SANDBOX_TIMEOUT: {
     cls: 'sandbox',
     action: 'abort',

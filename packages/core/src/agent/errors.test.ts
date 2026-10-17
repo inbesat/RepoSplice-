@@ -108,6 +108,10 @@ describe('P-163 agent error handling', () => {
       [
         'COMPLIANCE_VIOLATION',
         'CONFIG_ERROR',
+        // P-243 added CONFIG_INVALID and classified it `config`: a config that
+        // failed its own schema is repaired by a human editing a field, not by a
+        // retry that would merge the same invalid value again.
+        'CONFIG_INVALID',
         'COST_LIMIT',
         'DEPENDENCY_CONFLICT',
         'DEPS_PARSE_ERROR',
