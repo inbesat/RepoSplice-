@@ -3408,4 +3408,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-092: P-207 Surfaces the Audit Logs Read-Only with a local `node:sqlite` Adapter (openDb Is Bun-Only; `AiAuditLog.record` Buffers; No `until` in the SQL — `--to` Filters Read-Side; Two Sources, One `--no-ai` Switch; Exit 0 Even Empty)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-207 (`stitch audit` + `--from/--to/--actor/--export json|md/--no-ai/--follow`) mandates a SEEDED-SQLITE test and says the command never mutates and exits 0. Three facts shaped the build: core's `openDb` needs `bun:sqlite` (vitest's Node runtime cannot load it), core's `openDb`/`ProvenanceAudit.query` know `since` but no upper bound, and P-145's AI rows live in the SEPARATE `ai_calls` table (`AiAuditLog.Buffer` → `flush()`), not in `provenance_audit`.
+
+**Decision:**
+
+1. **READ-ONLY three ways:** the state db must already EXIST (a missing path renders "No audit log found — nothing has been recorded yet" and resolves ok — never a create, the P-194 existence-gate precedent); the connection opens through core `openDb(path, { readonly: true })` (no migrations; the exact `status.ts` edge including the `.value.raw` mapping); and the command calls only `query`.
+
+2. **THE TEST ADAPTER IS LOCAL, NOT IMPORTED:** the phase's "seeded temp sqlite" is honoured through a ~20-line local copy of core's shared `node:sqlite` adapter (`makeDbAdapter`, the P-145/P-160/P-169 pattern) because a cross-package source import does not resolve from packages/cli. `node:sqlite` types (`StatementLike`/`SQLiteRow`/`SQLiteValue`) come from the PUBLIC barrel; `StatementSync` needs one structural cast at the edge (its declared parameter variance does not resonate). Two P-145 behaviours the seeding had to learn: `AiAuditLog.record` BUFFERS per-instance — the SQL write happens on `flush()` of the SAME instance — and `ProvenanceAudit` takes a `now` clock per construction, so seeds control timestamps deterministically.
+
+3. **`--to` IS A READ-SIDE FILTER:** core's `AuditQuery`/`AiCallQuery` carry `since` only. The inclusive `--to` bound applies to both result sets after the read; `--from`/`--actor` ride the SQL. Rows render CHRONOLOGICALLY (the core read is newest-first; the table reverses it), with kind→colour (`ok`/`err` via P-202's `theme(level, line)`) and ASCII `ok`/`FAIL` marks (the ADR-083 off-TTY readability rule).
+
+4. **TWO SOURCES, ONE SWITCH:** the report (`--export json` shape) is `{records, aiCalls, countByAction, lastMerge?, lastChecksum?}` — `provenance_audit` rows and `ai_calls` rows stay SEPARATE (never merged), and `--no-ai` simply omits the second section. `lastMerge`/`lastChecksum` drive the "Last merge"/"Checksums verified" summary lines (the P-186 state). `--export md` renders headers + pipe tables with detail escaped. `--follow` polls with an injected `everyMs`/`stop`/`sleep` (default: real 2s timer to SIGINT), deduping by record `id` and marking new rows `+`.
+
+5. **REGISTRATION** in cli.ts beside `status` (`AuditCommandOptions`; `--no-ai` → commander `ai === false` mapping) — and the command resolves ok with exit 0 on EVERY successful read, including the empty one.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **24 files / 153 tests** (`audit.test.ts`: the six mandated names verbatim + `follows new records`, over real in-memory SQL).
+- cli.ts gained its registry entry (this lane's second registered command after `status`); `stitch audit` is reachable from the shell.
+- The AI-row section reads through the same readonly handle — no second connection — and one `AiAuditLog` instance suffices for query.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

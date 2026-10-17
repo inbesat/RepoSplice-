@@ -31,6 +31,7 @@ import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
 import { add, looksRemote } from './commands/add.js';
 import { serve } from './commands/serve.js';
+import { audit } from './commands/audit.js';
 import { status } from './commands/status.js';
 import {
   license,
@@ -306,6 +307,34 @@ export function buildCLI(program: Command): Command {
     });
 
   program
+    .command('audit')
+    .description('Read the provenance and AI-call audit logs (compliance view)')
+    .option('--from <ts>', 'inclusive lower time bound (ISO string, P-207)')
+    .option('--to <ts>', 'inclusive upper time bound (ISO string, P-207)')
+    .option('--actor <who>', 'only rows by this actor (P-207)')
+    .option('--export <format>', 'export format: json or md (P-207)')
+    .option('--no-ai', 'hide the AI-call section (P-207)')
+    .option('-f, --follow', 'tail new records until interrupted (P-207)')
+    .action(async (options: AuditCommandOptions) => {
+      const result = await audit(
+        {
+          ...globalOptionsOf(program),
+          ...(options.from !== undefined ? { from: options.from } : {}),
+          ...(options.to !== undefined ? { to: options.to } : {}),
+          ...(options.actor !== undefined ? { actor: options.actor } : {}),
+          ...(options.export !== undefined ? { export: options.export } : {}),
+          ...(options.ai === false ? { noAi: true } : {}),
+          ...(options.follow === true ? { follow: true } : {}),
+        },
+        {}
+      );
+      // Read-only by mandate: the audit view always resolves ok on a read.
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
+  program
     .command('status')
     .description('Show workspace status: config, sources, HIL gates, jobs, sandbox, checksums')
     .option('--json', 'emit the structured status report as JSON')
@@ -488,6 +517,17 @@ function perfArg(value: string): string {
     throw new InvalidArgumentError(`expected a non-negative integer, got "${value}"`);
   }
   return trimmed;
+}
+
+/** The options commander hands `stitch audit`. */
+interface AuditCommandOptions {
+  from?: string;
+  to?: string;
+  actor?: string;
+  export?: string;
+  /** Commander's `--no-ai` sets this to `false`. */
+  ai?: boolean;
+  follow?: boolean;
 }
 
 /**
