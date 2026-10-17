@@ -26,9 +26,10 @@ import {
   type PerfConfig,
   type PerfFlagsInput,
 } from '../flags.js';
+import { DEFAULT_OUT_DIR, defaultOutDir } from '../paths.js';
 
-/** The default child directory, relative to the working dir. */
-export const DEFAULT_OUT_DIR = 'stitch-out';
+/** The default child directory (`stitch-out`) is P-205's; re-exported for callers. */
+export { DEFAULT_OUT_DIR };
 
 /** What the command is given on top of the globals. */
 export interface MergeOptions extends GlobalOptions {
@@ -176,7 +177,7 @@ export async function merge(
     });
   }
 
-  const outDir = resolve(opts.out ?? join(opts.cwd ?? '.', DEFAULT_OUT_DIR));
+  const outDir = resolve(opts.out ?? defaultOutDir(opts.cwd));
 
   // P-204: when ANY perf flag is given, parse the full set against the defaults
   // and enforce the selection caps pre-run — the phase's "hard guardrail", so an

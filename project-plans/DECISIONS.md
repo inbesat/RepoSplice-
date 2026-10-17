@@ -3356,4 +3356,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-090: P-205 Makes `paths.ts` the Single Name/Path Guard (Boolean `validateName`; Dedupe MUTATES the `used` Set; Lexical `safeJoin` Containment Instead of `realpath`; Deny-List Normalizes Separators+Case; Only the CLI Lane Could Be Wired)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-205 (`paths.ts`: `slugify`/`safeJoin`/`validateName` + `defaultOutDir` + the global write deny-list) names `err('INVALID_NAME')` (phantom — precedent ADR-072/089), a "realpath containment check" for `safeJoin`, and wiring "validators into component generation (P-155/P-146), source slugs (P-191), sandbox mounts (P-175), agent tool targets (P-150/P-152)" — all four of which are CORE subsystems, outside the aradhy lane.
+
+**Decision:**
+
+1. `validateName` is a PURE BOOLEAN predicate (the phase offers "boolean or throw"; the no-throw rule and the phantom INVALID_NAME come down on boolean). It checks `^[a-z][a-z0-9-_]*$`, Windows reserved device names (the 22, case-insensitive, checked on the `parse().name` segment so `con` and `Nul.txt` both fail), and control characters.
+
+2. `slugify` numbers collisions `-2`, `-3`, … by STEM (base trimmed under the 64-char cap) — the first cut stemmed from the PREVIOUS candidate (`my-lib-2-3`, caught by the mandated test) because it dropped the old suffix; the loop now always regenerates from the base. The result is RECORDED INTO the caller's `used` set (the phase's "dedupe with a `used` set" read as call-side bookkeeping: the caller keeps calling without tracking). Digit-leading folds get the `s-` prefix; fold is NFD + strip-combining (ASCII-fold).
+
+3. `safeJoin` checks containment LEXICALLY (resolve + `base + sep` prefix), not via `realpath`: a named guard must be deterministic BEFORE anything exists on disk, and realpath symlink resolution at call time is core sandbox (P-175) territory — recorded deviation. Parts are refused for absoluteness, drive prefixes (`^[a-zA-Z]:`), `..` segments, and control characters (regex built from `String.fromCharCode` — the `no-control-regex` house pattern from P-202), each naming the offender in a `CONFIG_ERROR{field: 'safeJoin'}` (the INVALID_NAME phantom resolution).
+
+4. THE DENY-LIST COMPARES NORMALIZED: both target and root are resolved, lowercased, separator-folded to `/`, so one list works cross-platform (`c:\\program files\\x` is denied; `/etcetera` is not — prefix must be a path boundary). The fence: `/etc`, `/usr`, `/bin`, `/sbin`, `C:\Windows`, `C:\Program Files`, plus `homedir()/.ssh` for the phase's "home-config"; `~`-prefixed targets expand through `homedir()` before the compare.
+
+5. WIRING SURFACE = THE CLI LANE ONLY: `merge.ts` now derives its absent-`--out` directory from `defaultOutDir` (P-205's `<cwd>/stitch-out`, RESOLVED — `join` left it drive-relative on Windows; caught by the mandated `default out dir` test) and re-exports `DEFAULT_OUT_DIR` so the P-192 pins stay put. The four core wiring points named by the spec live in inbesat-owned files; this module is exported as THE intended reuse point (ADR-090 records the lane boundary — the same reconciliation P-196/P-199 made).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **22 files / 140 tests** (`paths.test.ts`: the six mandated names verbatim — `validates names`, `slugifies with dedupe`, `rejects traversal`, `containment check`, `default out dir`, `deny list`).
+- Reconciliations caught live by the mandated tests: the dedupe stem bug, the drive-relative `join`, and the missing home entry in the deny list.
+- Component generation, sandbox mounts, and agent tool targets still call their own path logic until core adopts this module; the validators ship ready for that consumer.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
