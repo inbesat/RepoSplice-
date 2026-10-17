@@ -3435,4 +3435,31 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-093: P-208 Is a RECONCILIATION, Not a Scaffold (packages/web Predates the Phase — React 19 / Tailwind v4 / Package-Alias Stay; Proxy Pinned to 127.0.0.1; the Two Mandated Test Names Layer ON the Byte-Exact Pin; dist Built and Ignored)
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-208 asks for a fresh Vite+Tailwind scaffold, but `packages/web` ALREADY exists, committed Sep 8–27 (a pre-lane scaffold in this lane's own package — the same reconciliation shape as P-189/P-193/P-196), and it is ahead of the spec: React **19** (spec says 18), Tailwind **v4** via `@import 'tailwindcss'` + `@theme` (spec says v3 config), the alias is the PACKAGE name `@repo-stitcher/web` (spec says `@`), and App already mounts QueryClientProvider + sonner Toaster over a themed shell placeholder.
+
+**Decision:**
+
+1. **KEEP THE INSTALLED MAJORS.** React 19 / Tailwind v4 are deliberate, committed choices of the existing scaffold — "scaffolding" cannot mean downgrading two majors and rewriting every component import; the spec's version lines were written against an empty directory. Inheriting `tsconfig.base`'s `"strict": true` satisfies the TS-strict AC verbatim.
+
+2. **THE ALIAS STAYS `@repo-stitcher/web`** — every existing module imports by relative path, the alias already resolves in vite/tsconfig, and introducing a SECOND short alias (`@`) now would fork the convention the next 20 phases must guess between. The spec's intent (a stable import alias) is met; the spelling is recorded as a deviation.
+
+3. **THE PROXY IS PINNED TO `127.0.0.1:3434`** (the one functional change): `localhost` can resolve to `::1` first, and P-193's serve binds IPv4 loopback — a dev proxy that silently connects nowhere on such hosts. `ws: true` for `/ws` matches the spec exactly.
+
+4. **THE TWO MANDATED TEST NAMES LAYER ON, not over:** the existing `renders root` pin is BYTE-EXACT html string equality and stays verbatim; `renders shell placeholder` and `mounts providers` assert the same render's observable facts (themed shell text; the Toaster region inside the provider tree). P-208's smoke test = the same file (vitest + renderToString, the P-047 pattern).
+
+5. **THE MANUAL SMOKE IS THE REAL `vite build`:** `dist/` produced (index.html + hashed assets, 63 modules), globally gitignored via the root `.gitignore` `dist/` line — nothing to un-commit. Serving from `dist` was already proven by P-193's webDist wiring (its static fallback test); a live `stitch serve` check needs the Bun runtime and stays a manual step as in P-193.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean; web `tsc --noEmit` 0, web suite **14 files / 34 tests**; `vite build` exits 0 with `dist/index.html` + assets.
+- Deviations recorded: React 19 (not 18), Tailwind v4 `@theme` (not v3 config), package-name alias (not `@`), proxy host `127.0.0.1` (not `localhost`).
+- Root-suite note: the P-206-era background run's second failure (`core __tests__/build.smoke.test.ts > builds`) PASSES in isolation under the identical tree — a parallel-load flake, not a regression.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

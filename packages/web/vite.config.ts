@@ -16,9 +16,11 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // P-193 `stitch serve` backend; /ws upgrades to the WS event stream (P-241).
+    // 127.0.0.1 pinned (P-208): `serve` binds IPv4 loopback, and `localhost`
+    // can resolve to ::1 first — a proxy that connects nowhere on such hosts.
     proxy: {
-      '/api': 'http://localhost:3434',
-      '/ws': { target: 'ws://localhost:3434', ws: true },
+      '/api': 'http://127.0.0.1:3434',
+      '/ws': { target: 'ws://127.0.0.1:3434', ws: true },
     },
   },
   build: {
