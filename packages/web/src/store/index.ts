@@ -15,4 +15,5 @@ export * from './run.js';
 export * from './deps.js';
 export * from './licenses.js';
 export * from './sandbox.js';
+export * from './provenance.js';
 export * from './selectors.js';

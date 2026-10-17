@@ -3892,4 +3892,41 @@ Date: 2026-10-18. Phase: P-221 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-107: Web CREDITS preview + provenance confirmation (P-222)
+
+Date: 2026-10-18. Phase: P-222 (Web Epic 11). Owner: aradhy lane.
+
+1. **Client contracts.** `GET /api/provenance/credits` ({text, groups}),
+   `GET /api/provenance/map` (path → origin), and
+   `GET /api/provenance/sbom` (the P-183 CycloneDX document) do not exist
+   on the server yet (P-192 deferred). `api/provenance.ts` fixes the
+   client contract; the server lane implements the same shapes.
+2. **Simplified shapes with tolerant parsing.** The spec's
+   `FileOrigin{repo, commit, author}` is slimmer than core P-181's
+   `FileOrigin` (which carries sourceCommit/sourceAuthor/copiedAt/…).
+   The client reads the slim fields but falls back to core's names, so a
+   server emitting the full provenance map still renders correctly.
+   Wire types stay local (web tsconfig rootDir, TS6059, ADR-104
+   precedent). Credits groups are typed minimally as {label, files}[]
+   because P-182's RepoGroup is core-internal.
+3. **Confirmation is a store slice.** The 'attribution looks correct'
+   checkbox publishes to `store/provenance.ts` ('stitch-provenance',
+   {creditsConfirmed, setCreditsConfirmed, reset}) — the same emit-via-
+   store pattern as deps/licenses/sandbox; the P-218 approve gate reads
+   it once the panel is mounted.
+4. **Panel not mounted yet.** CreditsPreview is complete and tested in
+   isolation but no screen renders it until P-192 wires run/job plumbing
+   (same deferral as SandboxPanel, ADR-106). No existing pin superseded.
+5. **Presentational choices.** Tabs are native role=tab buttons
+   (Radix deferred to P-055 wrappers); commit SHAs render short (7 chars,
+   P-182's SHORT_COMMIT_LENGTH); the copy button latches 'Copied' with a
+   jsdom-safe optional-chain clipboard call; the filter matches file path
+   OR author, case-insensitive; SBOM renders as pretty-printed JSON.
+6. **Tests.** Five mandated names verbatim ('renders groups', 'filters',
+   'copies credits', 'sbom view', 'confirmation flag'). Found during
+   testing: the tablist renders only after all three fetches resolve, so
+   tests await the first tab before switching.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
