@@ -3036,4 +3036,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-080: P-195 Extends the P-068 Doctor In Place, Hosts the Bun/Node Version Checks CLI-Side, Reconciles the Config and Provider Rows Behind Injected Probes, and Adds `--strict` Without Unwinding the Exit-1-on-Critical Contract
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-195 (PHASES_DETAILED.md:9793) mandates `commands/doctor.ts` + `doctor.test.ts` + `checks/system.ts` as NEW files, five tests, and a pass/warn/fail report with remediation hints. In reality `commands/doctor.ts` + `doctor.test.ts` are a complete P-068-era implementation (runDoctorCommand with DI seams, exit codes 0/1/2, registration in program.ts, eight pinned tests), and core's `system/doctor.ts` already owns the git ≥2.40, git-filter-repo, docker, ollama, and github-token check factories — but it carries foreign concurrent edits, and the barrel cannot be extended either.
+
+**Decisions:**
+
+1. EXTEND THE EXISTING COMMAND IN PLACE, NOT HEADLESSLY. The P-068 command is not a scaffold: its seams (checks/execute/write deps, render, exit mapping) were already the right shape, so P-195 adds capability through them. The fairly fixable part of its contract stays pinned verbatim: exit 0/1/2, the `stitch doctor` header + tally lines, the stable `DoctorReport` JSON, and runner-error code naming — the one deliberate upgrade is the human render of a failing NON-critical check from `FAIL (optional)` to `WARN (optional)`, per the phase's pass/warn/fail requirement; FAIL stays reserved for checks that decide the exit, and the JSON shape is untouched.
+
+2. THE BUN/NODE CHECKS LIVE IN `checks/system.ts`, CLI-SIDE. Core's `system/doctor.ts` is the natural home for check factories — but it is under foreign refactor right now, and the phase's own file list names a CLI-side `checks/system.ts`. The two factories (`makeBunCheck`, `makeNodeCheck`) conform to core's public `DependencyCheck`/`ProcessRunner` shapes, degrade exactly like `makeGitCheck` (a missing binary, unparsable output, and a below-floor version are all `ok({pass:false, fix})`; a runner-level break is `err`) and are time-bounded (5s `execFile` timeout; the phase's "never execute untrusted input" holds — all argv is fixed constants). Floors come from TECH_STACK.md, not invented: bun ≥1.1.0 (required runtime → critical:true) and node ≥22 LTS (fallback only → critical:false).
+
+3. THE CONFIG ROW DEGRADES A THROWING `loadConfig` INTO A REASON. The phase says "load + zod.safeParse (P-009)": `loadConfig` is synchronous-throwing and returns no issue list, and (ADR-079 consequence) nothing builds the env layer that would carry a GitHub token, so on a token-less machine the bare load ALWAYS throws. The check's injected probe (`configProbe`) catches and returns the reason; a reason makes the row fail with a fix hint, `undefined` passes. It is deliberate that the row is critical:false — the phase's own exit rule ("exit 0 unless --strict and any fail") forbids it deciding the default exit, and doctor exists precisely to surface the remediation ("set github.token / GITHUB_TOKEN").
+
+4. THE PROVIDER ROW REPORTS RESOLVABLE CREDENTIALS, NOT A PHANTOM SECTION. The phase's `[ai].provider === 'openrouter'` names a section that does not exist (ADR-076: providers are top-level). The reconciled question is "is there a provider to run against at all?" — answered by `providerNames` (core's `PROVIDER_ENV_KEYS` env names ∪ nested `<provider>.apiKey` store keys via the redacted snapshot; values are never read), which moved from `commands/status.ts` into `config.ts` so both commands share it (the `readSources` precedent). No credential → WARN + `stitch init --provider <name>`; any credential → the sorted names.
+
+5. `--strict` PROMOTES ALL FAILURES; THE CRITICAL CONTRACT STAYS UNWAVERING. The phase says "exit 0 unless --strict and any fail" while the pinned P-068 contract says a critical failure exits 1 without --strict. Both hold: the default exit is unchanged (`report.ok ? 0 : 1`); `--strict` additionally exits 1 when ANY check failed (including the informational config/provider rows). A runner-level break still exits 2.
+
+6. DOCTOR CREATES NOTHING. The default provider probe follows the open-only-if-exists rule (ADR-079 point 5): `~/.stitch/config.json` is opened only when it exists, so a diagnostic command never writes the user's home.
+
+7. REGISTRATION AND SURFACE: `--strict` joins `registerDoctorCommand` (program.ts untouched — it owns doctor per the P-190/P-194 registration split); the barrel exports the doctor surface (`runDoctorCommand`, `registerDoctorCommand`, `renderDoctorReport`, the two row factories + types) and the new check factories; the two row factories are exported because the phase's step 4 names them and the tests drive them without real probes.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **13 files / 70 tests passed** — the mandated five (`checks system deps`, `validates config`, `reports provider key`, `json output`, `strict exit`) plus the existing pinned eight.
+- The live-action test now runs six system probes plus the two project rows env-agnostically (shape + exit-code contract only), which is the same live-gate precedent P-068 established.
+- A token-less machine's doctor shows `WARN config validity` and `WARN provider API key resolvable` rows by default and exits 1 only under `--strict` — the truthful preflight for CI, where `--json --strict` is the gate.
+- Root suite continues to carry ONLY the documented pre-existing core red (`jobs/idempotency.test.ts` "mixed stages", ADR-079) — untouched by this phase.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

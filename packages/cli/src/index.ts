@@ -17,6 +17,18 @@ export type {
   ChecksumVerdict,
 } from './commands/status.js';
 
+// P-195 — doctor's command surface (registration lives in program.ts) and the
+// CLI-side runtime checks the phase adds beside core's dep checks.
+export {
+  runDoctorCommand,
+  registerDoctorCommand,
+  renderDoctorReport,
+  makeConfigCheck,
+  makeProviderCheck,
+} from './commands/doctor.js';
+export type { DoctorOptions, DoctorCommandDeps } from './commands/doctor.js';
+export { makeBunCheck, makeNodeCheck } from './checks/system.js';
+
 // P-189 — the CLI shell: global options, exit-code convention, error mapping.
 export {
   buildCLI,

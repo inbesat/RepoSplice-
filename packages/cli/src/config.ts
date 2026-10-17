@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import Configstore from 'configstore';
-import { err, ok, type Result, type StitchError } from '@repo-stitcher/core';
+import { err, ok, PROVIDER_ENV_KEYS, type Result, type StitchError } from '@repo-stitcher/core';
 import type { SourceSelection } from './commands/add.js';
 
 /** Directory name for stitch state under the user's home (P-200). */
@@ -166,4 +166,36 @@ export function readSources(
     });
   }
   return ok(out);
+}
+
+/**
+ * providerNames: which providers have a resolvable credential, WITHOUT reading
+ * any value — an env var name from {@link PROVIDER_ENV_KEYS}, or a store key.
+ * Configstore nests dotted keys (`openrouter.apiKey` becomes
+ * `{ openrouter: { apiKey } }`), so a provider shows up as a top-level object
+ * carrying an (already redacted) `apiKey` property.
+ *
+ * Shared by the status dashboard and doctor's provider-key check (P-195);
+ * lives beside the store it reads (the `readSources` precedent).
+ */
+export function providerNames(store: Result<StitchStore, StitchError> | null): string[] {
+  const providers = new Set<string>();
+  for (const [provider, envKey] of Object.entries(PROVIDER_ENV_KEYS)) {
+    if (envKey !== '' && process.env[envKey] !== undefined) providers.add(provider);
+  }
+  if (store !== null && store.isOk()) {
+    const snapshot = store.value.snapshotRedacted();
+    if (snapshot.isOk()) {
+      for (const [top, nested] of Object.entries(snapshot.value)) {
+        if (
+          typeof nested === 'object' &&
+          nested !== null &&
+          'apiKey' in (nested as Record<string, unknown>)
+        ) {
+          providers.add(top);
+        }
+      }
+    }
+  }
+  return [...providers].sort();
 }

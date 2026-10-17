@@ -51,7 +51,6 @@ import { join, resolve } from 'node:path';
 import { err, ok, type Result } from 'neverthrow';
 import {
   CHECKSUM_MANIFEST_FILENAME,
-  PROVIDER_ENV_KEYS,
   ProvenanceAudit,
   SandboxClient,
   HilQueue,
@@ -71,6 +70,7 @@ import {
   STITCH_CONFIG_FILE,
   defaultStoreDir,
   openStore,
+  providerNames,
   readSources,
   type StitchStore,
 } from '../config.js';
@@ -379,34 +379,9 @@ function hasGithubAuth(config: ReturnType<typeof loadConfig>): boolean {
 }
 
 /**
- * Which providers have a credential anywhere: store keys (`<provider>.apiKey`,
- * what `init --provider` writes, consulted REDACTED so no value can leak) plus
- * the documented provider env vars.
+ * providerNames lives in `config.ts` now (P-195): doctor shares it, and it
+ * reads the store, so it belongs beside `readSources`/`StitchStore`.
  */
-function providerNames(store: Result<StitchStore, StitchError> | null): string[] {
-  const providers = new Set<string>();
-  for (const [provider, envKey] of Object.entries(PROVIDER_ENV_KEYS)) {
-    if (envKey !== '' && process.env[envKey] !== undefined) providers.add(provider);
-  }
-  if (store !== null && store.isOk()) {
-    const snapshot = store.value.snapshotRedacted();
-    if (snapshot.isOk()) {
-      // configstore nests dotted keys (`openrouter.apiKey` becomes
-      // `{ openrouter: { apiKey } }`), so a provider shows up as a top-level
-      // object carrying an (already redacted) `apiKey` property.
-      for (const [top, nested] of Object.entries(snapshot.value)) {
-        if (
-          typeof nested === 'object' &&
-          nested !== null &&
-          'apiKey' in (nested as Record<string, unknown>)
-        ) {
-          providers.add(top);
-        }
-      }
-    }
-  }
-  return [...providers].sort();
-}
 
 /** The docker line: probe the daemon, then decide the fallback state in core. */
 async function sandboxSection(

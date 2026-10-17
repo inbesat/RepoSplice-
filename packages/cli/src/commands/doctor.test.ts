@@ -2,7 +2,13 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { err, ok, type Result } from '@repo-stitcher/core';
 import type { DoctorReport, StitchError } from '@repo-stitcher/core';
 import { createProgram } from '../program.js';
-import { renderDoctorReport, runDoctorCommand } from './doctor.js';
+import { makeBunCheck, makeNodeCheck } from '../checks/system.js';
+import {
+  renderDoctorReport,
+  runDoctorCommand,
+  makeConfigCheck,
+  makeProviderCheck,
+} from './doctor.js';
 
 const OLD_NO_COLOR = process.env['NO_COLOR'];
 
@@ -40,13 +46,15 @@ function executeOk(report: DoctorReport): () => Promise<Result<DoctorReport, Sti
   return async () => ok(report);
 }
 
-describe('stitch doctor command (P-068 CLI)', () => {
-  it('renders pass/fail with hint lines', () => {
+describe('stitch doctor command (P-068 CLI, extended P-195)', () => {
+  it('renders pass/warn with hint lines', () => {
+    // P-195's pass/warn/fail tiers: a failing optional check is WARN; FAIL is
+    // reserved for critical checks.
     plain();
     const text = renderDoctorReport(mixedReport(), {});
     expect(text).toContain('stitch doctor');
     expect(text).toContain('PASS');
-    expect(text).toContain('FAIL');
+    expect(text).toContain('WARN');
     expect(text).toContain('git >= 2.40.0');
     expect(text).toContain('docker daemon unreachable');
     expect(text).toContain('fix: Start Docker Desktop');
@@ -197,8 +205,8 @@ describe('stitch doctor command (P-068 CLI)', () => {
 
   it('real action runs live probes and sets exit code', async () => {
     // Precedent: program.test.ts runs the real `status` action. Here the
-    // probes are live (git/filter-repo/docker on this machine), so the
-    // assertions are env-agnostic on purpose: shape + exit-code contract,
+    // probes are live (git/filter-repo/docker/bun/node on this machine), so
+    // the assertions are env-agnostic on purpose: shape + exit-code contract,
     // never specific outcomes. Covers the default-execute closure and the
     // process.exitCode assignment.
     const program = createProgram();
@@ -216,7 +224,117 @@ describe('stitch doctor command (P-068 CLI)', () => {
     }
     const output = lines.join('\n');
     expect(output).toContain('stitch doctor');
-    expect(output).toMatch(/PASS|FAIL/);
+    expect(output).toMatch(/PASS|WARN|FAIL/);
     expect(output).toContain('checks passed');
+  });
+
+  // -------------------------------------------------------------------------
+  // P-195 additions: the mandated five (the `json output` case above stands).
+  // -------------------------------------------------------------------------
+
+  it('checks system deps', async () => {
+    // Each factory: above-floor, below-floor, unparsable, and a missing
+    // binary — every degraded outcome is a Result (never a throw), matching
+    // core's makeGitCheck degradation rule.
+    const enoent = (): Error => Object.assign(new Error('spawn git ENOENT'), { code: 'ENOENT' });
+
+    const bunCheck = makeBunCheck(async () => '1.3.11');
+    expect(bunCheck.critical).toBe(true);
+    expect(bunCheck.label).toContain('1.1.0');
+    const bun = (await bunCheck.check())._unsafeUnwrap();
+    expect(bun.pass).toBe(true);
+
+    const oldBun = (await makeBunCheck(async () => '1.0.8').check())._unsafeUnwrap();
+    expect(oldBun.pass).toBe(false);
+    expect(oldBun.fix).toContain('bun.sh');
+
+    const brokenBun = (await makeBunCheck(async () => 'garbage').check())._unsafeUnwrap();
+    expect(brokenBun.pass).toBe(false);
+
+    const missingBun = (
+      await makeBunCheck(async () => {
+        throw enoent();
+      }).check()
+    )._unsafeUnwrap();
+    expect(missingBun.pass).toBe(false);
+    expect(missingBun.detail).toContain('not runnable');
+
+    // Node: fallback tooling — the floor applies but the check is optional.
+    const nodeCheck = makeNodeCheck(async () => 'v22.5.1');
+    expect(nodeCheck.critical).toBe(false);
+    const node = (await nodeCheck.check())._unsafeUnwrap();
+    expect(node.pass).toBe(true);
+
+    const oldNode = (await makeNodeCheck(async () => 'v20.11.0').check())._unsafeUnwrap();
+    expect(oldNode.pass).toBe(false);
+    expect(oldNode.fix).toContain('nodejs.org');
+  });
+
+  it('validates config', async () => {
+    // A reason (P-192/ADR-079: loadConfig throws; the probe degrades it)
+    // makes the row fail with a fix hint; a clean load passes.
+    const invalid = makeConfigCheck(() => "GitHub config invalid: authType='pat' requires a token");
+    const failed = (await invalid.check())._unsafeUnwrap();
+    expect(failed.pass).toBe(false);
+    expect(failed.detail).toContain('requires a token');
+    expect(failed.fix).toContain('github.token');
+
+    const valid = makeConfigCheck(() => undefined);
+    const passed = (await valid.check())._unsafeUnwrap();
+    expect(passed.pass).toBe(true);
+  });
+
+  it('reports provider key', async () => {
+    // No resolvable credential: WARN row + how to fix. One provider named
+    // (by env or the redacted store): a passing row listing them.
+    const absent = makeProviderCheck(() => []);
+    const failed = (await absent.check())._unsafeUnwrap();
+    expect(absent.critical).toBe(false);
+    expect(failed.pass).toBe(false);
+    expect(failed.detail).toContain('no provider credential resolvable');
+    expect(failed.fix).toContain('stitch init --provider');
+
+    const present = makeProviderCheck(() => ['anthropic']);
+    const passed = (await present.check())._unsafeUnwrap();
+    expect(passed.pass).toBe(true);
+    expect(passed.detail).toContain('configured: anthropic');
+  });
+
+  it('strict exit', async () => {
+    // report.ok stays true while only the optional rows fail: exit 0 by
+    // default (P-068's contract), exit 1 under --strict (P-195). A failed
+    // CRITICAL check is exit 1 regardless.
+    const lines: string[] = [];
+    const write = (line: string): void => {
+      lines.push(line);
+    };
+    const greenCritical: DoctorReport = {
+      ok: true,
+      checks: [
+        { id: 'git', label: 'git', critical: true, pass: true, detail: 'git 2.45.1' },
+        { id: 'docker', label: 'docker', critical: false, pass: false, detail: 'down' },
+      ],
+    };
+    const executeOk = async (): Promise<Result<DoctorReport, StitchError>> => ok(greenCritical);
+    await expect(runDoctorCommand({}, { execute: executeOk, write })).resolves.toBe(0);
+    await expect(runDoctorCommand({ strict: true }, { execute: executeOk, write })).resolves.toBe(
+      1
+    );
+
+    const executeFail = async (): Promise<Result<DoctorReport, StitchError>> => ok(mixedReport());
+    await expect(runDoctorCommand({ strict: true }, { execute: executeFail, write })).resolves.toBe(
+      1
+    );
+  });
+
+  it('registers --strict on the program', () => {
+    const program = createProgram();
+    const doctor = program.commands.find(c => c.name() === 'doctor');
+    let seen: unknown;
+    doctor?.action((options: unknown) => {
+      seen = options;
+    });
+    program.parse(['doctor', '--strict'], { from: 'user' });
+    expect(seen).toMatchObject({ strict: true });
   });
 });
