@@ -39,6 +39,7 @@ import {
 import { deps, type DepsPromptContext } from './commands/deps.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
+import { applyColorMode } from './theme.js';
 
 /** Clean run. */
 export const EXIT_OK = 0;
@@ -178,6 +179,7 @@ export function buildCLI(program: Command): Command {
     .option('-y, --yes', 'assume yes for prompts')
     .option('--offline', 'do not reach the network')
     .option('-C, --cwd <dir>', 'working directory override')
+    .option('--color <mode>', 'color mode: auto, dark, light, or off (P-202; default auto)')
     .option('--no-color', 'disable coloured output')
     .showHelpAfterError()
     .showSuggestionAfterError()
@@ -380,6 +382,19 @@ export function buildCLI(program: Command): Command {
         }
       );
     });
+
+  // P-202: the `--color <mode>` override must be installed BEFORE any action
+  // paints (actions run during parseAsync), and preAction is the one official
+  // point commander gives that runs after option parsing but before every
+  // action handler. `--no-color` never reaches the THEME module on its own
+  // (commander does not write NO_COLOR), so a literal `false` maps to `off`
+  // here too — that pairing was a live gap this phase closes: `theme()` reads
+  // env, not options, and only deps.ts checked opts.color locally.
+  program.hook('preAction', () => {
+    const globals = parseGlobal(program.opts());
+    if (globals.colorMode !== undefined) applyColorMode(globals.colorMode);
+    else if (globals.color === false) applyColorMode('off');
+  });
 
   return program;
 }

@@ -17,6 +17,8 @@ export interface GlobalOptions {
   cwd?: string;
   /** `--no-color`: commander sets this to `false`; colour is ON unless disabled. */
   color: boolean;
+  /** `--color <mode>` (P-202): auto | dark | light | off (`never` maps to off). */
+  colorMode?: 'auto' | 'dark' | 'light' | 'off';
 }
 
 /** The raw shape commander hands back for the same flags. */
@@ -26,7 +28,8 @@ export interface RawGlobalFlags {
   yes?: boolean;
   offline?: boolean;
   cwd?: string;
-  color?: boolean;
+  /** BOTH `--color <mode>` (a string) and `--no-color` (false) land here. */
+  color?: boolean | string;
 }
 
 /** A blank string is "not supplied" — `-c ''` must not shadow the default config. */
@@ -44,12 +47,24 @@ function orAbsent(value: string | undefined): string | undefined {
 export function parseGlobal(raw: RawGlobalFlags): GlobalOptions {
   const config = orAbsent(raw.config);
   const cwd = orAbsent(raw.cwd);
+  const rawColor = raw.color;
+  const colorMode =
+    typeof rawColor === 'string'
+      ? rawColor === 'never'
+        ? 'off'
+        : rawColor === 'always'
+          ? 'auto'
+          : rawColor === 'auto' || rawColor === 'dark' || rawColor === 'light' || rawColor === 'off'
+            ? rawColor
+            : undefined
+      : undefined;
   return {
     verbose: raw.verbose === true,
     ...(config !== undefined ? { configPath: config } : {}),
     yes: raw.yes === true,
     offline: raw.offline === true,
     ...(cwd !== undefined ? { cwd } : {}),
-    color: raw.color !== false,
+    color: rawColor !== false && rawColor !== 'off' && rawColor !== 'never',
+    ...(colorMode !== undefined ? { colorMode } : {}),
   };
 }

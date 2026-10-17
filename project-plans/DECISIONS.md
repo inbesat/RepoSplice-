@@ -3271,4 +3271,35 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-087: P-202 Keeps the P-044 `theme()` Picocolors Contract Byte-For-Byte (a Palette Swap Cannot Slip Under a String-Equality Pin), Puts the Token Palette Behind Explicit `--color` Modes, Builds Injection-Free ANSI From `color.ts`, and Gates `[cli]` Hex Overrides to a Core Schema Section That Does Not Exist Yet
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-202 (PHASES_DETAILED.md, line 10124) mandates `theme.ts` (token set: primary/success/warn/error/muted/hl/border/spinner; `resolveTheme` dark/light/auto + `--color` override) and `color.ts` (`supportsColor`, `stripColor`, rgb helpers), uniform application across picker/progress/status/doctor, `[cli]` hex overrides, and the five named theme tests. Landmine: `theme.ts` is NOT new — P-044 built it with a PINNED delegation contract (`theme('ok') === pc.green` string equality) — and a live probe settled picocolors' detection: its `isColorSupported` is TRUE even where `stdout.isTTY === undefined` (only a hard `false` disables), so any palette swap under the pin changes codes and breaks the string equality.
+
+**Decisions:**
+
+1. TWO LANES IN `theme()`, ON PURPOSE. Without a `--color <mode>` override, `theme(level, text)` is byte-for-byte P-044 (picocolors codes, `colorsEnabled()` = NO_COLOR + now TERM=dumb) — the pinned test and every existing call site (picker P-198, progress P-199, status P-194, doctor P-195, deps) keep their exact bytes. WITH an override, the SAME function paints through `resolveTheme`'s token palette (ok→success, warn→warn, err→error) — so "applied uniformly" is one SOURCE (this module), reachable from every surface through the flag, while no pre-existing contract is rewritten.
+
+2. DETECTION IS `color.ts::supportsColor`, INJECTABLE: NO_COLOR (any value but '0'/'false') → off; TERM=dumb → off; FORCE_COLOR (≠0/false) → forced on even off-TTY; else `stream.isTTY === true`. NO_COLOR outranks FORCE_COLOR (de-facto standard precedence, test-pinned). resolveTheme's explicit `dark`/`light` modes force PAST the TTY check (the user ASKED for a mode) but still honor NO_COLOR/TERM=dumb; `off` always disables.
+
+3. TOKEN PALETTES ARE HEX, TWO SETS: `DARK_TOKENS` (terminal norm) and `LIGHT_TOKENS` with DARKER ink for the same roles — the light background needs darker glyphs for the phase's ≥4.5:1 contrast mandate, and palette swaps must never touch call sites. Paints use truecolor (`38;2`) when `COLORTERM` is truecolor/24bit, else `rgbToAnsi256` → `38;5`; `stripColor` removes whole CSI sequences (built from a char code so `no-control-regex` stays clean).
+
+4. DARK/LIGHT AUTO-detection uses `COLORFGBG` ("fg;bg", light bg presets '7'/'15' flip) and defaults DARK; the spec's `tput bg` subprocess query is NOT spawned — forking a process per paint resolution is I/O in a pure path, and per-invocation explicit `--color dark|light` is the honest override.
+
+5. `--color <mode>` IS A GLOBAL (`auto|dark|light|off`; `never`→off, `always`→auto tolerated), sharing commander's `color` attribute with `--no-color` (string vs false). It installs through the program's `preAction` hook — the one official point that runs after option parsing but before every action — calling `applyColorMode`. CLOSING A LIVE GAP: `--no-color` never reached `theme()` before (commander does not write NO_COLOR; only deps.ts checked `opts.color` locally) — the hook now maps a literal `false` to `off`, so the old flag finally disables EVERYTHING.
+
+6. `[cli] primary='#7c3aed'` IS ACCEPTED PROGRAMMATICALLY, NOT FROM CONFIG (recorded deviation): core's `ConfigSchema` has no `cli` section, and adding one is an inbesat-owned coordinated core change. `resolveTheme(opts.overrides)` carries the hook — per-token hex, unparseable values ignored (never invented), validated by `custom primary` — so when the schema grows `[cli]`, wiring is one loadConfig→overrides pass.
+
+7. The spec's "small rgbToAnsi256/truecolor helpers" are pure functions in `color.ts`; the mandated five tests live in `theme.test.ts` (dark/light + COLORFGBG, NO_COLOR/TERM=dumb, strip ANSI on painted output, custom primary incl. invalid-hex rejection, FORCE_COLOR matrix) with the two P-044 pins untouched above them.
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **19 files / 122 tests** (5 new P-202 cases + the P-044 pins intact). Root suite: pending (background run at commit time; only CLI files changed in this phase — core untouched).
+- The probe finding (picocolors treats `isTTY: undefined` as color-on; only a hard `false` disables) joins ADR-085/086's recorded runtime facts.
+- P-203 (error messages + exit codes) can colorize through `theme()`/`applyColorMode` with no new style surface; if a `[cli]` config section ever lands in core's schema, `resolveTheme(opts.overrides)` is the waiting seam.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

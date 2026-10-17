@@ -4,7 +4,8 @@
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-17
-**Current Phase:** P-201 - CLI: editor integration (aradhy lane) - DONE, gate green
+**Current Phase:** P-202 - CLI: theme + color (aradhy lane) - DONE, gate green
+**P-202 DONE (2026-10-17) - gate green.** ADR-087. Files: `packages/cli/src/color.ts` (new - `supportsColor` NO_COLOR/TERM=dumb/FORCE_COLOR/TTY matrix with NO_COLOR outranking FORCE_COLOR, `stripColor` whole-CSI (ESC from `String.fromCharCode` so `no-control-regex` stays clean), `rgbToAnsi256`/`ansi256`/`ansi16m`), `theme.ts` (extended in place - P-044's module: 8 semantic tokens `primary/success/warn/error/muted/hl/border/spinner` as `DARK_TOKENS`+`LIGHT_TOKENS` (light ink DARKER for white-bg contrast), `resolveTheme(env, {mode, stream, overrides})` truecolor/256/identity paints, `COLORFGBG` dark detection (no `tput` subprocess - I/O in a pure path), programmatic per-token hex overrides = the future `[cli]` hook), and the `--color <mode>` global (globals.ts + cli.ts `preAction` hook -> `applyColorMode`; commander shares the `color` attribute between `--color <mode>` and `--no-color`). THE load-bearing reconciliation: `theme()` kept its P-044 picocolors contract BYTE-FOR-BYTE in the no-override lane (the pin is string equality against `pc.*`, and a live probe proved picocolors enables on `isTTY === undefined` - any palette swap under it breaks); the token palette drives only when an explicit `--color` mode is installed. That ALSO closed a live gap: `--no-color` never reached `theme()` before (commander writes no NO_COLOR; only deps.ts checked opts.color) - the hook now maps it to `off`. `[cli]` config hex overrides are accepted PROGRAMMATICALLY only (`resolveTheme.overrides`): core's ConfigSchema has no `cli` section and growing it is inbesat-owned core work (recorded deviation). Gate: root typecheck 0, eslint 0, prettier clean, CLI suite **19 files / 122 tests** (the five mandated names verbatim + P-044 pins intact); core untouched.
 **P-201 DONE (2026-10-17) - gate green.** ADR-086. Files: `packages/cli/src/editor.ts` + `editor.test.ts` (new), `commands/config.ts` + `commands/config.test.ts` (new - the P-200 inline `stitch config` body MOVED here), `cli.ts` (the command wired to the module with `--edit`/`--no-loop`). `openInEditor` spawns `$VISUAL` -> `$EDITOR` -> platform default (`notepad` win32 / `vi` unix - NOT `code`, not on every PATH) with an ARGUMENT ARRAY and `shell:false` (injection safe by construction; the `safe arg quoting` test drives a metacharacter path - Windows forbids raw `"` in names); "saved" = mtime moved across editor exit (no watcher), a non-zero exit with an unchanged file is an ABORT (`ok`, not an error), an editor that cannot start is `CONFIG_ERROR{field:'editor'}` hinting `$VISUAL`/`$EDITOR` (`NO_EDITOR` is a PHANTOM code - adding one is the coordinated core change ADR-072 measured, core is inbesat-owned). `stitch config` keeps stdout pure JSON (resolved-path note on stderr); `--edit` loops: every close re-validates through P-200's `loadConfig({config: path})` (validation cannot drift from the other commands), prints each zod issue with its dotted path, re-opens, capped at 10 attempts; `--no-loop` validates once; no project file scaffolds a defaults starter via `writeConfig` (editing nothing is a no-op). Step 4 (`merge --preflight`) SKIPPED on record: optional by spec and merge is not CLI-reachable until P-192's deferred handler map. Gate: root typecheck 0, eslint 0, prettier clean, CLI suite **19 files / 117 tests**. Root suite: 2465 passed / 1 failed - solely the documented pre-existing core red (`jobs/idempotency.test.ts`, ADR-079).
 **P-200 DONE (2026-10-17) - gate green.** ADR-085. Files: `packages/cli/src/config.ts` (extended in place - the USER-LEVEL store already lived there; project config joins it rather than a second module), `config.test.ts` (new), `cli.ts` (`stitch config` command registered), `package.json`/`bun.lock` (`smol-toml` added). The surface: `configPaths` (`--config` resolved against cwd, else nearest `stitch.toml` walking UP from cwd with a `.git` boundary stop - a parent workspace can never capture an inner repo), `loadConfig` (TOML parse -> env overlay -> defaults merge -> `ConfigSchema.safeParse` -> `paths.*` resolved against the config dir; per-process cache keyed (explicit config, cwd), `resetConfigCache()` test seam), `writeConfig` (smol-toml serialize to `<dir>/stitch.toml`), `emitConfig` (pretty JSON, the `config` command's whole body). Gate: root typecheck 0, eslint 0, prettier clean, CLI suite **18 files / 113 tests** (the six mandated names verbatim + git-boundary stop, missing `--config` file, no-project-file, bad-env-value, emit JSON, cache). Root suite: 2454 passed / 1 failed - solely the documented pre-existing core red (`jobs/idempotency.test.ts`, ADR-079). Key reconciliations (full in ADR-085): parsing is smol-toml because vitest runs NODE (where `Bun` - and Bun.TOML - do not exist; probe-established) and Bun.TOML has no stringify; invalidity reports as core's `CONFIG_INVALID` (landed with the P-243 residue commit 73628aa) carrying verbatim zod issues; env overlay names are GENERATED from `defaultConfig`'s own `SECTION_FIELD` shape (appId -> APPID, matched exactly) plus core's `PROVIDER_ENV_KEYS` - unknown `STITCH_*` names are ignored, and a bad env value fails the SAME CONFIG_INVALID path (overlay precedes validation); "no project file" is defaults+env, NOT an error, while a missing explicitly-named `--config` is `CONFIG_ERROR`; `config-schema.ts` is deliberately not created (nothing CLI-side to hold). 
 **P-199 DONE (2026-10-17) - gate green.** ADR-084. Files: `packages/cli/src/ui/progress.tsx` + `ui/progress.test.ts` (new). The four-kind event contract (`step`/`status`/`log`/`done` - the phase's own shape, derived from core's P-162 spine at the CALLER; the renderer stays decoupled from pipeline logic), `ProgressView` (Ink tree: spinner on the active row via `@inkjs/ui`'s `Spinner`, plain-ASCII glyphs `>`/`+`/`x`/`·` so colors-off stays readable (ADR-083), elapsed `m:ss` per step and a total, a log tail with an "[N earlier log lines hidden]" marker, painted strings always inside `<Text>`), and `startProgress(stream?, opts?)` - controller `{update(ev), finish()}` with the subscription wiring (detach-on-finish, late events dropped), `--silent` suppressing LOG lines only, `--verbose` showing all, off-TTY printing one plain line per transition (`> a`, `+ a (0:07)`, `x a (0:02) — detail`, `[warn] msg`) with no redraw. Test harness: fake event pump shaped AS the `ProgressStream` the commands wire later, injected clock (deterministic `m:ss`), fake stdout parameterized by isTTY so non-TTY lines are captured without touching process streams. Two findings live-learned and now contract: ink 7's render throttles FRAME WRITES (`renderThrottleMs`), so transitions fired inside one window coalesce into the last state - the step-states test therefore sleeps between transitions exactly as real runs spread over real time, while the burst coalescing itself is the `throttles bursts` assertion (40 logs within one tick → bounded frames, tail keeps the freshest + hidden marker); and a setState-outside-React bridge NEVER redrew in ink 7's reconciler (probe-proven), so the controller refreshes through ink's native `instance.rerender()` with a fresh snapshot element - no React state bridge at all. Gate: root typecheck 0, eslint 0, prettier clean, CLI suite **17 files / 101 tests** (93 + 8; the five mandated names verbatim + `verbose shows all`, `fmtElapsed` unit block, and `does not re-print a done summary off tty` — `finish()` skips re-printing a `done` summary the off-TTY line printer already wrote, an explicit different summary still prints). Two timing facts: a trailing transition moves the model's as-of timestamp, so the view's `total` reflects it (0:11 with a step left active at close), and sync-burst updates fired right after mount can surface only the mount frame under load — transitions pace with sleeps, exactly as real runs spread over real time.","oldString":"","path":"","lastError":"oldString must differ from newString"}","oldString":"","path":"","lastError":"oldString must differ from newString"}
@@ -275,25 +276,25 @@
 - [x] **P-187** Audit log
 - [x] **P-188** Tests
 
-#### Epic 10: CLI (P-189–P-207) — aradhy (post-handoff)
-- [ ] **P-189** Commander + global opts
-- [ ] **P-190** `stitch init`
-- [ ] **P-191** `stitch add <repo> <paths>`
-- [ ] **P-192** `stitch merge`
-- [ ] **P-193** `stitch serve` (elysia)
-- [ ] **P-194** `stitch status`
-- [ ] **P-195** `stitch doctor`
-- [ ] **P-196** `stitch license`
-- [ ] **P-197** `stitch deps`
-- [ ] **P-198** Ink picker
-- [ ] **P-199** Progress render
-- [x] **P-200** `~/.stitch` config / project config resolution *(2026-10-17)*
-- [x] **P-201** Error UX / editor integration *(2026-10-17 — editor integration; the broader error-UX wording is P-203's)*
-- [ ] **P-202** Help
-- [ ] **P-203** Autocomplete
+#### Epic 10: CLI (P-189–P-207) — aradhy (post-handoff) *(checkbox glosses drifted from PHASES_DETAILED — titles below follow the detailed spec; P-200/201/202 verified against it)*
+- [x] **P-189** Commander + global opts *(2026-10-17)*
+- [x] **P-190** `stitch init` *(2026-10-17)*
+- [x] **P-191** `stitch add <repo> <paths>` *(2026-10-17)*
+- [x] **P-192** `stitch merge` command *(2026-10-17 — command module done; nine-handler wiring DEFERRED, decision on record)*
+- [x] **P-193** `stitch serve` (elysia) *(2026-10-17)*
+- [x] **P-194** `stitch status` *(2026-10-17)*
+- [x] **P-195** `stitch doctor` *(2026-10-17)*
+- [x] **P-196** `stitch license` *(2026-10-17)*
+- [x] **P-197** `stitch deps` *(2026-10-17)*
+- [x] **P-198** Ink picker *(2026-10-17)*
+- [x] **P-199** Progress render *(2026-10-17)*
+- [x] **P-200** Project config + resolution *(2026-10-17)*
+- [x] **P-201** Editor integration *(2026-10-17)*
+- [x] **P-202** Theme + color tokens *(2026-10-17)*
+- [ ] **P-203** Error messages + exit codes
 - [ ] **P-204** Integration tests
 - [ ] **P-205** Windows path handling
-- [ ] **P-206** Theme
+- [ ] **P-206** Secrets/redaction
 - [ ] **P-207** Release binary build
 
 #### Epic 11: Web UI (P-208–P-237) — aradhy (post-handoff)
