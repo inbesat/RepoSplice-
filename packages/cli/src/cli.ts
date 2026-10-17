@@ -25,7 +25,7 @@ import { cloneRepo, friendlyError, listFiles, toPosix } from '@repo-stitcher/cor
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import { join, relative, resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
+import { askSelect, promptText } from './ui/prompt.js';
 import { parseGlobal, type GlobalOptions } from './globals.js';
 import { init } from './commands/init.js';
 import { add, looksRemote } from './commands/add.js';
@@ -84,25 +84,24 @@ export async function defaultResolveSource(
 }
 
 /**
- * P-198 stand-in for the license prompt: one plain readline question per
- * pending unknown. A closed/EOF stdin degrades to 'skip' — the entry stays
- * pending rather than the process dying mid-question.
+ * P-198 wrapper for the license prompt: one askSelect per pending unknown.
+ * The options ARE the decision; an unanswerable surface (a cancelled escape
+ * included — the wrappers reject typed `USER_CANCELLED` and the command's
+ * catch degrades to 'skip') keeps the entry pending rather than killing the
+ * process mid-question.
  */
 async function defaultLicensePrompt(ctx: LicensePromptContext): Promise<LicensePromptResult> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const answer = await rl.question(
-      `license: ${ctx.package}@${ctx.version} declares "${ctx.rawLicense}" — [a]llow, [d]eny, [s]kip? `
-    );
-    const normalized = answer.trim().toLowerCase();
-    if (normalized.startsWith('a')) return 'allow';
-    if (normalized.startsWith('d')) return 'deny';
-    return 'skip';
-  } catch {
-    return 'skip';
-  } finally {
-    rl.close();
-  }
+  const decision = await askSelect(
+    `license: ${ctx.package}@${ctx.version} declares "${ctx.rawLicense}"`,
+    [
+      { label: 'allow — accept this license for this package', value: 'allow' },
+      { label: 'deny — mark an explicit deny for this package', value: 'deny' },
+      { label: 'skip — leave the entry pending', value: 'skip' },
+    ]
+  );
+  if (decision === 'allow') return 'allow';
+  if (decision === 'deny') return 'deny';
+  return 'skip';
 }
 
 /** Repeatable-option collector: `--allow A --allow B` → ['A','B']. */
@@ -111,25 +110,23 @@ function collectFlag(value: string, previous: string[] | undefined): string[] {
 }
 
 /**
- * P-198 stand-in for the deps prompt: one plain readline question per
- * needs-attention conflict. Closed/EOF stdin (or an empty answer) degrades
- * to null — the conflict stays pending rather than the process dying.
+ * P-198 wrapper for the deps prompt: one promptText per needs-attention
+ * conflict, phrased with each source's competing spec. An empty answer —
+ * or a cancelled/failed surface, caught and degraded to null below — keeps
+ * the conflict pending rather than killing the process.
  */
 async function defaultDepsPrompt(ctx: DepsPromptContext): Promise<string | null> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const choices = Object.entries(ctx.values)
+    .map(([label, spec]) => `${label} wants ${spec}`)
+    .join('; ');
   try {
-    const choices = Object.entries(ctx.values)
-      .map(([label, spec]) => `${label} wants ${spec}`)
-      .join('; ');
-    const answer = await rl.question(
-      `deps: resolution for ${ctx.package} (${choices}) — type a spec, or <enter> to skip: `
-    );
-    const trimmed = answer.trim();
+    const answer = await promptText(`deps: resolution for ${ctx.package} (${choices})`, {
+      placeholder: 'type a spec, or press enter to skip',
+    });
+    const trimmed = (answer ?? '').trim();
     return trimmed.length === 0 ? null : trimmed;
   } catch {
     return null;
-  } finally {
-    rl.close();
   }
 }
 
@@ -309,7 +306,7 @@ export function buildCLI(program: Command): Command {
       const globals = globalOptionsOf(program);
       const store = openStore();
       // Interactive only when a TTY is watching and --yes did not suppress it;
-      // the prompt surface itself is the P-198 stand-in (readline).
+      // the prompt surface is the shared P-198 picker (askSelect).
       const interactive = process.stdout.isTTY === true && globals.yes !== true;
       const result = await license(
         {
@@ -339,7 +336,7 @@ export function buildCLI(program: Command): Command {
       const globals = globalOptionsOf(program);
       const store = openStore();
       // Interactive only when a TTY is watching and --yes did not suppress it;
-      // the prompt surface itself is the P-198 stand-in (readline).
+      // the prompt surface is the shared P-198 picker (promptText).
       const interactive = process.stdout.isTTY === true && globals.yes !== true;
       const result = await deps(
         {
