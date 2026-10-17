@@ -103,7 +103,8 @@ describe('P-210 shell layout', () => {
     const expected = [
       ['/select', 'file tree loads here'],
       ['/stitch', 'Run the merge'],
-      ['/review', 'coming in phases P-219/P-220'],
+      // P-218: /review renders the gate; the empty state shows when sources are missing.
+      ['/review', 'review the proposed merge'],
       ['/results', 'coming in phase P-221'],
     ] as const;
     for (const [path, marker] of expected) {

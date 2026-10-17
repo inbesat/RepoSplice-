@@ -30,3 +30,32 @@ export async function runMerge(input: {
 }
 
 export { describeFailure };
+
+/** Body: finalize child repo C (client contract; serve side = P-192/P-160 HIL). */
+export async function approveMerge(input: {
+  include: readonly string[];
+  exclude: readonly string[];
+  note: string;
+}): Promise<MergeSummary> {
+  const response = await fetch('/api/merge/approve', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      include: input.include,
+      exclude: input.exclude,
+      note: input.note,
+    }),
+  });
+  if (!response.ok) throw new Error(await describeFailure(response));
+  return (await response.json()) as MergeSummary;
+}
+
+/** Body: abort the merge with the reason recorded (P-187 audit, P-160). */
+export async function rejectMerge(input: { reason: string }): Promise<void> {
+  const response = await fetch('/api/merge/reject', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ reason: input.reason }),
+  });
+  if (!response.ok) throw new Error(await describeFailure(response));
+}
