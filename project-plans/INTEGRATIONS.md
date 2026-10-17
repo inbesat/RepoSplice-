@@ -467,6 +467,7 @@ type StitchError =
   | { code: 'DEPENDENCY_CONFLICT'; packages: string[]; details: string }
   | { code: 'SANDBOX_FAILED'; step: 'install' | 'build' | 'test'; logs: string }
   | { code: 'CONFIG_ERROR'; field: string; message: string }
+  | { code: 'CONFIG_INVALID'; issues: { path: string; message: string }[]; message: string }
   | { code: 'USER_CANCELLED'; reason: string }
   | { code: 'INTERNAL'; message: string; cause?: Error }
   | { code: 'AUTH_ERROR'; provider: string; message: string }

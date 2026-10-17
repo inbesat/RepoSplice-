@@ -3176,4 +3176,36 @@ So adding a reporter flag to the captured stdout would have produced nothing to 
 
 ---
 
+## ADR-084: P-199 Renders Progress Through `instance.rerender()` Snapshots (Not a setState Bridge), Coalesces Bursts on Ink's Throttle, and Keeps the Renderer a Pure Event Consumer
+
+**Status:** Accepted
+**Date:** 2026-10-17
+
+**Context:** P-199 (PHASES_DETAILED.md, after P-198) mandates `ui/progress.tsx` (ordered step list, spinner on active, elapsed `m:ss` per step + total, ~30fps throttle against log bursts, discrete non-TTY lines) plus `ui/progress.test.ts` with a fake event pump and the five named cases. The phase's event contract is four kinds — `step`/`status`/`log`/`done` — derived by the CALLER from core's P-162 spine (`Bus`/`EventEnvelope`/`topics.ts` reconned: coalescible topics, sync in-order delivery); the handoff keeps the renderer decoupled from pipeline logic, with merge (P-192) and serve (P-193) as its consumers. ADR-083's fake-stdout and mount-defense patterns carry over.
+
+**Decisions:**
+
+1. THE EVENT CONTRACT IS THE PHASE'S FOUR KINDS, MAPPED AT THE CALLER. `startProgress(stream?: ProgressStream, opts?)` consumes `{subscribe(handler) → unsubscribe}` — the shape core's bus subscription already satisfies (P-241's `subscribe(topic, handler)` adapts trivially in the P-192/193 wiring). The renderer never reaches into `core/src/events/*` (the barrel comment forbids it) and never invents stages: a `status` event naming an undeclared id creates a verbatim-id row rather than crashing (AC: "errors surface per-step without crashing").
+
+2. THE CONTROLLER UPDATES THE MODEL IN A PLAIN MUTABLE OBJECT AND RE-DRAWS VIA `instance.rerender()` — NOT a setState bridge. Ink 7's reconciler IGNORES React state updates fired from outside React (the controller's flush runs in event/timeout context): probe-established, an outside `setModel` produced zero additional frames while the same `rerender()` call pattern wrote frames immediately. `refresh()` therefore re-mounts `ProgressView` with a FRESH snapshot element each flush; the view stays a pure function of its props (`ProgressSnapshot`: steps/logs/ts/mountAt/summary), so a stale frame is impossible by construction.
+
+3. BURSTS COALESCE ON INK'S FRAME THROTTLE; OUR THROTTLE GATES THE WORK. The controller flushes at most every `throttleMs` (default 33 ≈30fps): the first update within a window schedules a trailing timer; `--throttleMs` is injectable for tests. Ink 7 additionally throttles frame WRITES (`renderThrottleMs`), so several flushes inside one window coalesce into the last state — real runs spread over real time, so this costs nothing honest (the final state is always the truth), and the burst test asserts exactly that coalescing: 40 logs in one tick → a bounded frame count, with the tail showing the freshest logs and the hidden-lines marker rather than 40 rows. The same throttle also means a SYNC burst fired immediately after mount can surface ONLY the mount frame (observed under load: one `total 0:00`-only frame, nothing else) — so transition-bearing tests pace with sleeps, and `total` assertions must expect the LAST transition's timestamp, not the last completed step's.
+
+4. NON-TTY IS A LINE PRINTER, NOT A DEGRADED RENDERER. Non-interactive surfaces print one plain line per transition the moment an event lands — `> a` (activation, no elapsed — nothing has ENDed yet), `+ a (0:07)` / `x a (0:02) — detail` (terminal transitions with elapsed from the injected clock), `[level] msg` logs, the `done` summary as a bare closing line — in pump order, asserted verbatim. `step` declarations print nothing (transitions do). `--silent` suppresses log LINES only; `--verbose` (TTY) disables the tail marker by showing everything.
+
+5. SECRETS, COLORS AND GLYPHS FOLLOW ADR-083: plain-ASCII glyphs (`>`/`+`/`x`/`·`) read fine with colors off; painted strings live inside `<Text>` (the ADR-083 hard contract); the spinner is `@inkjs/ui`'s `Spinner` (braille dots — the one place non-ASCII is accepted, asserted by codepoint scan rather than a regex literal that vitest mishandled); elapsed formatting is `m:ss` zero-padded seconds, unit-tested through 62:05.
+
+6. TEST HARNESS: the pump IS a `ProgressStream` (subscribe/emit) so the controller's wiring path is exercised end-to-end (and detachability: events emitted after `finish()` are dropped, asserted); the clock is injected (deterministic `(0:07)`/`(0:02)`/`0:09` totals); fake stdout is parameterized by `isTTY`, so non-TTY needs no process-stream stubbing at all.
+
+7. FINISH IS THE ONLY TEARDOWN. `finish(summary?)` unsubscribes, flushes a final frame, unmounts, then writes the summary line AFTER the unmount (so it is not swallowed into a redraw), and is idempotent. A pumped `done` event prints/records its summary; `finish()` without an argument does not re-print an already-printed summary (off-TTY) but prints the recorded one after unmount (TTY "clear, print summary" per spec).
+
+**Consequences:**
+
+- Gate green: root typecheck 0, eslint 0, prettier clean, CLI suite **17 files / 101 tests** (the five mandated names verbatim + `verbose shows all`, a `fmtElapsed` unit block, and `does not re-print a done summary off tty`). Root suite: 2449 passed / 1 failed — solely the documented pre-existing core red (`jobs/idempotency.test.ts` "mixed stages", ADR-079).
+- P-192/P-193 mount this at the merge/serve call sites; the first consumer maps envelopes → the four kinds in ITS wiring (likely `pipeline.stage` → step/status, `agent.*`/high-frequency → logs) — none of that logic belongs in the renderer.
+- `@inkjs/ui` now earns its keep (P-199's Spinner) after ADR-083 kept it installed.
+- The setState-outside-React finding joins ADR-083's seam notes (readable stdin, painted-strings-in-Text, is-in-ci) as ink-7 knowledge future phases must not re-probe.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
