@@ -14,4 +14,5 @@ export * from './flow.js';
 export * from './run.js';
 export * from './deps.js';
 export * from './licenses.js';
+export * from './sandbox.js';
 export * from './selectors.js';

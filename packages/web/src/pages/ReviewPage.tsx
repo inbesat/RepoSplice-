@@ -13,6 +13,7 @@ import { DiffViewer } from '../components/DiffViewer.js';
 import { ApprovalBar } from '../components/ApprovalBar.js';
 import { useDepsStore } from '../store/deps.js';
 import { useLicensesStore } from '../store/licenses.js';
+import { useSandboxStore } from '../store/sandbox.js';
 import { useSourcesStore } from '../store/selection.js';
 import { useRunStore } from '../store/run.js';
 
@@ -26,6 +27,9 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
   const setRunStatus = useRunStore(s => s.setRunStatus);
   const depsBlockers = useDepsStore(s => s.blockers);
   const licensesBlockers = useLicensesStore(s => s.blockers);
+  // P-221: sandbox verdict gates approve — fail blocks, warn blocks until
+  // acknowledged (emitted by SandboxPanel once a run jobId exists to fetch).
+  const sandboxBlockers = useSandboxStore(s => s.blockers);
   const navigate = useNavigate();
 
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -46,6 +50,8 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
     // P-220: same rule for the license report — loaded reports gate on hard
     // denies + pending unknowns (ADR-105).
     ...licensesBlockers,
+    // P-221: sandbox pass/fail/warn emission (SandboxPanel, ADR-106).
+    ...sandboxBlockers,
   ];
   const blocked = blockers.length > 0;
 

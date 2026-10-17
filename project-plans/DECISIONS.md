@@ -3849,6 +3849,47 @@ Date: 2026-10-18. Phase: P-220 - Web - License Panel (aradhy lane, Web Epic 11).
    94 tests (SourcesPage 'advances on success' flaked once in-suite, passed
    in isolation AND on full rerun - ADR-098 timing family); root typecheck 0;
    eslint 0 after --fix (6 prettier-shape errors); prettier clean.
+
+---
+
+## ADR-106: Web sandbox results panel with verdict gate (P-221)
+
+Date: 2026-10-18. Phase: P-221 (Web Epic 11). Owner: aradhy lane.
+
+1. **Client contracts.** `GET /api/sandbox/result/<jobId>` and
+   `GET /api/sandbox/capabilities` do not exist on the server yet (P-193
+   serves only provenance/jobs/settings; P-192 handler-map deferred). The
+   web module `api/sandbox.ts` is the fixed client contract, mirroring the
+   P-217 proposed-diff pattern. Artifact download links fabricate
+   `GET /api/sandbox/artifact/<jobId>?path=<encoded>` — also client
+   contract, recorded here so the server lane implements the same shape.
+2. **Local wire types.** Web tsconfig rootDir cannot import the core
+   barrel (TS6059, ADR-104 precedent), so `SandboxResult` and friends are
+   declared locally with field semantics mirroring core `BuildResult`
+   ({pass, command, exitCode, durationMs, logs}) plus the verdict rules
+   of detailed-plan P-176 (pass/fail/warn).
+3. **Verdict gate semantics.** Emission rules: `fail` always blocks;
+   `warn` blocks until the user acknowledges (ack is panel-local state
+   fed into the emission effect); an unloaded sandbox report never blocks
+   (ADR-104 rule: the server is the final authority at POST
+   /api/merge/approve). The result is published through a dedicated
+   zustand slice `store/sandbox.ts` ('stitch-sandbox') exposing
+   {loaded, sandboxPass, blockers}.
+4. **BuildLog is presentational only.** Free-form log lines with
+   heuristic level coloring (error/warn keywords), a line-numbered
+   scrollable pre, and a Blob-URL raw download; open state is local per
+   section. No parsing beyond display heuristics — structured parsing is
+   the server lane's job.
+5. **Panel not mounted yet.** `ReviewPage` unions the sandbox blockers
+   into the gate (one selector line), but `SandboxPanel` itself is not
+   rendered anywhere: no run jobId source exists (P-216 MergeSummary has
+   no jobId). The mount lands together with P-192 job plumbing; the
+   component and its gate wiring are complete and tested in isolation.
+6. **Tests.** Five mandated names verbatim ('renders capabilities',
+   'build tests cards', 'renders logs', 'artifacts', 'verdict gates
+   approve') plus one plumbing test surfacing a failed fetch inline.
+   Zero pin supersessions this phase.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReviewPage } from './ReviewPage.js';
 import { useSourcesStore } from '../store/selection.js';
 import { useRunStore } from '../store/run.js';
+import { useSandboxStore } from '../store/sandbox.js';
 
 const SOURCE_A = { id: 'r1', kind: 'local' as const, path: '/tmp/rA', status: 'ready' as const };
 const SOURCE_B = { id: 'r2', kind: 'local' as const, path: '/tmp/rB', status: 'ready' as const };
@@ -65,6 +66,8 @@ describe('ReviewPage', () => {
   beforeEach(() => {
     useSourcesStore.getState().reset();
     useRunStore.getState().reset();
+    // P-221: clear sandbox state so cross-file store leaks cannot block approve.
+    useSandboxStore.getState().reset();
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     mockDispatch();
@@ -132,6 +135,7 @@ describe('ReviewPage plumbing', () => {
   beforeEach(() => {
     useSourcesStore.getState().reset();
     useRunStore.getState().reset();
+    useSandboxStore.getState().reset();
   });
 
   afterEach(() => {
