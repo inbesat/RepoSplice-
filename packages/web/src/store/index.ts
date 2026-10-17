@@ -12,4 +12,5 @@ export * from './types.js';
 export * from './selection.js';
 export * from './flow.js';
 export * from './run.js';
+export * from './deps.js';
 export * from './selectors.js';

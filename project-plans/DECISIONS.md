@@ -3765,6 +3765,46 @@ Decisions:
    P-210 placeholder text ("coming in phases P-219/P-220") to
    "review the proposed merge" (the P-218 empty-state paragraph).
 
+## ADR-104: Web deps conflict panel (P-219)
+
+Status: accepted (2026-10-17, aradhy lane)
+
+Context: the review flow needs the dependency conflict review (core
+P-116/P-109/P-111, web face of `stitch deps` P-197) rendered as an
+interactive panel whose decisions gate the P-218 approve button.
+
+Decisions:
+1. `GET /api/deps/report` and `POST /api/deps/resolve`
+   (`{package, resolution}`) are client contracts; the endpoints do not
+   exist yet (P-116/P-197 wire the CLI path, P-192 the handler-map).
+   Failures surface as inline alerts.
+2. The wire types mirror core's `DependencyReport` (deps/types.ts)
+   structurally but are KEPT LOCAL in `api/deps.ts`: the web tsconfig's
+   `rootDir` cannot pull the `@repo-stitcher/core` barrel (TS6059 under
+   `tsc --noEmit`), and the client only ever sees the serialized shape.
+   Core type names (`ConflictStatus` etc.) are preserved for grep-ability.
+3. Blocking rule: ONLY an error-severity conflict without a resolution
+   (posted or `status: 'auto-resolved'`) blocks approve; warning /
+   needs-attention conflicts never block (core semantics: warnings don't
+   stop the merge). "Resolve all" applies `suggestedResolution` (the
+   P-109 intersected range) to non-error conflicts only - error-level
+   conflicts demand a manual per-row decision, per spec.
+4. New store slice `store/deps.ts` (devtools `stitch-deps`):
+   `loaded / resolved / blockers` emitted by the panel after every
+   mutation. An UNLOADED report does not block approve: the server is the
+   final authority at `POST /api/merge/approve`. ReviewPage unions its
+   injectable `blockers` prop (P-218 seam) with the store blockers.
+5. Resolve-all and per-row resolved state flow into rows through a
+   `resolvedOverride` prop (rows are otherwise self-contained after their
+   own Apply); the row select offers "Use suggested: <range>" plus each
+   upstream value as choices, per ADR-099 display fidelity.
+6. Script collisions are summarized in the counts line
+   (`testid deps-counts`: totals, verdict, dedupe notes, script
+   collisions, lockfile status) and excluded from the conflict table
+   (`type !== 'script'`) - the merge table is version/peer/config only.
+7. Zero pin supersessions this phase; ReviewPage gained one deps-store
+   selector, no other P-218 behavior changed.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router';
 import { approveMerge, rejectMerge } from '../api/merge.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ApprovalBar } from '../components/ApprovalBar.js';
+import { useDepsStore } from '../store/deps.js';
 import { useSourcesStore } from '../store/selection.js';
 import { useRunStore } from '../store/run.js';
 
@@ -22,6 +23,7 @@ export interface ReviewPageProps {
 export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
   const { sourcesA, sourcesB, selectionA, selectionB } = useSourcesStore();
   const setRunStatus = useRunStore(s => s.setRunStatus);
+  const depsBlockers = useDepsStore(s => s.blockers);
   const navigate = useNavigate();
 
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -33,7 +35,13 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
     [selectionA, selectionB]
   );
   const include = useMemo(() => union.filter(p => !excluded.has(p)), [union, excluded]);
-  const blockers = props.blockers ?? [];
+  const blockers = [
+    ...(props.blockers ?? []),
+    // P-219: an unloaded deps report does not block (server is the final
+    // authority at POST /api/merge/approve) — only a loaded report's
+    // unresolved error-level conflicts do.
+    ...depsBlockers,
+  ];
   const blocked = blockers.length > 0;
 
   if (sourcesA.length === 0 || sourcesB.length === 0) {
