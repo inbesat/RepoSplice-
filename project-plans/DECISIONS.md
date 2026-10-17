@@ -3691,6 +3691,43 @@ Decisions:
    ('coming in phases P-217/P-218') is now `'Run the merge'` — the page is
    real this phase (same pattern as P-212's `/sources` pin).
 
+## ADR-102: Web diff viewer (P-217)
+
+Date: 2026-10-17 · Phase: P-217 'Web - Diff Viewer' · Lane: aradhy
+
+Decision: the proposed-diff viewer is built as a decoupled component pair
+(`DiffViewer` + `DiffHunk`, fed by the `useProposedDiff` hook) and NOT mounted
+into any page this phase.
+
+1. `GET /api/merge/proposed-diff` is a CLIENT CONTRACT: it is P-192's dry-run
+   surface and the serve endpoint does not exist yet (P-193 has only
+   provenance/jobs/settings). The client tolerates both a bare array body and
+   `{files: [...]}`; every non-ok response throws via the shared
+   `describeFailure` (server JSON message wins).
+2. Diff engine: `react-diff-viewer-continued` 4.4.0, already a direct
+   dependency. `splitView` toggles unified/split, line numbers stay on, and
+   the added/removed line colors point at the P-209 token vars
+   (`var(--success)` / `var(--danger)`) so dark mode follows the theme. This
+   avoided hand-rolling hunk computation/rendering and any new dependency.
+3. Change accounting: `countChanges` runs an LCS DP over the normalized texts
+   (added = n - lcs, deleted = m - lcs) with a 2000-line CAP that falls back
+   to a set-based symmetric difference. The whitespace-ignore normalization
+   (CRLF -> LF always; collapse whitespace runs + trim when toggled) feeds
+   BOTH the rendered diff input AND the header totals — a single source of
+   truth that makes the "Toggle ignore whitespace" observable in both places.
+4. Syntax highlighting is scoped: a lazy dynamic `import('shiki')` (github-dark)
+   powers only the per-file "View raw" pane, keyed by extension, with a
+   try/catch fallback to a plain `<pre>`. The diff grid itself is +/-/context
+   colored only; per-line syntax highlighting inside the grid is a recorded
+   deviation (RDVC integration cost vs. value at this stage).
+5. Virtualization deviation: RDVC renders whole files; no row virtualization
+   this phase (fixture and expected dry-run sizes are small). Revisit if
+   large-repo dry-runs lag.
+6. Decoupling per handoff: the spec's file list includes no page changes, so
+   `ReviewPage` is untouched and pinned markers are unaffected — P-218 mounts
+   the viewer in its locked approve/reject gate. Zero pin supersessions this
+   phase.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
