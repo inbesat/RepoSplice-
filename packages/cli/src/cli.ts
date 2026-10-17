@@ -36,6 +36,7 @@ import {
   type LicensePromptContext,
   type LicensePromptResult,
 } from './commands/license.js';
+import { deps, type DepsPromptContext } from './commands/deps.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
 
 /** Clean run. */
@@ -109,6 +110,29 @@ function collectFlag(value: string, previous: string[] | undefined): string[] {
   return [...(previous ?? []), value];
 }
 
+/**
+ * P-198 stand-in for the deps prompt: one plain readline question per
+ * needs-attention conflict. Closed/EOF stdin (or an empty answer) degrades
+ * to null — the conflict stays pending rather than the process dying.
+ */
+async function defaultDepsPrompt(ctx: DepsPromptContext): Promise<string | null> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const choices = Object.entries(ctx.values)
+      .map(([label, spec]) => `${label} wants ${spec}`)
+      .join('; ');
+    const answer = await rl.question(
+      `deps: resolution for ${ctx.package} (${choices}) — type a spec, or <enter> to skip: `
+    );
+    const trimmed = answer.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  } catch {
+    return null;
+  } finally {
+    rl.close();
+  }
+}
+
 /** How a commander fault should end the process. */
 export interface ExitPlan {
   code: number;
@@ -135,7 +159,7 @@ export function classifyCommanderError(error: CommanderError): ExitPlan {
 
 /**
  * Attach the global options, the exit convention, and the `init`, `add`,
- * `serve`, `status`, and `license` commands.
+ * `serve`, `status`, `license`, and `deps` commands.
  *
  * `program.ts` remains the registry for the commands it owns (`doctor`).
  * The workspace commands are registered HERE — per phase mandate for `init`
@@ -305,6 +329,36 @@ export function buildCLI(program: Command): Command {
       });
     });
 
+  program
+    .command('deps')
+    .description('Preview the dependency merge for the selected sources (P-104–P-116)')
+    .option('--json', 'emit the DependencyReport (one per ecosystem, as JSON)')
+    .option('--auto', 'apply the resolver\u2019s suggestion to every fixable conflict')
+    .option('--lockfile', 'regenerate the ecosystem lockfile for the merged manifest')
+    .action(async (options: DepsCommandOptions) => {
+      const globals = globalOptionsOf(program);
+      const store = openStore();
+      // Interactive only when a TTY is watching and --yes did not suppress it;
+      // the prompt surface itself is the P-198 stand-in (readline).
+      const interactive = process.stdout.isTTY === true && globals.yes !== true;
+      const result = await deps(
+        {
+          ...globals,
+          ...(options.json === true ? { json: true } : {}),
+          ...(options.auto === true ? { auto: true } : {}),
+          ...(options.lockfile === true ? { lockfile: true } : {}),
+        },
+        {
+          ...(store.isOk() ? { store: store.value } : {}),
+          resolveSource: defaultResolveSource,
+          ...(interactive ? { prompt: defaultDepsPrompt } : {}),
+        }
+      );
+      process.exitCode = exitCodeForResult(result, line => {
+        process.stderr.write(`${line}\n`);
+      });
+    });
+
   return program;
 }
 
@@ -313,6 +367,13 @@ interface LicenseCommandOptions {
   json?: boolean;
   allow?: string[];
   deny?: string[];
+}
+
+/** The options commander hands `stitch deps`. */
+interface DepsCommandOptions {
+  json?: boolean;
+  auto?: boolean;
+  lockfile?: boolean;
 }
 
 /** The options commander hands `stitch status`. */
