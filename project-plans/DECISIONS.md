@@ -4597,4 +4597,47 @@ Date: 2026-10-20. Phase: P-237 (Web Epic 11, closing phase). Owner: aradhy lane.
 
 ---
 
+## ADR-123: Git branching model (dev/main) with enforceable PR rules (P-313)
+
+Date: 2026-10-20. Phase: P-313 (workflow phases, Wave 0). Owner: inbesat lane.
+
+1. **The spec is a one-liner.** P-313 has no PHASES_DETAILED block;
+   the phase list in PROGRESS.md (workflow phases P-313-P-317) and
+   MASTER_PLAN.md (lines 29 + 147) define it as "Git branching model doc
+   (dev/main, PR rules)". The deliverable is therefore: a root
+   BRANCHING.md, pointers from CONTRIBUTING.md and README.md, an
+   enforceable PR-base check, and the `dev` branch itself.
+2. **The model.** `main` is protected, release-ready and tagged; `dev` is
+   the integration branch and the default PR base; feature branches are
+   named per CONTRIBUTING section 1 and cut from `dev`; `release/*` and
+   `hotfix/*` target `main`. Merges are squashed and the branch is
+   deleted afterwards.
+3. **Branching is not the conflict-avoidance mechanism.** The two-lane
+   ownership model (packages/core = inbesat, packages/cli + packages/web
+   = aradhy, root = either) plus package isolation is; the branch model
+   sequences the lanes, it does not replace them. A PR touching two
+   packages needs both owners.
+4. **The PR-base rule is enforced in CI.** GitHub branch protection can
+   only be configured by the repository owner, so BRANCHING.md section 5
+   documents the required settings (PR required, required checks, linear
+   history, delete head branch, no force push) as a manual step, and a
+   new `.github/workflows/pr-rules.yml` check fails any pull request that
+   targets `main` unless its head branch is `release/*` or `hotfix/*`.
+   The check makes the rule real today without remote configuration.
+5. **The CI trigger rename.** `.github/workflows/ci.yml` listened for a
+   `develop` branch that never existed on the remote (origin carries
+   `main` only), so the integration branch never ran CI. The triggers now
+   use `dev` - the name the plan specifies - and `release.yml` (push to
+   `main`) is untouched.
+6. **Doc-only phase.** No runtime code, no contract change and no
+   mandated test names. The full code gate still runs green (typecheck,
+   lint, web vitest 39 files / 164 tests, E2E 3 specs, perf 3 specs), so
+   the docs cannot hide a regression.
+7. **The branch ships with the model.** `dev` is created from `main`
+   after the P-313 commit lands, so it already carries BRANCHING.md, and
+   it is pushed to origin (never to the safesphere remote).
+
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

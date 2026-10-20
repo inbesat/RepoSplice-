@@ -239,6 +239,7 @@ RepoSplice is built across **4 waves** with **366 phases** grouped into **19 epi
 | [SECURITY.md](project-plans/SECURITY.md) | Security boundaries and policies |
 | [INTEGRATIONS.md](project-plans/INTEGRATIONS.md) | Third-party API interface docs |
 | [CONTEXT.md](project-plans/CONTEXT.md) | Documentation navigation index |
+| [BRANCHING.md](BRANCHING.md) | Git branching model (`dev`/`main`), PR rules, ownership lanes |
 
 ---
 

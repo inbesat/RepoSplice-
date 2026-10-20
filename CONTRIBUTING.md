@@ -26,6 +26,8 @@ Scope is the **package or system** being touched (`core`, `cli`, `web`, `root`, 
 
 Branch names are lowercase, kebab-case, max 60 chars. No ticket numbers in the branch name (keep them in commit messages if relevant).
 
+Branches are cut from `dev` and merged back into `dev`; `release/*` and `hotfix/*` target `main`. See [BRANCHING.md](BRANCHING.md) for the full branching model and the PR rules.
+
 ---
 
 ## 2. Commit Messages — Conventional Commits
@@ -77,6 +79,8 @@ Two git hooks run on every commit (set up in P-005):
 ---
 
 ## 3. Pull Request Process
+
+PRs target `dev` by default; only `release/*` and `hotfix/*` branches target `main`. The rule is enforced by the `pr-rules` CI check - see [BRANCHING.md](BRANCHING.md) for the branch roles, the merge flow, and the owner-side GitHub settings.
 
 ### 3.1 PR title and body
 
