@@ -4048,4 +4048,41 @@ Date: 2026-10-20. Phase: P-225 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-111: Web dark mode with persisted theme choice (P-226)
+
+Date: 2026-10-20. Phase: P-226 (Web Epic 11). Owner: aradhy lane.
+
+1. **Both selectors set.** Spec asked for a `data-theme` attribute on
+   `<html>`; P-209's tokens.css keys dark values off the `.dark` CLASS
+   (Tailwind `@custom-variant dark (&:where(.dark,.dark*))`), not the
+   attribute. ThemeProvider sets BOTH — attribute for the spec contract,
+   class for the token layer. Reconciled, not either/or.
+2. **Persistence = two writes, never blocks.** setTheme writes
+   localStorage ('stitch-theme') synchronously, then fires a
+   fire-and-forget `PATCH /api/settings {appearance:{theme}}` through
+   P-225's patchSettings with `.catch(() => undefined)` — the setting
+   PATCH wiring lands with P-192; localStorage is the guaranteed
+   fallback so a choice never silently evaporates across reloads.
+3. **Auto follows the OS live.** While theme is 'auto' a
+   matchMedia('(prefers-color-scheme: dark)') change listener re-resolves;
+   a typeof-guard keeps SSR/jsdom (which lack matchMedia) safe — the app
+   renders 'light' resolved without the global.
+4. **useTheme never throws.** Outside a provider the hook returns safe
+   defaults (auto / no-op setTheme / resolved light) instead of throwing;
+   renderToString smoke tests and non-React callers stay safe.
+5. **ThemeToggle** cycles auto->light->dark->auto, keeps
+   data-testid 'dark-toggle' (the P-210 shell pin), exposes
+   aria-pressed (resolved === 'dark') and an aria-label naming the
+   choice, the resolved mode, and the next choice. AppShell's inline
+   handler was replaced by the component.
+6. **Pin supersession on record.** App.test's old pin asserted the
+   toggle's aria-label 'toggle dark mode'; ThemeToggle owns that button
+   now, so the pin asserts aria-pressed="false" instead.
+7. **Tests.** Four mandated names verbatim ('applies theme attribute',
+   'auto follows os', 'persists choice', 'toggle accessible').
+   Lesson: listener-driven state updates must run inside act() or RTL
+   never flushes the DOM assertion.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

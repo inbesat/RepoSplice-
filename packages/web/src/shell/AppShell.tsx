@@ -2,9 +2,7 @@
 //
 // LATER-PHASE HOOKS, present as thin affordances now:
 //   run status — the header badge is static "idle" (P-216/P-224 bind the WS);
-//   dark toggle — flips the `.dark` class on <html>, which is exactly the
-//                 mechanism P-226's `@custom-variant dark (&:where(.dark,…))`
-//                 responds to; that phase replaces the inline handler;
+//   dark toggle — P-226's <ThemeToggle /> (auto/light/dark, persisted);
 //   settings   — links to /settings (P-225's screen).
 //
 // The header keeps the P-208 tagline verbatim (`AI-augmented multi-repo
@@ -13,6 +11,7 @@
 import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
+import { ThemeToggle } from './ThemeToggle.js';
 import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
 import { stepForPath } from '../router.js';
@@ -44,15 +43,7 @@ export function AppShell(): JSX.Element {
         >
           idle
         </span>
-        <button
-          type="button"
-          className="text-muted px-2"
-          data-testid="dark-toggle"
-          aria-label="toggle dark mode"
-          onClick={() => document.documentElement.classList.toggle('dark')}
-        >
-          ◐
-        </button>
+        <ThemeToggle />
         <Link to="/settings" className="text-muted px-2 text-sm" data-testid="settings-link">
           settings
         </Link>

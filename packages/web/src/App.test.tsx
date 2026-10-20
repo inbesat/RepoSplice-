@@ -21,7 +21,10 @@ describe('web root (P-047 react)', () => {
     expect(html).toContain('aria-label="stitch steps"');
     expect(html).toContain('<aside');
     expect(html).toContain('run-status');
-    expect(html).toContain('toggle dark mode');
+    // P-226 SUPERSEDED (on record, ADR-111): the old pin 'toggle dark mode'
+    // named the inline handler's label; ThemeToggle now owns the button and
+    // exposes aria-pressed + a cycling theme label instead.
+    expect(html).toContain('aria-pressed="false"');
     expect(html).toContain('settings');
   });
 

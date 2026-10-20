@@ -16,6 +16,7 @@
 import { Component, type ComponentType, type ErrorInfo, type JSX, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { AppShell } from './shell/AppShell.js';
+import { ThemeProvider } from './theme/ThemeProvider.js';
 import { SourcesPage } from './pages/SourcesPage.js';
 import { SelectPage } from './pages/SelectPage.js';
 import { MergePage } from './pages/MergePage.js';
@@ -82,17 +83,19 @@ export class RouteErrorBoundary extends Component<{ children: ReactNode }, Bound
 /** Error boundary per route + the shell wrapping the five pages. */
 export function AppShellRoutes(): JSX.Element {
   return (
-    <RouteErrorBoundary>
-      <Routes>
-        <Route element={<AppShell />}>
-          <Route index element={<Navigate to="/sources" replace />} />
-          {STEPS.map(step => (
-            <Route key={step.id} path={step.path.slice(1)} element={<step.Page />} />
-          ))}
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/sources" replace />} />
-      </Routes>
-    </RouteErrorBoundary>
+    <ThemeProvider>
+      <RouteErrorBoundary>
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route index element={<Navigate to="/sources" replace />} />
+            {STEPS.map(step => (
+              <Route key={step.id} path={step.path.slice(1)} element={<step.Page />} />
+            ))}
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/sources" replace />} />
+        </Routes>
+      </RouteErrorBoundary>
+    </ThemeProvider>
   );
 }
