@@ -1,0 +1,11 @@
+{
+  "frozenAt": "2026-10-20",
+  "adr": "ADR-124",
+  "paths": {
+    "packages/core/src/events/topics.ts": "759cc9e860ce886af837ff33ce10bb05f9ebf1d4eaa4e98a4ba06595e1614f23",
+    "packages/core/src/events/bus.ts": "17979ddcf84c78e2748d1f0d8f5afed12d67572552565918a6f25e4e4383d7dd",
+    "packages/core/src/events/progress.ts": "6cb1b0d98827693145ff2517f00fce0d9802af36f53571127b39942039a833f0",
+    "packages/core/src/jobs/types.ts": "6b4525e1e02607d154f9c2789ff5800e47963c0a6379cb063c364ce174de1fdc",
+    "packages/web/src/lib/ws.ts": "12149725c4dc0f6591ee8255a4481a3171ceff952342a9127aaef951d2c61b57"
+  }
+}

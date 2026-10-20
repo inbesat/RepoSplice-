@@ -277,6 +277,8 @@ Per `AGENTS.md` §1, these files require an ADR in `project-plans/DECISIONS.md` 
 
 If your PR modifies any of these, link the ADR in the PR body.
 
+The core/web wire contracts are frozen as well (packages/core/src/events/*, packages/core/src/jobs/types.ts, packages/web/src/lib/ws.ts). Changing one needs an ADR with a contract-freeze: <path> marker plus a refreshed contracts.freeze.json - see [CONTRACTS.md](CONTRACTS.md).
+
 ---
 
 ## 6. Release Process

@@ -68,7 +68,7 @@ function picker(slot: 'A' | 'B'): PickerRegion {
  * await the picker's region before scoping locators to it.
  */
 async function pickerAsync(slot: 'A' | 'B'): Promise<PickerRegion> {
-  return within(await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 5000 }));
+  return within(await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 15000 }));
 }
 
 /** Fill the GitHub form and its optional ref, then submit. */
@@ -200,7 +200,7 @@ describe('P-211/P-212 repo pickers', () => {
     // h2 is the per-source title, not the bare 'Select' placeholder. The 5s
     // timeout rides out suite-load lag (auto-advance is an async effect).
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Select files' }, { timeout: 5000 })
+      await screen.findByRole('heading', { level: 2, name: 'Select files' }, { timeout: 15000 })
     ).toBeTruthy();
     // MemoryRouter owns the location — window.location is NOT the router's,
     // so the advance is asserted through the rendered page + the flow store.

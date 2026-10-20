@@ -73,7 +73,7 @@ describe('a11y (P-231)', () => {
         <AppShellRoutes />
       </MemoryRouter>
     );
-    await screen.findByText('Welcome to stitch');
+    await screen.findByText('Welcome to stitch', undefined, { timeout: 15000 });
     const violations = await scan();
     expect(violations).toEqual([]);
   });

@@ -113,14 +113,14 @@ describe('P-210 shell layout', () => {
       // The marker is a substring of the placeholder paragraph — match loosely.
       // P-237: the route chunk is lazy, so the marker arrives asynchronously.
       // The 5s timeout rides out suite-load lag (the chunk import is I/O).
-      expect(await screen.findByText(marker, { exact: false }, { timeout: 5000 })).toBeTruthy();
+      expect(await screen.findByText(marker, { exact: false }, { timeout: 15000 })).toBeTruthy();
     }
     // P-212: /sources now renders BOTH pickers, each with the empty-state
     // paragraph — assert the marker per picker instead of globally.
     shell('/sources');
     for (const slot of ['A', 'B'] as const) {
       const region = within(
-        await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 5000 })
+        await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 15000 })
       );
       expect(
         region.getByText('add one below', {

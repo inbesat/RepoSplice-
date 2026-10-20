@@ -16,6 +16,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
+    "check:contracts": "bun scripts/contract-freeze.ts",
+    "check:contracts:update": "bun scripts/contract-freeze.ts --update",
     "build": "bun run build:core",
     "build:core": "cd packages/core && bun run build",
     "build:cli": "echo \"build:cli: deferred to P-062 (tsup)\" && exit 0",

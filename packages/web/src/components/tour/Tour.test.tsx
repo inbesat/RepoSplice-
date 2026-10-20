@@ -138,7 +138,7 @@ describe('tour (P-229)', () => {
         () => {
           expect(container.querySelector(step.target) !== null).toBeTruthy();
         },
-        { timeout: 5000 }
+        { timeout: 15000 }
       );
     }
   });

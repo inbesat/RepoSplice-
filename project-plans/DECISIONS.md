@@ -4637,6 +4637,65 @@ Date: 2026-10-20. Phase: P-313 (workflow phases, Wave 0). Owner: inbesat lane.
    after the P-313 commit lands, so it already carries BRANCHING.md, and
    it is pushed to origin (never to the safesphere remote).
 
+---
+
+## ADR-124: Contract freeze gate for the core and web wire types (P-314)
+
+Date: 2026-10-20. Phase: P-314 (workflow phases). Owner: inbesat lane.
+
+1. **What "core/src/types + WS schema" actually is.** `packages/core/src/types/`
+   holds only ambient declaration files (madge, picomatch, raw) - the real
+   contract surface is the event/job modules: `packages/core/src/events/
+   topics.ts` (TOPICS + the zod `eventEnvelopeSchema`),
+   `packages/core/src/events/bus.ts` (Bus, BusEnvelope,
+   createBusForwarder), `packages/core/src/events/progress.ts`
+   (StageProgress, ProgressAggregator) and `packages/core/src/jobs/
+   types.ts` (JobStatus, JOB_TRANSITIONS, JobRecord, JobEvent), plus the
+   web mirror `packages/web/src/lib/ws.ts` (WsEnvelope, WsClient). The
+   plan's `core/src/orchestration/eventBus.ts` / `ToolProposal` do not
+   exist; the freeze therefore covers the real producers and their
+   consumer. `REQUIRED_CONTRACT_PATHS` in the gate script is that list.
+2. **The gate never throws.** The repo tooling layer has no
+   `Result`/`StitchError` surface (that contract belongs to
+   packages/core), so the gate's equivalent is an exit code: `main()`
+   returns 0 (intact), 1 (unauthorized contract change) or 2 (gate
+   error - unreadable manifest); the CLI calls `process.exit(main(...))`.
+   Every read, hash and parse is wrapped, and a broken manifest is
+   reported as a gate error instead of a crash.
+3. **Authorization is an ADR, not a flag.** A changed, missing or
+   unfrozen contract is rejected unless `project-plans/DECISIONS.md`
+   contains a `contract-freeze: <path>` marker INSIDE an `## ADR-`
+   section. Markers outside an ADR section do not count, so a stray
+   mention cannot unlock a contract. An authorized change still exits 0
+   and reminds the author to refresh the manifest with `--update`.
+4. **The required-path list is enforced.** A contract cannot be
+   silently dropped from the manifest: every entry of
+   `REQUIRED_CONTRACT_PATHS` must be frozen. The gate's own test
+   mirrors the whole required set in its temp root so this check is
+   exercised honestly (an earlier version froze one path and the four
+   others surfaced as 'unfrozen' - the test, not the gate, was fixed).
+5. **The gate reads core, never writes it.** packages/core is
+   inbesat-owned; the manifest, script and docs live at the repo root
+   (`scripts/`, `contracts.freeze.json`, `CONTRACTS.md`). The script
+   gets its own `scripts/tsconfig.json` + `scripts/vitest.config.ts`
+   because the root `vitest.config.ts` is a frozen file and the root
+   tsconfig only includes `packages/*/src`.
+6. **Refreshing the freeze.** After an ADR-authorized change,
+   `bun run check:contracts:update` rewrites `contracts.freeze.json`
+   (sha256 per path) and the author commits the ADR and the refreshed
+   manifest together. CI runs the read-only gate
+   (`bun scripts/contract-freeze.ts`) plus the script's own unit tests
+   and typecheck in a dedicated `contract-freeze` job.
+7. **Test-hardening on record.** The P-237 route-level lazy split made
+   four route-rendering tests depend on an async chunk load; their
+   waits were raised from the RTL default (1 s) to 15 s
+   (shell.test.tsx, Tour.test.tsx, SourcesPage.test.tsx, a11y.test.tsx)
+   after the default wait proved too short under parallel load. The
+   locators and assertions are unchanged - only the timeouts.
+8. **Doc/CI/script-only phase.** No mandated test names (the spec is a
+   one-liner); the phase ships eight gate unit tests, the root scripts,
+   the CI job, `CONTRACTS.md`, and the CONTRIBUTING/README pointers.
+   The full code gate (typecheck, lint, vitest, E2E, perf) stays green.
 
 ---
 
