@@ -10,18 +10,9 @@
 // the message (P-228 surfaces it; no neverthrow on the web side — fetch
 // rejection IS the error path).
 
-export interface SourceRecord {
-  readonly id: string;
-  readonly kind: 'github' | 'local';
-  /** `owner/repo` (github kind). */
-  readonly repo?: string;
-  /** Filesystem path (local kind). */
-  readonly path?: string;
-  /** Optional ref (branch/tag/sha) for github sources. */
-  readonly ref?: string;
-  /** P-215's status field, seeded `ready` on success. */
-  readonly status: 'ready' | 'pending' | 'error';
-}
+import type { SourceRecord } from '@repo-stitcher/shared';
+
+export type { SourceRecord };
 
 /** GET /api/repos/sources — every source the CLI knows about. */
 export async function listSources(): Promise<SourceRecord[]> {

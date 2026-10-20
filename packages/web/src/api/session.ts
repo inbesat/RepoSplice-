@@ -14,15 +14,9 @@
 import { describeFailure } from './repos.js';
 import type { SourceRecord } from './repos.js';
 import { useSourcesStore } from '../store/selection.js';
+import type { SessionBundle } from '@repo-stitcher/shared';
 
-export interface SessionBundle {
-  version: 1;
-  exportedAt: string;
-  sources: { A: SourceRecord[]; B: SourceRecord[] };
-  selection: { A: string[]; B: string[] };
-  resolutions: Record<string, string>;
-  licenseDecisions: Record<string, 'allow' | 'deny'>;
-}
+export type { SessionBundle };
 
 /** Older bundles import with defaults (P-200 coercion rule). */
 export function coerceBundle(raw: unknown): SessionBundle {

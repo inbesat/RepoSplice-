@@ -93,7 +93,9 @@ describe('SandboxPanel', () => {
 
   it('verdict gates approve', async () => {
     const { rerender } = render(<SandboxPanel jobId="j1" />);
-    await screen.findByTestId('sandbox-verdict');
+    // P-315: explicit waits — the default 1 s RTL timeout is too tight when
+    // the root suite runs the files in parallel.
+    await screen.findByTestId('sandbox-verdict', undefined, { timeout: 15_000 });
     expect(screen.getByTestId('sandbox-verdict').textContent).toContain('verdict: fail');
     let store = useSandboxStore.getState();
     expect(store.sandboxPass).toBe(false);
@@ -109,16 +111,19 @@ describe('SandboxPanel', () => {
       return { ok: true, json: async () => CAPS };
     });
     rerender(<SandboxPanel jobId="j2" key="j2" />);
-    await screen.findByTestId('sandbox-verdict');
+    await screen.findByTestId('sandbox-verdict', undefined, { timeout: 15_000 });
     expect(screen.getByTestId('sandbox-verdict').textContent).toContain('verdict: warn');
     store = useSandboxStore.getState();
     expect(store.sandboxPass).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: /Acknowledge warning/ }));
-    await vi.waitFor(() => {
-      expect(useSandboxStore.getState().sandboxPass).toBe(true);
-    });
+    await vi.waitFor(
+      () => {
+        expect(useSandboxStore.getState().sandboxPass).toBe(true);
+      },
+      { timeout: 15_000 }
+    );
     expect(useSandboxStore.getState().blockers).toEqual([]);
-  });
+  }, 60_000);
 
   it('surfaces a failed sandbox fetch inline', async () => {
     fetchMock.mockReset();

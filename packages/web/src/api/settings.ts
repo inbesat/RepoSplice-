@@ -12,11 +12,17 @@
 // masked `set`/`not set` is rendered, never a value (spec handoff).
 
 import { describeFailure } from './repos.js';
+import type {
+  LicenseListName,
+  SettingsData,
+  SettingsPatch,
+  ThemeChoice,
+} from '@repo-stitcher/shared';
+
+export type { LicenseListName, SettingsData, SettingsPatch, ThemeChoice };
 
 export const PROVIDERS = ['openrouter', 'anthropic', 'ollama'] as const;
 export type Provider = (typeof PROVIDERS)[number];
-export type ThemeChoice = 'light' | 'dark' | 'auto';
-export type LicenseListName = 'allow' | 'warn' | 'deny';
 
 /** Local mirror of core ai/models.ts (P-135) curated ids, per provider. */
 export const MODEL_OPTIONS: Readonly<Record<Provider, readonly string[]>> = {
@@ -30,35 +36,7 @@ export const MODEL_OPTIONS: Readonly<Record<Provider, readonly string[]>> = {
 };
 
 /** Effective settings as the web renders them. Optional fields default. */
-export interface SettingsData {
-  readonly model?: string;
-  readonly maxTokens?: number;
-  readonly streaming?: boolean;
-  readonly theme?: ThemeChoice;
-  readonly licensePolicy?: Readonly<Record<LicenseListName, readonly string[]>>;
-  readonly timeoutSec?: number;
-  readonly memory?: string;
-  readonly offline?: boolean;
-  /** Provider-key set status (true = configured). NEVER carries values. */
-  readonly keys?: Readonly<Record<string, boolean>>;
-  /** P-234 extension: the chosen UI locale. */
-  readonly locale?: string;
-}
-
 /** Deep-partial patch body for PATCH /api/settings. */
-export interface SettingsPatch {
-  openrouter?: { defaultModel?: string };
-  agent?: { maxTokens?: number; maxCostUsd?: number };
-  licensePolicy?: Record<LicenseListName, readonly string[]>;
-  sandbox?: { limits?: { timeout?: number; memory?: string } };
-  appearance?: { theme?: ThemeChoice };
-  network?: { offline?: boolean };
-  /** P-229 extension: tour dismissal rides the same PATCH funnel. */
-  tour?: { dismissed?: boolean };
-  /** P-234 extension: the UI locale rides the same PATCH funnel. */
-  i18n?: { locale?: string };
-}
-
 type Body = {
   openrouter?: { defaultModel?: unknown };
   agent?: { maxTokens?: unknown };

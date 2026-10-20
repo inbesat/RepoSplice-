@@ -4,14 +4,11 @@
 // below are the contract the server side must implement, tests mock fetch.
 
 import { describeFailure } from './repos.js';
+import type { MergeSummary } from '@repo-stitcher/shared';
+
+export type { MergeSummary };
 
 /** Final merge summary the server returns on success (client contract). */
-export interface MergeSummary {
-  readonly files: number;
-  readonly deps: string[];
-  readonly licenses: string[];
-}
-
 /** Body: the A/B selections (sorted repo-relative paths, ADR-099). */
 export async function runMerge(input: {
   selectionA: readonly string[];

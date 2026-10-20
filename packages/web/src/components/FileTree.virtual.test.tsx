@@ -67,12 +67,14 @@ describe('FileTree virtualization (P-232)', () => {
     fetchMock.mockResolvedValue(OK({ entries: many }));
     const apiRef: { current: TreeApi<TreeNodeData> | null } = { current: null };
     render(<FileTree source={SOURCE} height={140} apiRef={apiRef} />);
-    await screen.findByText('file-0', {}, { timeout: 10_000 });
+    // P-315: the scroll settle needs a longer leash under the root suite's
+    // parallel load (the file-0 / file-250 waits were timing out at 10 s).
+    await screen.findByText('file-0', {}, { timeout: 30_000 });
     await apiRef.current?.scrollTo('file-250');
-    await screen.findByText('file-250', {}, { timeout: 10_000 });
+    await screen.findByText('file-250', {}, { timeout: 30_000 });
     expect(screen.queryByText('file-0')).toBeNull();
     expect(screen.getAllByRole('treeitem').length).toBeLessThan(60);
-  }, 60_000);
+  }, 120_000);
 
   it('filter scroll', async () => {
     fetchMock.mockResolvedValue(

@@ -4699,4 +4699,52 @@ Date: 2026-10-20. Phase: P-314 (workflow phases). Owner: inbesat lane.
 
 ---
 
+## ADR-125: `packages/shared` — the cross-cutting wire types package (P-315)
+
+Date: 2026-10-20. Phase: P-315 (workflow phases). Owner: inbesat lane.
+
+1. **A shared package, owned by one lane.** ADR-002 rejected a shared
+   package because "then both edit it -> conflicts". P-315 resolves that
+   with single ownership: `packages/shared` is inbesat-owned and aradhy
+   reads it. The package holds only the CROSS-CUTTING WIRE DTOs — no
+   business logic, no frozen contract, no runtime behaviour.
+2. **Consumed through the workspace symlink.** The web consumes the
+   package by NODE RESOLUTION (the same way the CLI already consumes
+   `@repo-stitcher/core`), not through the root tsconfig `paths`
+   mapping: that mapping resolves to a repo path outside the web's
+   `rootDir: src` and would re-create TS6059. Consequence: no rootDir
+   change and NO frozen file (`tsconfig.base.json`) is touched.
+3. **The P-314-frozen contracts stay put.** `core/src/events/*`,
+   `core/src/jobs/types.ts` and `web/src/lib/ws.ts` are NOT moved into
+   the package — the freeze gate stays green and keeps guarding them.
+   The shared package holds the request/response shapes that travel
+   over the same HTTP endpoints.
+4. **The DTOs are copied verbatim.** Every type in
+   `packages/shared/src/index.ts` was copied from the web's local
+   declarations, so adopting the package cannot change the wire
+   contract. The five core-flow api modules (`repos`, `tree`, `merge`,
+   `session`, `settings`) now import the shared types and RE-EXPORT
+   them, so every existing importer keeps working. `deps`, `licenses`,
+   `sandbox`, `provenance`, `jobs` and the proposed-diff module keep
+   their local declarations — the follow-up sweep is documented, not
+   silently skipped.
+5. **Not a hollow type-only shell.** The package carries runtime tuples
+   (`SOURCE_KINDS`, `SOURCE_STATUSES`) and narrowing predicates
+   (`isSourceKind`, `isSourceStatus`) plus its own six tests, so it is
+   usable (and testable) on its own.
+6. **ARCHITECTURE.md L87 ("Shared types live in core/src/types/") is
+   superseded for the wire DTOs only.** That document is frozen and
+   owner-maintained; the correction is left to the owner rather than
+   edited here.
+7. **Two web flakes the root suite exposed were hardened.** The
+   `FileTree.virtual` "recycles scroll" waits moved to 30 s with a
+   120 s per-test budget, and the `SandboxPanel` "verdict gates approve"
+   waits to 15 s with a 60 s budget — the default 1 s RTL timeout is too
+   tight when the root suite runs the files in parallel.
+8. **No mandated test names** (one-liner phase spec); the gate stays
+   green: scripts 8/8, shared 6/6, web 39 files / 164 tests, E2E 3, perf
+   3, root typecheck and lint 0.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

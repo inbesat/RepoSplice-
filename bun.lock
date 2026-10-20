@@ -99,6 +99,10 @@
         "pino-pretty": "^13.1.3",
       },
     },
+    "packages/shared": {
+      "name": "@repo-stitcher/shared",
+      "version": "0.0.0",
+    },
     "packages/web": {
       "name": "@repo-stitcher/web",
       "version": "0.0.0",
@@ -111,6 +115,7 @@
         "@radix-ui/react-select": "2.3.7",
         "@radix-ui/react-tabs": "1.1.21",
         "@radix-ui/react-tooltip": "1.2.16",
+        "@repo-stitcher/shared": "workspace:*",
         "@tanstack/react-query": "5.102.8",
         "clsx": "2.1.1",
         "lucide-react": "1.42.0",
@@ -626,6 +631,8 @@
     "@repo-stitcher/cli": ["@repo-stitcher/cli@workspace:packages/cli"],
 
     "@repo-stitcher/core": ["@repo-stitcher/core@workspace:packages/core"],
+
+    "@repo-stitcher/shared": ["@repo-stitcher/shared@workspace:packages/shared"],
 
     "@repo-stitcher/web": ["@repo-stitcher/web@workspace:packages/web"],
 
