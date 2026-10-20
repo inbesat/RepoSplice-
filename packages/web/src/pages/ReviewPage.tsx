@@ -57,7 +57,7 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
 
   if (sourcesA.length === 0 || sourcesB.length === 0) {
     return (
-      <section>
+      <section data-tour="review">
         <h2 className="text-title font-semibold">Review</h2>
         <p className="text-muted">Complete the previous steps to review the proposed merge.</p>
       </section>
@@ -89,7 +89,7 @@ export function ReviewPage(props: ReviewPageProps = {}): JSX.Element {
   };
 
   return (
-    <section>
+    <section data-tour="review">
       <h2 className="text-title font-semibold">Review</h2>
       <p data-testid="review-counts" className="text-body text-muted">
         A: {selectionA.length} · B: {selectionB.length} · {include.length} to merge ·{' '}

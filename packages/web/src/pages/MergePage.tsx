@@ -58,6 +58,7 @@ export function MergePage(props?: { connect?: Connector }): JSX.Element {
       </p>
       <button
         type="button"
+        data-tour="run-merge"
         data-testid="run-merge"
         onClick={runNow}
         disabled={!ready}

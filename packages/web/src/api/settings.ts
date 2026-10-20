@@ -51,6 +51,8 @@ export interface SettingsPatch {
   sandbox?: { limits?: { timeout?: number; memory?: string } };
   appearance?: { theme?: ThemeChoice };
   network?: { offline?: boolean };
+  /** P-229 extension: tour dismissal rides the same PATCH funnel. */
+  tour?: { dismissed?: boolean };
 }
 
 type Body = {
@@ -61,6 +63,7 @@ type Body = {
   licensePolicy?: { allow?: unknown; warn?: unknown; deny?: unknown };
   sandbox?: { limits?: { timeout?: unknown; memory?: unknown } };
   network?: { offline?: unknown };
+  tour?: { dismissed?: unknown };
   keys?: Record<string, unknown>;
 };
 

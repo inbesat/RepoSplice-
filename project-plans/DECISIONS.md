@@ -4171,4 +4171,41 @@ Date: 2026-10-20. Phase: P-228 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-114: Web onboarding tour with empty-state hero (P-229)
+
+Date: 2026-10-20. Phase: P-229 (Web Epic 11). Owner: aradhy lane.
+
+1. **Hero renders ABOVE the pickers.** SourcesPage keeps both
+   RepoPicker instances untouched (the P-212 tests spot `add one
+   below`); the welcome hero is an additive section shown only when
+   both slots are empty and the tour is not dismissed.
+2. **Auto-queue once.** A localStorage marker (`stitch-tour-auto`)
+   flips the first time the hero mounts, so the tour self-queues on a
+   user's first visit only; `Take the tour` restarts it any time.
+3. **Config flag deviation.** The spec's `[web] tour=false` flag is
+   NOT implemented — core's config schema has no `[web]` section, and
+   inventing one is a cross-lane change. Dismissal persists in
+   localStorage (`stitch-tour`) plus a fire-and-forget settings-PATCH
+   `{tour:{dismissed}}` extension key; a `?tour=1` force-on query
+   param is likewise not implemented (recorded for the serve lane).
+4. **Rot-proof step targets.** Each step targets an
+   `data-tour="…"` anchor that ALWAYS renders (verified against every
+   page placeholder AND main variant during recon), so the tour
+   cannot rot on empty states. A plumbing test renders
+   AppShellRoutes at each step's route and asserts the selector
+   resolves.
+5. **Focus + keys, no deps.** The card is role=dialog aria-modal,
+   focus moves to it on open, Tab cycles only card focusables,
+   Escape skips, arrows navigate — all hand-rolled keydown logic.
+6. **Reduced motion.** `prefers-reduced-motion` is read once via a
+   typeof-guarded matchMedia and stamped as `data-reduced` on the
+   overlay (jsdom cannot measure animations; the attribute is the
+   contract).
+7. **Tests.** Five mandated names verbatim ('empty state hero',
+   'advances steps', 'skip persists', 'focus trap', 'reduced
+   motion') plus the selector-resolution plumbing test. Zero pin
+   supersessions.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

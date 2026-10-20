@@ -19,7 +19,7 @@ export function SelectPage(): JSX.Element {
 
   if (sourceA === undefined && sourceB === undefined) {
     return (
-      <section>
+      <section data-tour="select-files">
         <h2 className="text-title font-semibold">Select</h2>
         <p className="text-muted">Pick a source first — the file tree loads here once you do.</p>
       </section>
@@ -28,7 +28,7 @@ export function SelectPage(): JSX.Element {
 
   const ready = canProceedSelection({ selectionA, selectionB });
   return (
-    <section aria-label="Select files">
+    <section aria-label="Select files" data-tour="select-files">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-title font-semibold">Select files</h2>
         <p className="text-body text-muted" data-testid="slot-counts">

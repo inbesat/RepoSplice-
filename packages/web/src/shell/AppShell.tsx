@@ -14,6 +14,7 @@ import { Link, Outlet, useLocation } from 'react-router';
 import { ThemeToggle } from './ThemeToggle.js';
 import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
+import { Tour } from '../components/tour/Tour.js';
 import { stepForPath } from '../router.js';
 import { useFlowStore } from '../store/flow.js';
 import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
@@ -77,6 +78,8 @@ export function AppShell(): JSX.Element {
           <Stepper gates={{ select: selectReady }} horizontal />
         </div>
       )}
+      {/* P-229: the onboarding tour overlay (renders null when inactive). */}
+      <Tour />
     </div>
   );
 }

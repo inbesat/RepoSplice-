@@ -10,6 +10,7 @@ import type { JSX } from 'react';
 import { useNavigate } from 'react-router';
 import { RepoPicker } from '../components/RepoPicker.js';
 import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
+import { useTourStore, TOUR_AUTOSTART_KEY } from '../store/tour.js';
 
 export function SourcesPage(): JSX.Element {
   const navigate = useNavigate();
@@ -17,11 +18,30 @@ export function SourcesPage(): JSX.Element {
   const swapAB = useSourcesStore(state => state.swapAB);
   const sourcesA = useSourcesStore(state => state.sourcesA);
   const sourcesB = useSourcesStore(state => state.sourcesB);
+  const dismissed = useTourStore(state => state.dismissed);
+  const startTour = useTourStore(state => state.start);
+
+  // P-229: the hero shares the empty-state condition and hides once the
+  // tour (or the user) has dismissed onboarding.
+  const showHero = sourcesA.length === 0 && sourcesB.length === 0 && !dismissed;
 
   // Both slots resolved: the flow advances to the Select step.
   useEffect(() => {
     if (canProceed) navigate('/select');
   }, [canProceed, navigate]);
+
+  // P-229: the tour auto-queues exactly one time (localStorage marker),
+  // only while the hero is showing.
+  useEffect(() => {
+    if (!showHero) return;
+    try {
+      if (localStorage.getItem(TOUR_AUTOSTART_KEY) !== null) return;
+      localStorage.setItem(TOUR_AUTOSTART_KEY, '1');
+    } catch {
+      return;
+    }
+    startTour();
+  }, [showHero, startTour]);
 
   // A swap with an empty half is a no-op shape (exchanging with []), so the
   // control stays disabled until both slots hold something.
@@ -29,6 +49,29 @@ export function SourcesPage(): JSX.Element {
 
   return (
     <div>
+      {/* P-229 empty-state hero: shown while BOTH slots are empty and the
+          tour hasn't been dismissed. Sits ABOVE the pickers (the P-212
+          picker pins assert the pickers still render). */}
+      {showHero && (
+        <section
+          aria-label="getting started"
+          className="border-border bg-surface rounded-lg border p-6"
+        >
+          <h2 className="text-title">Welcome to stitch</h2>
+          <ul className="text-body text-muted mt-3 list-disc space-y-1 pl-5">
+            <li>Pick repo A, pick repo B, click merge.</li>
+            <li>The AI plans the merge — you review the proposal.</li>
+            <li>Approve to create the merged repo C.</li>
+          </ul>
+          <button
+            type="button"
+            className="text-primary border-primary mt-4 min-h-11 rounded border px-3"
+            onClick={() => startTour()}
+          >
+            Take the tour
+          </button>
+        </section>
+      )}
       <div className="mb-3 flex items-center">
         <button
           type="button"
@@ -42,10 +85,15 @@ export function SourcesPage(): JSX.Element {
         </button>
       </div>
       {/* Paired pickers: A is the base, B the overlay (the A/B order is what
-          merge and provenance record). */}
+          merge and provenance record). The data-tour anchors are the tour's
+          always-rendered targets. */}
       <div className="grid gap-6 md:grid-cols-2">
-        <RepoPicker slot="A" />
-        <RepoPicker slot="B" />
+        <div data-tour="add-a">
+          <RepoPicker slot="A" />
+        </div>
+        <div data-tour="add-b">
+          <RepoPicker slot="B" />
+        </div>
       </div>
     </div>
   );
