@@ -4934,4 +4934,46 @@ Date: 2026-10-20. Phase: P-321 (Wave 1.5, Eval Harness). Owner: inbesat lane.
 
 ---
 
+## ADR-130: Verify every pinned corpus SHA against its upstream (P-322)
+
+Date: 2026-10-20. Phase: P-322 (Eval Harness). Owner: inbesat lane.
+
+1. **The deliverable is the verification side.** P-321 already pinned real
+   tag commits; P-322 proves they still resolve. All 40 pins were checked
+   against their remotes on 2026-10-20: 40 ok, 0 missing, 0 unknown. The
+   manifest needed no sha change - the recorded pins were the real tag
+   commits all along.
+2. **Unauthenticated by default.** The default resolver is
+   `git ls-remote --tags` - the same transport the corpus was built with -
+   so CI needs no token. The GitHub commits API is an opt-in `--mode api`
+   (60 requests/hour unauthenticated => spot checks only).
+3. **A rate limit is never drift.** Three states: ok, missing, unknown. A
+   timeout, an unreachable remote or a 403/429 is `unknown` => exit 2; only a
+   pin that is demonstrably gone is `missing` => exit 1. A network hiccup
+   can not be mistaken for a moved pin.
+4. **Hermetic tests, opt-in network.** The mandated python ids inject a
+   fake resolver, so the suite never touches the network; the real check
+   runs with STITCH_EVAL_VERIFY_NETWORK=1. The bun CI cannot run python,
+   so a read-only mirror (packages/core/src/__tests__/eval-shas.test.ts)
+   enforces the same contract in CI.
+5. **Re-pinning is documented.** eval/corpus/README.md carries the
+   five-step procedure: verify -> re-resolve the tag -> update the sha and
+   the note -> re-read the license -> re-verify, re-validate and commit.
+6. **A generator defect was repaired.** The P-321 generator wrote the
+   corpus README's code fences with a literal BACKSPACE character (0x08)
+   instead of backticks. Fixed here; a tree-wide control-character scan
+   found no other damage.
+7. **The CI job belongs to P-328.** The command is
+   `python eval/scripts/verify_shas.py` (also exposed as the root script
+   `eval:verify-shas`).
+8. **Two drift-fixture bugs were fixed.** Keying the fake override on
+   (repo, sha) drifted TWO pins because axios is pinned by two pairs, and
+   the shared call counter consumed the injected fault before main() ran.
+   The fake now injects by call index and a fresh fake is used per main()
+   call.
+9. **Nothing else moved.** No mandated test id changed, the P-320 schema
+   and the 20-pair corpus are untouched, and no frozen file changed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

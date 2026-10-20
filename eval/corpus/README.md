@@ -49,7 +49,7 @@ the source is recorded per pair (`license_a_source` / `license_b_source`).
 
 ## Validating the corpus
 
-`ash
+```bash
 # the committed JSON Schema matches the zod schema
 bun run eval:schema:check
 
@@ -58,7 +58,7 @@ python eval/scripts/validate_corpus.py
 
 # the corpus invariants (20 pairs, 5 per ecosystem, pinned SHAs, permissive licenses)
 python -m pytest eval/test_corpus.py -q
-`
+```
 
 `eval/corpus/pair-example/` holds the hand-written example pair that documents every field.
 
@@ -67,3 +67,43 @@ python -m pytest eval/test_corpus.py -q
 The SHAs are the real immutable tag commits of the recorded tags, resolved with
 `git ls-remote --tags --refs`. The licenses were read from each repository's license file.
 P-322 adds the SHA verification script; P-321 sourced these twenty pairs.
+## SHA verification and re-pinning (P-322)
+
+Every pin in `pairs.json` is verified against its upstream before an evaluation
+run, so a re-run consumes the same inputs even when the upstream moved on.
+
+```bash
+python eval/scripts/verify_shas.py
+```
+
+Exit codes: `0` every pin resolves, `1` drift (a pin no longer resolves),
+`2` a check could not be run (network down, GitHub rate limit). A rate limit
+is never reported as drift.
+
+```bash
+python eval/scripts/verify_shas.py --mode api
+```
+
+uses the unauthenticated GitHub commits API instead of `git ls-remote` (60
+requests per hour, so it suits a spot check rather than the full corpus).
+
+The corpus invariants are covered by the test suite:
+
+```bash
+python -m pytest eval/test_shas.py -q
+```
+
+### Re-pinning procedure (when an upstream advances)
+
+1. `python eval/scripts/verify_shas.py` - it prints the pair, the side, the
+   repo and the pinned sha for every pin that no longer resolves.
+2. Resolve the new commit of the recorded tag (the tag name is kept per side
+   in `repo_a_tag` / `repo_b_tag`):
+   `git ls-remote --tags --refs https://github.com/<owner>/<repo>`
+3. Update `repo_a_sha` / `repo_b_sha` in `eval/corpus/pairs.json` with the new
+   40-hex commit, and adjust the `note` of that pair.
+4. Re-read the license if the upstream changed it (the license source is
+   recorded per side) and keep the license inside the permissive set.
+5. Re-run `python eval/scripts/verify_shas.py` (must exit 0) and
+   `python eval/scripts/validate_corpus.py` (must exit 0), then commit the
+   manifest together with the note.

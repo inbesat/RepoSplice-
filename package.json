@@ -20,6 +20,7 @@
     "check:contracts:update": "bun scripts/contract-freeze.ts --update",
     "eval:schema": "bun scripts/emit-eval-schema.ts",
     "eval:schema:check": "bun scripts/emit-eval-schema.ts --check",
+    "eval:verify-shas": "python eval/scripts/verify_shas.py",
     "build": "bun run build:core",
     "build:core": "cd packages/core && bun run build",
     "build:cli": "echo \"build:cli: deferred to P-062 (tsup)\" && exit 0",
