@@ -175,5 +175,20 @@ need the latest `dev`.
   `contract-freeze`, `build`. A red budget or contract check is the signal to
   fix the change, not to raise the limit.
 
+## 9. Need a Dependency?
+
+Dependencies are **owner-managed** - you do not edit `package.json`, `bun.lock`
+or any frozen config file. File a **"dep needed"** issue instead:
+
+- GitHub -> **New issue** -> **Dependency request** (the template at
+  `.github/ISSUE_TEMPLATE/dep-needed.yml`).
+- Fill in: the package, the dependency and version constraint, what it
+  unblocks, the alternatives you tried, and links.
+- The owner adds it to `packages/<pkg>/package.json` (never the root manifest)
+  and lands it with a refreshed `bun.lock`; the issue closes when the lockfile
+  carries it and the gate is green.
+
+The full flow is in [CONTRIBUTING.md](CONTRIBUTING.md) section 10.
+
 Welcome aboard — start with `packages/web` (the Web epic shipped P-208…P-237)
 or `packages/cli`, and open your PR against `dev`.

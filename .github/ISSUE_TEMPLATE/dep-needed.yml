@@ -1,0 +1,74 @@
+name: Dependency request
+description: File this when a dependency is missing and blocks your work. The repo owner adds it — you do not edit a manifest.
+title: 'dep needed: [package] — [dependency]'
+labels: ['dep needed']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The repository owner (inbesat) adds dependencies. This issue is the request.
+
+        Do **not** edit `package.json`, `bun.lock`, `tsconfig.base.json`, `eslint.config.mjs`,
+        `commitlint.config.cjs` or `vitest.config.ts` yourself — those are owner-owned or frozen
+        (see `CONTRACTS.md` and `CONTRIBUTING.md` §10). Filing this issue is the sanctioned way to
+        get a dependency in.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Which package needs the dependency?
+      options:
+        - packages/core
+        - packages/cli
+        - packages/web
+        - packages/shared
+        - root tooling (scripts/, CI)
+    validations:
+      required: true
+  - type: input
+    id: dependency
+    attributes:
+      label: Dependency (name and version constraint)
+      placeholder: 'zod@^4.5.4'
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Runtime dependency or dev dependency?
+      options:
+        - runtime
+        - dev
+        - peer
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: What does it unblock?
+      description: One or two sentences on the feature or fix that needs it.
+      placeholder: 'The diff viewer needs a parser for unified-diff hunks with CRLF.'
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: What did you try instead? If nothing, say why.
+    validations:
+      required: false
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Docs, upstream repository, license, or the PR/issue that needs it.
+    validations:
+      required: false
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Acknowledgements
+      options:
+        - label: I did not edit any package.json, lockfile, or frozen config file.
+        - label: I checked that the dependency is not already present transitively.
+    validations:
+      required: true

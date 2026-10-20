@@ -4802,4 +4802,44 @@ Date: 2026-10-20. Phase: P-316 (workflow phases). Owner: inbesat lane.
 
 ---
 
+## ADR-127: Dependency request flow — issue form plus owner rules (P-317)
+
+Date: 2026-10-20. Phase: P-317 (workflow phases). Owner: inbesat lane.
+
+1. **The flow is an issue form plus a documented path — not a script.**
+   The deliverable is `.github/ISSUE_TEMPLATE/dep-needed.yml` (GitHub
+   picks the form up automatically) and a new section 10 in
+   CONTRIBUTING.md that is the flow of record. The requester never
+   edits a manifest; the owner triages and adds the dependency to the
+   package that uses it.
+2. **What the form must carry.** Package dropdown (core / cli / web /
+   shared / root tooling), the dependency with its version constraint,
+   the kind (runtime / dev / peer), what it unblocks, the alternatives
+   tried, and links — plus two required acknowledgement checkboxes
+   (no manifest was edited, and the dependency is not already present
+   transitively). The form is the artefact that lets the owner act
+   without a follow-up question.
+3. **The root manifest is never edited for dependencies.** Dependencies
+   live in `packages/<pkg>/package.json` (the Bun workspace layout);
+   the root manifest holds scripts and workspace config only. The
+   documented command is the canonical `cd packages/<pkg> && bun add
+   <dependency>` — the `bun --filter` / `--cwd` forms are not usable
+   (ADR-126).
+4. **Contract and ADR coupling.** A new core runtime dependency needs
+   an ADR; a change to a frozen contract additionally needs the
+   `contract-freeze: <path>` marker inside an `## ADR-` section
+   (ADR-124) and a refreshed `contracts.freeze.json`.
+5. **SLA and close condition.** The owner triages within one working
+   day; the issue closes when the lockfile carries the dependency and
+   the typecheck / lint / test gates are green.
+6. **Doc-only phase.** No runtime code, no contract change, and no
+   mandated test names (the spec is a one-line checklist item). The
+   code gate still runs green: scripts 8/8, web tsc 0, e2e tsc 0, web
+   suite 39 files / 164 tests, E2E 3 passed, PERF 3 passed, root
+   typecheck 0, lint 0. The one web-suite failure seen during the
+   gate was contention with a concurrently running root suite — the
+   isolated and full re-runs were green.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

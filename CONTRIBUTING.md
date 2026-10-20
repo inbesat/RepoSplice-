@@ -385,6 +385,46 @@ Before marking any phase ✅ Completed in `project-plans/PROGRESS.md`:
 ☐ If user-facing: changesets file added in .changeset/
 ```
 
+## 10. Dependency Requests
+
+Dependencies are **owner-managed**. The repo owner (inbesat) declares them; the
+lane agents (aradhy) never edit a manifest.
+
+**To request a dependency**
+
+1. File a **"dep needed"** issue with the built-in template
+   (`.github/ISSUE_TEMPLATE/dep-needed.yml` -> *New issue -> Dependency request*).
+   Fill in: the package, the dependency and version constraint, what it
+   unblocks, the alternatives you tried, and any links. The acknowledgement
+   checkboxes are required.
+2. Do **not** edit `package.json`, `bun.lock`, or any frozen config file while
+   the request is open.
+3. The owner triages (target: one working day) and either adds the dependency
+   or closes the issue with the reason.
+4. The owner adds it to the owning package manifest - `packages/<pkg>/package.json` -
+   never the root manifest - and lands it in a PR that also refreshes `bun.lock`:
+
+   ```bash
+   cd packages/<pkg> && bun add <dependency>
+   ```
+
+   A new **runtime** dependency in `packages/core` additionally needs an ADR
+   (`project-plans/DECISIONS.md`); a dependency that touches a frozen contract
+   needs the `contract-freeze: <path>` marker described in
+   [CONTRACTS.md](CONTRACTS.md).
+5. The issue closes when the lockfile carries the dependency and the gate is
+   green (`bun run typecheck`, `bun run lint`, `bun run test`).
+
+**Rules**
+
+- Dependencies live in the manifest of the package that uses them
+  (`packages/<pkg>/package.json`); the root manifest holds only scripts and
+  workspace config.
+- Every dependency ships in the lockfile - no ad-hoc installs, no global
+  installs in CI.
+- A dependency that changes the public contract of a package needs an ADR.
+- Dependabot proposes version bumps through PRs; it never adds new packages.
+
 ---
 
 *End of CONTRIBUTING.md. This file is the contract for every contribution; keep it consistent with `AGENTS.md` and `ARCHITECTURE.md`.*
