@@ -26,6 +26,7 @@ import { err, ok, type Result } from 'neverthrow';
 import { openSqlite, STITCH_DB_FILENAME, type StitchError } from '@repo-stitcher/core';
 import type { GlobalOptions } from '../globals.js';
 import { DEFAULT_SERVE_HOST, DEFAULT_SERVE_PORT, createApp } from '../server/app.js';
+import { buildHashOf } from '../server/static.js';
 import { describePerf, parsePerfFlags, type PerfConfig, type PerfFlagsInput } from '../flags.js';
 
 /** What the command accepts, on top of the globals. */
@@ -195,6 +196,9 @@ export async function serve(
   if (audit.isErr()) return err(audit.error);
 
   const webDist = opts.web === false ? undefined : webDistPath();
+  // P-235: the identity of the web build this process serves — printed at
+  // boot so the user knows which build they are looking at.
+  const webBuild = webDist === undefined ? undefined : buildHashOf(webDist);
   const app = createApp(webDist === undefined ? {} : { webDist });
 
   const stop = createShutdown({
@@ -221,6 +225,14 @@ export async function serve(
   const url = `http://${host}:${port}`;
   write(`stitch serve on ${url}`);
   write('  /health  /api/*  /ws    (Ctrl-C to stop)');
+  // P-235: which web build is being served (or how to make one).
+  if (webBuild !== undefined) {
+    write(
+      webBuild === 'none'
+        ? '  no web build found - run: bun --filter @repo-stitcher/web run build'
+        : `  web build ${webBuild}`
+    );
+  }
   // P-204: the effective perf values, so the user sees what was applied.
   if (perf !== undefined) write(`  ${describePerf(perf)}`);
   return ok({ url });

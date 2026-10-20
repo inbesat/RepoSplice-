@@ -4444,4 +4444,54 @@ Date: 2026-10-20. Phase: P-234 (Web Epic 11, optional wave). Owner: aradhy lane.
 
 ---
 
+## ADR-120: CLI serves the built web app with SPA fallback and a build banner (P-235)
+
+Date: 2026-10-20. Phase: P-235 (Web Epic 11). Owner: aradhy lane.
+
+1. **A leaf module owns static serving.** `packages/cli/src/server/static.ts`
+   holds the MIME table, cache policy, the SPA fallback, the build hash and
+   the handler itself — node builtins only, no Elysia import. `app.ts` wires
+   it in through a one-line adapter (`mountStatic({ get: (path, handler) =>
+   app.get(path, handler as never) }, { distDir })`) because Elysia's chained
+   builder generics are not assignable to a bare annotation under
+   `exactOptionalPropertyTypes` — the constraint `app.ts` already documents.
+2. **Route order is deliberate: API + WS, then static, then fallback.** The
+   wildcard is mounted LAST, so `/health`, `/api/*` and `/ws` always win. An
+   unknown `/api/...` path answers `404 {"message":"not found"}` — it never
+   falls through to the SPA shell, so a missing endpoint fails loudly
+   instead of returning HTML to a JSON caller.
+3. **The build hash is computed from the dist tree.** No `BUILD_META.json`
+   and no change to the vite build: the hash is a sha256 over the sorted
+   `relpath:size` lines of the dist directory (12 hex chars, `none` when
+   the directory is missing). It surfaces three ways — the `X-Stitch-Build`
+   response header, a `<meta name="stitch-build">` banner injected into the
+   served `index.html`, and the `web build <hash>` line `stitch serve` prints
+   at boot.
+4. **Precompressed variants are served by `accept-encoding`.** A `.br` sibling
+   wins over `.gz`; the response carries `Content-Encoding` plus
+   `Vary: accept-encoding` so caches key on the encoding.
+5. **Cache policy.** Hashed asset names (`name-<hash>.ext`) get
+   `public, max-age=31536000, immutable`; `index.html` gets `no-cache` so a
+   new build is picked up immediately; everything else gets
+   `public, max-age=3600`.
+6. **A missing build still serves.** When the dist directory is absent,
+   `/` (and every client route) answers the friendly build-first page that
+   carries the `stitch serve` heading — the P-193 pin text is preserved
+   verbatim — and `serve` prints the command to build the web app.
+7. **Tests drive `app.handle`, not a listener.** Under vitest, Elysia uses
+   its WebStandard adapter, which cannot listen (the P-043 note), so the
+   static tests call `app.handle(new Request(...))` and inspect the
+   Response. The five mandated names are verbatim: 'serves hashed asset
+   cached', 'spa fallback', 'api before fallback', 'build banner',
+   'missing dist fallback'.
+8. **The P-232 `recycles scroll` flake was hardened here.** The post-P-234
+   root suite showed a second red: the virtual-tree scroll test timed out
+   under the root suite's parallel load (RTL's default 1 s `findBy` window).
+   The virtual test now waits with explicit 10 s timeouts and a 60 s per-test
+   budget — the wall-clock bound is a runaway guard, not a perf SLA; the hard
+   assertion (100k entries mount fewer than 80 rows) is unchanged. Zero pin
+   supersessions: the P-193 `serve.test.ts` pins still pass untouched.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

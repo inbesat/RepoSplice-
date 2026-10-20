@@ -44,7 +44,7 @@ describe('FileTree virtualization (P-232)', () => {
     const many = Array.from({ length: 200 }, (_, index) => mk(`file-${index}`));
     fetchMock.mockResolvedValue(OK({ entries: many }));
     render(<FileTree source={SOURCE} height={140} />);
-    await screen.findByText('file-0');
+    await screen.findByText('file-0', {}, { timeout: 10_000 });
     const rows = screen.getAllByRole('treeitem');
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.length).toBeLessThan(60);
@@ -57,19 +57,19 @@ describe('FileTree virtualization (P-232)', () => {
       .mockResolvedValueOnce(OK({ entries: [mkDir('big')] }))
       .mockResolvedValueOnce(OK({ entries: [mkDir('big'), mk('big/x.ts')] }));
     render(<FileTree source={SOURCE} height={140} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Toggle big' }));
-    await screen.findByText('x.ts');
+    fireEvent.click(await screen.findByRole('button', { name: 'Toggle big' }, { timeout: 10_000 }));
+    await screen.findByText('x.ts', {}, { timeout: 10_000 });
     expect(lastUrl()).toContain('dir=big');
-  });
+  }, 60_000);
 
   it('recycles scroll', async () => {
     const many = Array.from({ length: 300 }, (_, index) => mk(`file-${index}`));
     fetchMock.mockResolvedValue(OK({ entries: many }));
     const apiRef: { current: TreeApi<TreeNodeData> | null } = { current: null };
     render(<FileTree source={SOURCE} height={140} apiRef={apiRef} />);
-    await screen.findByText('file-0');
+    await screen.findByText('file-0', {}, { timeout: 10_000 });
     await apiRef.current?.scrollTo('file-250');
-    await screen.findByText('file-250');
+    await screen.findByText('file-250', {}, { timeout: 10_000 });
     expect(screen.queryByText('file-0')).toBeNull();
     expect(screen.getAllByRole('treeitem').length).toBeLessThan(60);
   }, 60_000);
@@ -86,19 +86,22 @@ describe('FileTree virtualization (P-232)', () => {
       })
     );
     render(<FileTree source={SOURCE} height={140} />);
-    fireEvent.change(await screen.findByRole('searchbox', { name: 'find file' }), {
-      target: { value: 'needle' },
-    });
-    await screen.findByText('needle.ts', {}, { timeout: 3000 });
+    fireEvent.change(
+      await screen.findByRole('searchbox', { name: 'find file' }, { timeout: 10_000 }),
+      {
+        target: { value: 'needle' },
+      }
+    );
+    await screen.findByText('needle.ts', {}, { timeout: 10_000 });
     expect(screen.queryByText('unrelated.ts')).toBeNull();
-  });
+  }, 60_000);
 
   it('perf gate', async () => {
     const huge = Array.from({ length: 100_000 }, (_, index) => mk(`file-${index}`));
     fetchMock.mockResolvedValue(OK({ entries: huge }));
     const started = Date.now();
     render(<FileTree source={SOURCE} height={300} />);
-    await screen.findByText('file-0');
+    await screen.findByText('file-0', {}, { timeout: 10_000 });
     const elapsed = Date.now() - started;
     // The wall-clock bound is a runaway guard, not a perf SLA: a loaded CI
     // runner can take seconds. The hard assertion is the rendered window —
@@ -113,11 +116,11 @@ describe('FileTree virtualization (P-232)', () => {
       .mockResolvedValueOnce(OK({ entries: [mkDir('big'), mk('big/x.ts')] }));
     const seen: (readonly string[])[] = [];
     render(<FileTree source={SOURCE} height={140} onSelectionChange={paths => seen.push(paths)} />);
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'a.ts' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Toggle big' }));
-    await screen.findByText('x.ts');
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'a.ts' }, { timeout: 10_000 }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Toggle big' }, { timeout: 10_000 }));
+    await screen.findByText('x.ts', {}, { timeout: 10_000 });
     // checking a file again after hydration still emits just the checked set
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'big/x.ts' }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'big/x.ts' }, { timeout: 10_000 }));
     expect(seen[seen.length - 1]).toEqual(['a.ts', 'big/x.ts'].sort());
-  });
+  }, 60_000);
 });

@@ -20,10 +20,9 @@
 //     defaults are the only honest claims this server can make: no report, no
 //     jobs, no settings — an empty list for a list route, `null` elsewhere.
 
-import { readFile } from 'node:fs/promises';
-import { extname, join, resolve, sep } from 'node:path';
 import { Elysia } from 'elysia';
 import { STITCH_VERSION } from '../program.js';
+import { FALLBACK_HTML, mountStatic } from './static.js';
 import { createWsHub, echoMessage, type WsHub } from './ws.js';
 
 /** JSON body of GET /health. */
@@ -62,79 +61,6 @@ export interface CreateAppOptions {
   data?: ServeData;
 }
 
-/** Minimal MIME table for the static route; unknown extensions stay opaque. */
-const MIME_TYPES: Readonly<Record<string, string>> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.map': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.ico': 'image/x-icon',
-  '.txt': 'text/plain; charset=utf-8',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-};
-
-/** The friendly page shown when no web build exists (or `--no-web` was passed). */
-const FALLBACK_HTML =
-  '<!doctype html><html><head><meta charset="utf-8"><title>stitch serve</title></head><body>' +
-  '<h1>stitch serve</h1>' +
-  '<p>No web UI build found in <code>packages/web/dist</code>.</p>' +
-  '<p>Build it with <code>bun --filter @repo-stitcher/web run build</code>, or run ' +
-  '<code>bun run dev:web</code> on <code>:5173</code> — its dev server proxies this API.</p>' +
-  `<p><code>/health</code>, <code>/api/*</code> and <code>/ws</code> are live on stitch ${STITCH_VERSION}.</p>` +
-  '</body></html>';
-
-/**
- * Serve one path out of `webDist`, or `undefined` when this request should fall
- * through to the friendly page.
- *
- * Order: the literal file (traversal-guarded), then the SPA index. No-throw —
- * a decode failure or an unreadable file is a fall-through, not a crash.
- */
-async function serveStatic(webDist: string, rawPath: string): Promise<Response | undefined> {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(rawPath);
-  } catch {
-    return undefined;
-  }
-  const root = resolve(webDist);
-  const file =
-    decoded === ''
-      ? join(root, 'index.html')
-      : (() => {
-          const full = resolve(root, decoded);
-          // Escape hatch for `..` that URL normalisation missed: anything outside
-          // the dist root is refused, never served.
-          if (!full.startsWith(root + sep)) return undefined;
-          return full;
-        })();
-  if (file === undefined) return undefined;
-  try {
-    const bytes = await readFile(file);
-    const type = MIME_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
-    return new Response(new Uint8Array(bytes), { headers: { 'content-type': type } });
-  } catch {
-    // Missing asset → SPA index (a client-side route), else fall through.
-    try {
-      const bytes = await readFile(join(root, 'index.html'));
-      return new Response(new Uint8Array(bytes), {
-        headers: { 'content-type': MIME_TYPE_HTML },
-      });
-    } catch {
-      return undefined;
-    }
-  }
-}
-
-const MIME_TYPE_HTML: string = MIME_TYPES['.html'] ?? 'text/html; charset=utf-8';
-
 /**
  * Build the `stitch serve` app.
  *
@@ -150,57 +76,64 @@ export function createApp(options: CreateAppOptions = {}) {
   // No explicit return type: Elysia's chained-builder generics are not
   // assignable to a bare `Elysia` annotation under exactOptionalPropertyTypes.
   // Consumers name it via `ReturnType<typeof createApp>`.
-  return (
-    new Elysia()
-      .onBeforeHandle(({ request, set }) => {
-        const allow = options.corsOrigin ?? DEFAULT_CORS_ORIGIN;
-        if (allow === false) return;
-        // Reflect the origin only when it IS the allowed one — a foreign origin
-        // gets no CORS header at all, which is what a refusal should look like.
-        if (request.headers.get('origin') === allow) {
-          set.headers['access-control-allow-origin'] = allow;
-        }
-      })
-      .get('/health', (): HealthBody => ({ ok: true, service: 'stitch', version: STITCH_VERSION }))
-      .get('/api/provenance', () => data.provenance?.() ?? null)
-      .get('/api/jobs', () => data.jobs?.() ?? [])
-      .get('/api/settings', () => data.settings?.() ?? null)
-      // Preflight for the Vite dev origin: the web client posts approvals and
-      // settings with a JSON content type, which browsers probe first.
-      .options('/*', () => {
-        const allow = options.corsOrigin ?? DEFAULT_CORS_ORIGIN;
-        const headers: Record<string, string> = {
-          'access-control-allow-methods': 'GET, POST, OPTIONS',
-          'access-control-allow-headers': 'content-type',
-        };
-        if (allow !== false) headers['access-control-allow-origin'] = allow;
-        return new Response(null, { status: 204, headers });
-      })
-      .ws('/ws', {
-        open(ws) {
-          // Every socket subscribes to EVERY topic: the envelope's `topic` field
-          // lets the client filter, instead of a per-socket negotiation.
-          unsubscribers.set(ws, hub.subscribe(ws));
-        },
-        message(ws, message) {
-          echoMessage(ws, message);
-        },
-        close(ws) {
-          const unsubscribe = unsubscribers.get(ws);
-          unsubscribe?.();
-          unsubscribers.delete(ws);
-        },
-      })
-      // Static, last: exact routes above win over the wildcard (Elysia's router
-      // prefers literal paths), and everything else is an asset or an SPA route.
-      .get('/*', async ({ params }) => {
-        const webDist = options.webDist;
-        if (webDist !== undefined) {
-          const rel = params['*'] ?? '';
-          const served = await serveStatic(webDist, rel);
-          if (served !== undefined) return served;
-        }
-        return new Response(FALLBACK_HTML, { headers: { 'content-type': MIME_TYPE_HTML } });
-      })
-  );
+  const app = new Elysia()
+    .onBeforeHandle(({ request, set }) => {
+      const allow = options.corsOrigin ?? DEFAULT_CORS_ORIGIN;
+      if (allow === false) return;
+      // Reflect the origin only when it IS the allowed one — a foreign origin
+      // gets no CORS header at all, which is what a refusal should look like.
+      if (request.headers.get('origin') === allow) {
+        set.headers['access-control-allow-origin'] = allow;
+      }
+    })
+    .get('/health', (): HealthBody => ({ ok: true, service: 'stitch', version: STITCH_VERSION }))
+    .get('/api/provenance', () => data.provenance?.() ?? null)
+    .get('/api/jobs', () => data.jobs?.() ?? [])
+    .get('/api/settings', () => data.settings?.() ?? null)
+    // Preflight for the Vite dev origin: the web client posts approvals and
+    // settings with a JSON content type, which browsers probe first.
+    .options('/*', () => {
+      const allow = options.corsOrigin ?? DEFAULT_CORS_ORIGIN;
+      const headers: Record<string, string> = {
+        'access-control-allow-methods': 'GET, POST, OPTIONS',
+        'access-control-allow-headers': 'content-type',
+      };
+      if (allow !== false) headers['access-control-allow-origin'] = allow;
+      return new Response(null, { status: 204, headers });
+    })
+    .ws('/ws', {
+      open(ws) {
+        // Every socket subscribes to EVERY topic: the envelope's `topic` field
+        // lets the client filter, instead of a per-socket negotiation.
+        unsubscribers.set(ws, hub.subscribe(ws));
+      },
+      message(ws, message) {
+        echoMessage(ws, message);
+      },
+      close(ws) {
+        const unsubscribe = unsubscribers.get(ws);
+        unsubscribe?.();
+        unsubscribers.delete(ws);
+      },
+    });
+
+  // Static, last: the exact routes above win over the wildcard (Elysia's
+  // router prefers literal paths), and everything else is an asset or an SPA
+  // route. Without a build, the friendly page answers instead (P-193).
+  const webDist = options.webDist;
+  if (webDist === undefined) {
+    app.get(
+      '/*',
+      () => new Response(FALLBACK_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } })
+    );
+  } else {
+    mountStatic(
+      {
+        get: (path, handler) => app.get(path, handler as never),
+      },
+      { distDir: webDist }
+    );
+  }
+
+  return app;
 }
