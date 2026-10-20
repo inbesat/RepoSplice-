@@ -4248,4 +4248,51 @@ Date: 2026-10-20. Phase: P-230 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-116: Web accessibility pass — axe gate, tree and diff keyboard (P-231)
+
+Date: 2026-10-20. Phase: P-231 (Web Epic 11). Owner: aradhy lane.
+
+1. **axe-core the enforcement layer.** `axe-core@4.14` is a new, spec-mandated
+   dependency: `a11y.test.tsx` scans the sources and select screens clean and
+   exercises the two keyboard models. `color-contrast` is disabled in the scan
+   (jsdom has no layout engine; P-209's token tests own contrast). The test
+   environment sets `lang="en"` and a document title. The jsx-a11y eslint
+   plugin is deliberately deferred — the runtime axe gate is the enforcement,
+   and a static-plugin adoption sweep would churn every file (`shortcut:`
+   comment in a11y/index.tsx; upgrade when feedback loops warrant it).
+2. **Landmarks and focus.** AppShell gains a skip link (`Skip to content`) and
+   a real `<main id="main">` landmark; `:focus-visible` outlines are a global
+   CSS rule themed with the P-209 `--primary` token. `useFocusTrap` is
+   exported from a11y/index.tsx for future modal surfaces; the P-229 tour
+   keeps its own inline trap (no behavior change).
+3. **Tree keyboard = custom renderRow.** react-arborist@3.16 renders the
+   row element itself via `DefaultRow` from `attrs` ({role: 'treeitem',
+   aria-level, aria-expanded, tabIndex}); a children-as-function only supplies
+   the row CONTENT. Naively adding treeitem semantics to the content div
+   produced nested `treeitem` elements the keyboard test could not target.
+   Fix: FileTree passes a custom `renderRow` that spreads arborist's attrs
+   and attaches the arrow-key model (Up/Down move focus across
+   `[role="treeitem"]` rows in the tree container, Right/Left expand/collapse
+   a directory via `node.toggle()`); the content div dropped its duplicate
+   role. Enter still reaches the native checkbox; arborist keeps its own
+   container `onKeyDown`.
+4. **Diff rail is a real tablist.** The changed-files rail converts to
+   `role="tablist"` with `role="tab"` buttons (`aria-selected`, roving
+   tabIndex), ArrowLeft/Right switches files with wrap-around, and the active
+   pane is wrapped in `role="tabpanel"`. `aria-pressed` was removed from rail
+   buttons (kept on genuine toggles). No test pins referenced the old
+   aria-pressed (grep-verified) — zero pin supersessions.
+5. **Adoption scope.** Panels keep their existing inline `role="alert"`
+   surfaces; the full sweep to the P-228 `<Alert>` component is deferred with
+   the same rationale recorded in ADR-113 (one-line swaps next time each
+   panel is touched). The hidden session-import file input gained an
+   accessible name after axe flagged it (`status: fixed by fix, not
+   suppression`).
+6. **Tests.** Four mandated names verbatim: 'axe clean sources',
+   'axe clean select', 'tree keyboard', 'tabs keyboard'. Web suite 36 files
+   / 149 tests. IntersectionObserver/real-geometry checks remain out of
+   jsdom's reach and are covered by the P-233 Playwright E2E layer.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -77,7 +77,21 @@ export function DiffViewer(): JSX.Element {
         </button>
       </header>
       <div className="md:grid md:grid-cols-[16rem_1fr] md:gap-4">
-        <nav aria-label="changed files" className="space-y-2">
+        {/* P-231: the rail is a real tablist — ArrowLeft/Right move between
+            tabs, the active tab rents the tab stop (roving tabindex). */}
+        <nav
+          aria-label="changed files"
+          role="tablist"
+          className="space-y-2"
+          onKeyDown={event => {
+            if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+            event.preventDefault();
+            const index = files.findIndex(file => file.path === (active?.path ?? null));
+            const delta = event.key === 'ArrowRight' ? 1 : -1;
+            const next = files[(index + delta + files.length) % files.length];
+            if (next !== undefined) setActivePath(next.path);
+          }}
+        >
           {GROUPS.map(({ kind, label }) => {
             const group = grouped[kind];
             if (group.length === 0) return null;
@@ -90,8 +104,10 @@ export function DiffViewer(): JSX.Element {
                   <button
                     key={file.path}
                     type="button"
+                    role="tab"
                     onClick={() => setActivePath(file.path)}
-                    aria-pressed={file.path === (active?.path ?? null)}
+                    aria-selected={file.path === (active?.path ?? null)}
+                    tabIndex={file.path === (active?.path ?? null) ? 0 : -1}
                     data-testid={`rail-${file.path}`}
                     className="block w-full truncate text-left text-caption text-muted hover:text-text"
                   >
@@ -104,7 +120,9 @@ export function DiffViewer(): JSX.Element {
         </nav>
         <div>
           {active !== undefined && (
-            <DiffHunk file={active} splitView={splitView} ignoreWs={ignoreWs} />
+            <div role="tabpanel" aria-label={active.path}>
+              <DiffHunk file={active} splitView={splitView} ignoreWs={ignoreWs} />
+            </div>
           )}
         </div>
       </div>

@@ -9,9 +9,9 @@
 // into this component's state.
 
 import { useEffect, useMemo, useState } from 'react';
-import type { JSX } from 'react';
+import type { HTMLAttributes, JSX, KeyboardEvent, ReactNode } from 'react';
 import { Tree } from 'react-arborist';
-import type { NodeRendererProps } from 'react-arborist';
+import type { NodeApi, NodeRendererProps } from 'react-arborist';
 import type { SourceRecord } from '../api/repos.js';
 import { getTree } from '../api/tree.js';
 import type { TreeEntry } from '../api/tree.js';
@@ -203,6 +203,54 @@ export function FileTree({
     return <TreeNode {...rowProps} check={{ kind: 'dir', state, onToggle: toggleDir }} />;
   };
 
+  // P-231: the row wrapper owns the treeitem semantics (arborist's attrs)
+  // plus native tree keyboard nav — Up/Down move focus between rows,
+  // Right/Left expand/collapse a directory.
+  const handleRowKeys = (
+    event: KeyboardEvent<HTMLDivElement>,
+    node: NodeApi<TreeNodeData>
+  ): void => {
+    const tree = event.currentTarget.closest<HTMLElement>('[role="tree"]');
+    if (tree === null) return;
+    const rows = [...tree.querySelectorAll<HTMLElement>('[role="treeitem"]')];
+    const index = rows.indexOf(event.currentTarget);
+    if (event.key === 'ArrowDown' && index >= 0) {
+      event.preventDefault();
+      rows[index + 1]?.focus();
+    } else if (event.key === 'ArrowUp' && index > 0) {
+      event.preventDefault();
+      rows[index - 1]?.focus();
+    } else if (event.key === 'ArrowRight' && !node.isLeaf && !node.isOpen) {
+      event.preventDefault();
+      node.toggle();
+    } else if (event.key === 'ArrowLeft' && !node.isLeaf && node.isOpen) {
+      event.preventDefault();
+      node.toggle();
+    }
+  };
+
+  const rowWrapper = ({
+    node,
+    attrs,
+    innerRef,
+    children,
+  }: {
+    node: NodeApi<TreeNodeData>;
+    attrs: HTMLAttributes<HTMLDivElement>;
+    innerRef: (n: HTMLDivElement | null) => void;
+    children: ReactNode;
+  }): JSX.Element => (
+    <div
+      {...attrs}
+      ref={innerRef}
+      onKeyDown={event => handleRowKeys(event, node)}
+      onFocus={event => event.stopPropagation()}
+      onClick={node.handleClick}
+    >
+      {children}
+    </div>
+  );
+
   return (
     <div>
       {header}
@@ -218,6 +266,7 @@ export function FileTree({
         disableEdit
         disableMultiSelection
         aria-label="File tree"
+        renderRow={rowWrapper}
       >
         {rowRenderer}
       </Tree>

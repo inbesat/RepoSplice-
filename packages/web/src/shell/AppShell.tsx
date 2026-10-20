@@ -11,6 +11,7 @@
 import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
+import { SkipLink } from '../a11y/index.js';
 import { ThemeToggle } from './ThemeToggle.js';
 import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
@@ -40,6 +41,7 @@ export function AppShell(): JSX.Element {
 
   return (
     <div className="bg-bg text-text min-h-screen">
+      <SkipLink />
       <header className="bg-surface border-border flex items-center gap-4 border-b px-4 py-3">
         <h1 className="text-lg font-bold text-stitch-700 dark:text-stitch-200">stitch</h1>
         {/* P-227: brand tagline yields its row space on narrow screens. */}
@@ -65,7 +67,7 @@ export function AppShell(): JSX.Element {
       <div className="flex">
         {viewport === 'wide' && <Stepper gates={{ select: selectReady }} />}
         {viewport === 'wide' && <Sidebar />}
-        <main className="flex-1 p-6">
+        <main id="main" tabIndex={-1} className="flex-1 p-6">
           <Outlet />
         </main>
       </div>

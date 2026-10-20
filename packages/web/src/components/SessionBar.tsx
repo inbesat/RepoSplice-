@@ -90,6 +90,7 @@ export function SessionBar(): JSX.Element {
         type="file"
         accept=".json,application/json"
         className="hidden"
+        aria-label="import session"
         onChange={onFilePicked}
       />
       {warnings.map(warning => (
