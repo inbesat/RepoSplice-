@@ -48,6 +48,19 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - run: bun --filter @repo-stitcher/web run test:e2e
 
+  perf:
+    name: Web Perf (budgets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install --frozen-lockfile
+      - run: bun --filter @repo-stitcher/web run build
+      # The bundle budget gate: over budget -> red (P-237, do not raise the limit).
+      - run: bun --filter @repo-stitcher/web run budget
+      - run: bunx playwright install --with-deps chromium
+      - run: bun --filter @repo-stitcher/web run test:perf
+
   build:
     name: Build All Packages
     runs-on: ubuntu-latest

@@ -4,6 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>repo-stitcher</title>
+    <!-- P-237 — critical CSS: the shell paints with the token background and
+         the app font stack before the bundled stylesheet arrives. -->
+    <style>
+      html {
+        background: var(--bg, #f7f7f8);
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg, #f7f7f8);
+        color: var(--text, #14141a);
+        font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+      }
+    </style>
+    <!-- P-237 — no theme flash: the persisted theme is resolved BEFORE the
+         first paint, exactly like theme/ThemeProvider.tsx does on mount
+         (localStorage 'stitch-theme', 'auto' -> prefers-color-scheme). -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('stitch-theme');
+          var choice = stored === 'light' || stored === 'dark' ? stored : 'auto';
+          var dark =
+            choice === 'dark' ||
+            (choice === 'auto' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+          root.classList.toggle('dark', dark);
+        } catch (error) {
+          /* storage blocked — ThemeProvider resolves the theme on mount */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -63,6 +63,14 @@ function picker(slot: 'A' | 'B'): PickerRegion {
   return within(screen.getByLabelText(`repo ${slot} picker`));
 }
 
+/**
+ * P-237: the routes are lazy, so the page chunk lands asynchronously —
+ * await the picker's region before scoping locators to it.
+ */
+async function pickerAsync(slot: 'A' | 'B'): Promise<PickerRegion> {
+  return within(await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 5000 }));
+}
+
 /** Fill the GitHub form and its optional ref, then submit. */
 async function submitGithub(ownerRepo: string, ref = '', slot: 'A' | 'B' = 'A'): Promise<void> {
   const region = picker(slot);
@@ -99,16 +107,18 @@ describe('P-211/P-212 repo pickers', () => {
       url.includes('/api/repos/sources') ? OK({ sources: [RECORD] }) : FAIL(404, 'unexpected')
     );
     page();
-    expect(await picker('A').findByText('vercel/ai@main')).toBeTruthy();
-    expect(screen.getByLabelText('repo B picker')).toBeTruthy();
+    const regionA = await pickerAsync('A');
+    expect(await regionA.findByText('vercel/ai@main')).toBeTruthy();
+    expect(await screen.findByLabelText('repo B picker')).toBeTruthy();
     expect(fetchMock).toHaveBeenCalled();
     // The P-212 gate: known-but-not-added sources do NOT advance the flow.
     expect(useSourcesStore.getState().sourcesA).toHaveLength(0);
   });
 
-  it('validates owner repo', () => {
+  it('validates owner repo', async () => {
     mockFetch(() => FAIL(500, 'must not be called'));
     page();
+    await pickerAsync('A');
     fireEvent.change(picker('A').getByPlaceholderText('vercel/ai'), {
       target: { value: 'no-slash' },
     });
@@ -127,6 +137,7 @@ describe('P-211/P-212 repo pickers', () => {
       url.includes('/api/repos/sources') ? OK({ sources: [] }) : OK({ ...RECORD, ref: 'v2' })
     );
     page();
+    await pickerAsync('A');
     picker('A').getByText('No sources yet', { exact: false });
     await submitGithub('vercel/ai', 'v2');
     // The record lands after the async POST chain — the rendered row is the
@@ -158,6 +169,7 @@ describe('P-211/P-212 repo pickers', () => {
           })
     );
     page();
+    await pickerAsync('A');
     picker('A').getByText('No sources yet', { exact: false });
     submitLocal('repos/a');
     expect(await picker('A').findByText('repos/a')).toBeTruthy();
@@ -171,6 +183,7 @@ describe('P-211/P-212 repo pickers', () => {
   it('advances on success', async () => {
     mockFetch(url => (url.includes('/api/repos/sources') ? OK({ sources: [] }) : OK(RECORD)));
     page();
+    await pickerAsync('A');
     picker('A').getByText('No sources yet', { exact: false });
 
     // A resolves: the store holds it, and the page STAYS (B is still empty —
@@ -200,6 +213,7 @@ describe('P-211/P-212 repo pickers', () => {
       url.includes('/api/repos/sources') ? OK({ sources: [] }) : FAIL(404, 'repository not found')
     );
     page();
+    await pickerAsync('A');
     picker('A').getByText('No sources yet', { exact: false });
     await submitGithub('ghost/nope');
     // The server's message is surfaced in the alert region, and the page

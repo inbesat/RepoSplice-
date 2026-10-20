@@ -3,7 +3,7 @@
 // return 'wide'); the reduced-motion test stubs window.matchMedia. No
 // jest-dom helpers in this repo — toBeTruthy/toBeNull style.
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { Tour } from './Tour.js';
@@ -124,7 +124,7 @@ describe('tour (P-229)', () => {
     expect(screen.getByTestId('tour-card').getAttribute('data-reduced')).toBe('false');
   });
 
-  it('tour targets resolve on their pages', () => {
+  it('tour targets resolve on their pages', async () => {
     for (const step of TOUR_STEPS) {
       cleanup();
       const { container } = render(
@@ -132,8 +132,14 @@ describe('tour (P-229)', () => {
           <AppShellRoutes />
         </MemoryRouter>
       );
-      const anchor = container.querySelector(step.target);
-      expect(anchor !== null).toBeTruthy();
+      // P-237: the route chunk is lazy — the anchor lands asynchronously.
+      // The 5s timeout rides out suite-load lag (the chunk import is I/O).
+      await waitFor(
+        () => {
+          expect(container.querySelector(step.target) !== null).toBeTruthy();
+        },
+        { timeout: 5000 }
+      );
     }
   });
 });

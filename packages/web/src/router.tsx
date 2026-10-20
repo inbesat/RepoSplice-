@@ -11,17 +11,39 @@
 // P-215's selectors) bind in later phases — a placeholder page today beats a
 // dead deep link.
 
-import { type ComponentType, type JSX } from 'react';
+import { lazy, Suspense, type ComponentType, type JSX } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { AppShell } from './shell/AppShell.js';
 import { ThemeProvider } from './theme/ThemeProvider.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
-import { SourcesPage } from './pages/SourcesPage.js';
-import { SelectPage } from './pages/SelectPage.js';
-import { MergePage } from './pages/MergePage.js';
-import { ReviewPage } from './pages/ReviewPage.js';
-import { ResultsPage } from './pages/ResultsPage.js';
-import { SettingsPage } from './pages/SettingsPage.js';
+
+// P-237 — route-level code splitting. Every page is a separate chunk, so the
+// initial load carries the shell only: the diff vendor (react-diff-viewer)
+// rides the review chunk instead of the entry bundle. The pages export named
+// components, so each lazy factory maps the module to its default export.
+const SourcesPage = lazy(() =>
+  import('./pages/SourcesPage.js').then(module => ({ default: module.SourcesPage }))
+);
+const SelectPage = lazy(() =>
+  import('./pages/SelectPage.js').then(module => ({ default: module.SelectPage }))
+);
+const MergePage = lazy(() =>
+  import('./pages/MergePage.js').then(module => ({ default: module.MergePage }))
+);
+const ReviewPage = lazy(() =>
+  import('./pages/ReviewPage.js').then(module => ({ default: module.ReviewPage }))
+);
+const ResultsPage = lazy(() =>
+  import('./pages/ResultsPage.js').then(module => ({ default: module.ResultsPage }))
+);
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage.js').then(module => ({ default: module.SettingsPage }))
+);
+
+/** The placeholder while a route chunk loads. */
+function RouteFallback(): JSX.Element {
+  return <p className="text-muted">Loading…</p>;
+}
 
 /** One flow step: the id the store keys by, the route, the label, the page. */
 export interface StepDef {
@@ -59,7 +81,9 @@ export function AppShellRoutes(): JSX.Element {
                 path={step.path.slice(1)}
                 element={
                   <ErrorBoundary label={step.id}>
-                    <step.Page />
+                    <Suspense fallback={<RouteFallback />}>
+                      <step.Page />
+                    </Suspense>
                   </ErrorBoundary>
                 }
               />
@@ -68,7 +92,9 @@ export function AppShellRoutes(): JSX.Element {
               path="settings"
               element={
                 <ErrorBoundary label="settings">
-                  <SettingsPage />
+                  <Suspense fallback={<RouteFallback />}>
+                    <SettingsPage />
+                  </Suspense>
                 </ErrorBoundary>
               }
             />

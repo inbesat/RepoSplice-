@@ -4536,4 +4536,65 @@ Date: 2026-10-20. Phase: P-236 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-122: Web perf pass — lazy routes, bundle budget gate, vitals specs (P-237)
+
+Date: 2026-10-20. Phase: P-237 (Web Epic 11, closing phase). Owner: aradhy lane.
+
+1. **Route-level React.lazy does the chunking.** The six pages are
+   `lazy(() => import('./pages/X.js').then(module => ({ default: module.X })))`
+   (the pages export named components, so the `.then` mapping is
+   required), each route element wrapped in
+   `<ErrorBoundary><Suspense fallback={<RouteFallback />}>` — the
+   Suspense sits INSIDE the P-228 boundary so a chunk failure still
+   lands in the friendly fallback. The router's public surface
+   (STEPS, stepForPath, AppShellRoutes) is unchanged. Measured: the
+   entry chunk went from 648.01 kB raw / 197.42 kB gzip to
+   307.67 kB raw / 96.59 kB gzip, and the diff vendor
+   (react-diff-viewer-continued) moved into the review chunk
+   (168.16 kB raw / 56.29 kB gzip).
+2. **No manual chunk configuration.** Vite 8 is rolldown-based
+   (`build.rollupOptions` is deprecated in favour of
+   `build.rolldownOptions`), so the chunking is expressed purely as
+   route boundaries rather than a vendor manifest that a bundler
+   upgrade could invalidate.
+3. **The perf suite has its own Playwright config.**
+   `playwright.perf.config.ts` serves the BUILT app through
+   `vite preview` on 5175 (measurements must come from the real
+   bundle), while `playwright.config.ts` keeps serving the dev server
+   on 5174 and stays build-free. Playwright's `webServer` is
+   top-level only — a project-level server is not a thing.
+4. **No theme flash.** `index.html` carries an inline script that
+   mirrors ThemeProvider's contract exactly (localStorage
+   `stitch-theme`; `auto` resolved through
+   `matchMedia('(prefers-color-scheme: dark)')`; then
+   `data-theme` plus the `.dark` class on `<html>`) and runs before
+   the module script, plus inline critical CSS carrying the token
+   background and font stack.
+5. **Streaming: deviation from the scratchpad.** rAF batching was
+   NOT applied: the P-216 pins assert the streamed state
+   synchronously (right after `render()`, right after `act(push)`,
+   and a 2000-row cap assertion), so any deferral would break them.
+   Instead the buffer is bounded (MAX_STREAM_EVENTS now lives in
+   the hook and is re-exported from ThinkingStream so the P-216
+   import path still works) and the rows are memoized — same DOM,
+   same timing, bounded memory.
+6. **The budget gate is dependency-free.** `scripts/budget.ts`
+   reads the built `dist/index.html`, follows the entry script plus
+   its modulepreload chunks, gzips each one (zlib level 9) and
+   prints the table; it exits 1 when the total exceeds
+   250 kB gzip. No rollup-plugin-visualizer.
+7. **Budgets and measured values** (also in `packages/web/PERF.md`):
+   initial JS 250 kB gzip (measured 96.59), shell LCP 2500 ms
+   (measured 584), tree frame p95 120 ms while scrolling a
+   100 000-entry tree (measured 83.3, 34 rows mounted of 100 000).
+8. **Route-level lazy changed test timing, not test meaning.** The
+   three route-rendering test files (SourcesPage, shell, Tour) now
+   await the route chunk with the SAME locators and explicit 5 s
+   timeouts — the default 1 s RTL wait is too short for an async
+   import under full-suite load. No behavioural pin changed.
+9. **Three mandated test names verbatim**: 'initial bundle budget',
+   'shell lcp', 'tree scroll smooth'.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

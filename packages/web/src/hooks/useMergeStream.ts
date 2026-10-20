@@ -15,6 +15,14 @@
 import { useEffect, useState } from 'react';
 import { wsClient } from '../lib/ws.js';
 
+/**
+ * Cap on buffered stream entries. P-216 rendered the last 2000 tokens; P-237
+ * bounds the BUFFER too, so a long run cannot grow the state (or the
+ * per-event coalescing cost) without bound. ThinkingStream re-exports this
+ * constant, so the public import path is unchanged.
+ */
+export const MAX_STREAM_EVENTS = 2000;
+
 export type StreamEvent =
   | { type: 'reasoning'; id: string; text: string }
   | {
@@ -56,7 +64,12 @@ export function useMergeStream(deps?: { connect?: Connector; active?: boolean })
   const [events, setEvents] = useState<readonly StreamEvent[]>([]);
   useEffect(() => {
     if (!active) return undefined;
-    return connect(event => setEvents(prev => [...prev, event]));
+    return connect(event =>
+      setEvents(prev => {
+        const next = [...prev, event];
+        return next.length > MAX_STREAM_EVENTS ? next.slice(next.length - MAX_STREAM_EVENTS) : next;
+      })
+    );
   }, [connect, active]);
   const last = events.at(-1);
   return {

@@ -3,14 +3,44 @@
 // length of one run; the RENDER is capped (spec: last ~2000 tokens) so a long
 // run can't stall the page. Dark mode needs nothing special — colors come from
 // the P-209 semantic tokens; reduced motion is handled per animated element.
+//
+// P-237 — the rows are memoized so a burst of streamed events re-renders only
+// the row that changed instead of the whole list. The event TIMING is
+// unchanged (the hook applies every event synchronously, which the P-216 pins
+// assert), so the DOM and the semantics stay exactly as before.
 
 import { Sparkles } from 'lucide-react';
-import { type JSX } from 'react';
+import { memo, type JSX } from 'react';
 import { ToolCallRow } from './ToolCallRow.js';
+import { MAX_STREAM_EVENTS } from '../hooks/useMergeStream.js';
 import type { StreamEvent } from '../hooks/useMergeStream.js';
 
 /** Cap on rendered stream entries (the full log stays in the hook). */
-export const MAX_STREAM_EVENTS = 2000;
+export { MAX_STREAM_EVENTS };
+
+/** One reasoning token — memoized so a burst only re-renders the new row. */
+const ReasoningRow = memo(function ReasoningRow({ text }: { readonly text: string }): JSX.Element {
+  return (
+    <p className="text-body" data-testid="reasoning-line">
+      {text}
+    </p>
+  );
+});
+
+/** One pipeline progress line — memoized like the reasoning row. */
+const ProgressRow = memo(function ProgressRow({
+  step,
+  status,
+}: {
+  readonly step: string;
+  readonly status: string;
+}): JSX.Element {
+  return (
+    <p className="text-caption text-muted" data-testid={`progress-${step}`}>
+      {step}: {status}
+    </p>
+  );
+});
 
 export function ThinkingStream({ events }: { events: readonly StreamEvent[] }): JSX.Element {
   const visible = events.slice(-MAX_STREAM_EVENTS);
@@ -43,18 +73,9 @@ export function ThinkingStream({ events }: { events: readonly StreamEvent[] }): 
         </p>
       )}
       {items.map(({ seq, event }) => {
-        if (event.type === 'reasoning')
-          return (
-            <p className="text-body" data-testid="reasoning-line" key={event.id}>
-              {event.text}
-            </p>
-          );
+        if (event.type === 'reasoning') return <ReasoningRow text={event.text} key={event.id} />;
         if (event.type === 'tool') return <ToolCallRow key={seq} call={event} />;
-        return (
-          <p className="text-caption text-muted" data-testid={`progress-${event.step}`} key={seq}>
-            {event.step}: {event.status}
-          </p>
-        );
+        return <ProgressRow step={event.step} status={event.status} key={seq} />;
       })}
     </div>
   );

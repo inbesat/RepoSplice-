@@ -72,7 +72,7 @@ describe('P-210 shell layout', () => {
     expect(screen.getByRole('link', { name: /Sources/ })).toBeTruthy();
   });
 
-  it('locked blocks nav', () => {
+  it('locked blocks nav', async () => {
     shell('/sources');
     // With only Sources visited, Review is NOT a link — an inert
     // aria-disabled span with no navigation affordance.
@@ -88,11 +88,12 @@ describe('P-210 shell layout', () => {
     expect(gated?.getAttribute('title')).toBe('Add both repo A and B first');
     // Clicking it changes nothing: the A picker is still shown.
     fireEvent.click(locked ?? document.body);
-    expect(screen.getByLabelText('repo A picker')).toBeTruthy();
+    // P-237: the route chunk is lazy — await the picker region.
+    expect(await screen.findByLabelText('repo A picker')).toBeTruthy();
     expect(useFlowStore.getState().visited).toEqual(['sources']);
   });
 
-  it('routes placeholders', () => {
+  it('routes placeholders', async () => {
     // Deep links render every placeholder directly (route access stays open;
     // the stepper's lock is the UI gate).
     // P-213: /select renders the file-tree empty state — the marker is a
@@ -110,14 +111,19 @@ describe('P-210 shell layout', () => {
     for (const [path, marker] of expected) {
       shell(path);
       // The marker is a substring of the placeholder paragraph — match loosely.
-      expect(screen.getByText(marker, { exact: false })).toBeTruthy();
+      // P-237: the route chunk is lazy, so the marker arrives asynchronously.
+      // The 5s timeout rides out suite-load lag (the chunk import is I/O).
+      expect(await screen.findByText(marker, { exact: false }, { timeout: 5000 })).toBeTruthy();
     }
     // P-212: /sources now renders BOTH pickers, each with the empty-state
     // paragraph — assert the marker per picker instead of globally.
     shell('/sources');
     for (const slot of ['A', 'B'] as const) {
+      const region = within(
+        await screen.findByLabelText(`repo ${slot} picker`, undefined, { timeout: 5000 })
+      );
       expect(
-        within(screen.getByLabelText(`repo ${slot} picker`)).getByText('add one below', {
+        region.getByText('add one below', {
           exact: false,
         })
       ).toBeTruthy();
