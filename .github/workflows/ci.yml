@@ -27,6 +27,27 @@ jobs:
       - run: bun test --coverage
       - uses: codecov/codecov-action@v4
 
+  web-test:
+    name: Web Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun --filter @repo-stitcher/web run test:cov
+
+  web-e2e:
+    name: Web E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: bun --filter @repo-stitcher/web run test:e2e
+
   build:
     name: Build All Packages
     runs-on: ubuntu-latest

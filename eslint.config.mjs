@@ -37,6 +37,21 @@ export default tseslint.config(
     },
   },
   {
+    // P-236 — tests must not leak console.error. The rule targets CALLS
+    // only, so `expect(console.error).toHaveBeenCalled()` stays legal.
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', 'e2e/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.type='MemberExpression'][callee.object.name='console'][callee.property.name='error']",
+          message: 'Do not call console.error in tests — assert on it instead (see P-236).',
+        },
+      ],
+    },
+  },
+  {
     ignores: [
       '**/dist/**',
       '**/build/**',

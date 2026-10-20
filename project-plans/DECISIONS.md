@@ -4494,4 +4494,46 @@ Date: 2026-10-20. Phase: P-235 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-121: Web test harness, coverage gate and CI jobs (P-236)
+
+Date: 2026-10-20. Phase: P-236 (Web Epic 11). Owner: aradhy lane.
+
+1. **One harness, loaded centrally.** `packages/web/src/test/setup.ts`
+   is wired through `setupFiles` and owns every browser API jsdom
+   lacks: a configurable `matchMedia` stub, `ResizeObserver` +
+   `IntersectionObserver` stubs, `URL.createObjectURL` /
+   `revokeObjectURL`, and a no-op `window.scrollTo`. The stubs are
+   defined with `configurable`/`writable` so the per-file overrides
+   (P-226 theme, P-227 viewport, P-229 tour) still win.
+2. **jest-dom adds matchers, it does not rewrite style.**
+   `@testing-library/jest-dom` is imported in the harness for the
+   matcher set only; not one existing test was rewritten — the repo
+   keeps its `toBeTruthy` / `toBeNull` style.
+3. **The web project owns its coverage gate.** `vitest.config.ts`
+   declares thresholds glob-keyed like the root config
+   (statements 75 / branches 65 / functions 70 / lines 75 for
+   `src/**/*.{ts,tsx}`), ratcheted just under the measured run
+   (84.51 / 72.4 / 88.25 / 87.01) so the gate is real and green.
+   `@vitest/coverage-v8` was already hoisted at the root, so no new
+   dependency was needed for it.
+4. **No dispatch script was invented.** The root `vitest.config.ts`
+   already runs `projects: ['packages/*']`, so `bun run test` at the
+   root dispatches the web project — spec step 3 is satisfied by the
+   existing workspace wiring.
+5. **The console.error ban is call-scoped.** The new eslint override
+   targets `CallExpression` on `console.error` in test files, so
+   `expect(console.error).toHaveBeenCalled()` (the P-228 boundary
+   test) stays legal while a test that logs an error fails lint.
+6. **CI gains two web jobs.** `web-test` runs install -> typecheck ->
+   lint -> `bun --filter @repo-stitcher/web run test:cov`; `web-e2e`
+   installs Chromium and runs `bun --filter @repo-stitcher/web run
+   test:e2e`. Both are separate from the workspace `test` job so a
+   browser failure never masks the unit gate.
+7. **The harness proves itself.** `src/test/harness.test.ts` asserts
+   each mock is live (media queries, observers, object URLs, scroll,
+   and a jest-dom matcher), so a broken setup fails loudly instead of
+   silently changing the meaning of every other test.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
