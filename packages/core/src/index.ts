@@ -1463,4 +1463,11 @@ export {
   selectSubset,
 } from './eval/ci_gate.js';
 export type { GateInput, GateVerdict } from './eval/ci_gate.js';
+export { aggregateByEcosystem, ecosystemTable } from './eval/report.js';
+export type {
+  EcosystemKey,
+  EcosystemReport,
+  EcosystemStats,
+  PairReportInput,
+} from './eval/report.js';
 export { runPipeline } from './pipeline/runPipeline.js';

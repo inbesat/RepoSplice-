@@ -81,6 +81,17 @@
         }
       ]
     },
+    "ecosystem": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": ["js", "python", "go", "rust"]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "resolve_rate": {
       "anyOf": [
         {

@@ -42,6 +42,7 @@ import { deps, type DepsPromptContext } from './commands/deps.js';
 import { evalRate, type EvalRateOptions } from './commands/eval_rate.js';
 import { evalBaseline, type EvalBaselineOptions } from './commands/eval_baseline.js';
 import { evalGate, type EvalGateOptions } from './commands/eval_gate.js';
+import { evalReport, type EvalReportOptions } from './commands/eval_report.js';
 import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
@@ -475,6 +476,16 @@ export function buildCLI(program: Command): Command {
     .action(async (options: EvalGateOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalGate({ ...globals, ...options });
+    });
+
+  evalCommand
+    .command('report')
+    .description('Break a run down per ecosystem and print the CI summary table (P-329)')
+    .option('--result-dir <path>', 'where the harness wrote the per-pair results')
+    .option('--out <file>', 'where the breakdown artifact is written')
+    .action(async (options: EvalReportOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalReport({ ...globals, ...options });
     });
 
   program

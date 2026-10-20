@@ -43,3 +43,16 @@ jobs:
             echo "Results: eval/results/pr-${{ github.run_id }}"
             echo "Baseline: ${BASELINE:-eval/results/baseline-dryrun-20261021.json}"
           } >> "$GITHUB_STEP_SUMMARY"
+      # P-329 — the per-ecosystem breakdown: which language is dragging the
+      # average down. The table is printed by `stitch eval report`.
+      - name: per-ecosystem breakdown
+        if: always()
+        run: |
+          {
+            echo ""
+            echo "### Per-ecosystem breakdown"
+            echo ""
+            bun run --cwd packages/cli eval report \
+              --result-dir "eval/results/pr-${{ github.run_id }}" \
+              --out eval/report/ecosystem_breakdown.json || echo "_the breakdown needs the run results_"
+          } >> "$GITHUB_STEP_SUMMARY"

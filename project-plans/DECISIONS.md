@@ -5264,4 +5264,51 @@ Date: 2026-10-21. Phase: P-328 (Eval Harness). Owner: inbesat lane.
 
 ---
 
+## ADR-137: Per-ecosystem breakdown for the eval baseline (P-329)
+
+Date: 2026-10-21. Phase: P-329 (Eval Harness). Owner: inbesat lane.
+
+1. **The breakdown lives in the core.** `packages/core/src/eval/report.ts`
+   aggregates the per-pair results per ecosystem (js/python/go/rust) and
+   renders the CI summary table; the CLI (`stitch eval report`) only wires
+   the IO. The metric logic is not duplicated in the command.
+2. **Mean AND median, and a missing metric is skipped.** Each ecosystem row
+   carries the mean and the median of every metric so one outlier cannot hide
+   behind an average; a metric nobody measured stays `null` (`n/a` in the
+   table) - never a fake zero that would drag the row down.
+3. **All four ecosystems are always listed.** An ecosystem with no pairs
+   still gets a row (pairs 0, null metrics), so the CI table always has the
+   same four rows and a missing language cannot be mistaken for a healthy
+   one.
+4. **The result carries its ecosystem.** The runner stamps
+   `ecosystem: pair.ecosystem` into the result; the schema field is
+   `.nullish()` so a result written before the field still validates. A
+   result WITHOUT an ecosystem is skipped by the report (and counted in the
+   log) - it is never filed under a guess.
+5. **The CI summary shows the table.** `eval-regression.yml` gained a step
+   that pipes `stitch eval report` into `$GITHUB_STEP_SUMMARY`, so a pull
+   request shows which language is dragging the average down.
+6. **The EVAL.md TEMPLATE ships now; the published EVAL.md is P-333's job.**
+   `eval/EVAL.template.md` carries the per-ecosystem breakdown section
+   (plus the headline table, the failure categories and the decision rule);
+   the published document is still to be rendered in P-333.
+7. **The recorded artifact is a dry run.** `eval/report/ecosystem_breakdown.json`
+   is the real machinery over the P-324/P-327 fixture corpus (3 synthetic
+   pairs, real local builds, no human ratings): js 100%, python 0%, go 100%,
+   rust empty, the totals 66.7%. It is labelled as such - it is not a corpus
+   measurement.
+8. **Fixes found while building.** The report harness imported the report
+   module through a path one level too deep, and its `--out` write needed
+   the output directory created; the committed result schema was stale after
+   the ecosystem field landed (re-emitted in the same commit - the P-320
+   lesson: a schema change and its committed artifact land together); the
+   CLI's log fallback was an expression-bodied arrow returning a boolean
+   where `void` was declared.
+9. **Nothing else moved.** The P-320 pair schema, the P-323 runner, the
+   P-324 scoring module, the P-325 rubric module, the P-327 baseline module
+   and the P-328 gate are untouched; no frozen file changed; the two
+   mandated python ids and the bun mirror are verbatim.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

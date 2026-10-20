@@ -144,6 +144,7 @@ export class EvalRunner {
   private failure(pair: EvalPair, started: number, error: StitchError): EvalResult {
     return {
       pair_id: pair.pair_id,
+      ecosystem: pair.ecosystem,
       status: 'failed',
       build_pass: null,
       build_logs: null,
@@ -190,6 +191,7 @@ export class EvalRunner {
       if (sandbox.isErr()) return this.failure(pair, started, sandbox.error);
       return {
         pair_id: pair.pair_id,
+        ecosystem: pair.ecosystem,
         status: 'succeeded',
         build_pass: sandbox.value.buildPass,
         build_logs: sandbox.value.buildLogs === undefined ? null : [...sandbox.value.buildLogs],

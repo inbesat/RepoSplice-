@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "generated_at": "2026-10-20T21:56:03.575Z",
+  "ecosystems": [
+    {
+      "ecosystem": "js",
+      "pairs": 1,
+      "build_pass_rate": 1,
+      "rubric_avg": null,
+      "resolve_rate": null,
+      "tokens_total": 12,
+      "tokens_avg": 12,
+      "cost_total": 0.01,
+      "cost_avg": 0.01,
+      "duration_total": 345,
+      "duration_avg": 345,
+      "build_pass_median": 1,
+      "rubric_median": null,
+      "resolve_median": null,
+      "categories": {
+        "resolution": 0,
+        "build": 0,
+        "test": 0,
+        "license": 0,
+        "timeout": 0,
+        "other": 0
+      }
+    },
+    {
+      "ecosystem": "python",
+      "pairs": 1,
+      "build_pass_rate": 0,
+      "rubric_avg": null,
+      "resolve_rate": null,
+      "tokens_total": 12,
+      "tokens_avg": 12,
+      "cost_total": 0.01,
+      "cost_avg": 0.01,
+      "duration_total": 172,
+      "duration_avg": 172,
+      "build_pass_median": 0,
+      "rubric_median": null,
+      "resolve_median": null,
+      "categories": {
+        "resolution": 0,
+        "build": 0,
+        "test": 0,
+        "license": 0,
+        "timeout": 0,
+        "other": 1
+      }
+    },
+    {
+      "ecosystem": "go",
+      "pairs": 1,
+      "build_pass_rate": 1,
+      "rubric_avg": null,
+      "resolve_rate": null,
+      "tokens_total": 12,
+      "tokens_avg": 12,
+      "cost_total": 0.01,
+      "cost_avg": 0.01,
+      "duration_total": 328,
+      "duration_avg": 328,
+      "build_pass_median": 1,
+      "rubric_median": null,
+      "resolve_median": null,
+      "categories": {
+        "resolution": 0,
+        "build": 0,
+        "test": 0,
+        "license": 0,
+        "timeout": 0,
+        "other": 0
+      }
+    },
+    {
+      "ecosystem": "rust",
+      "pairs": 0,
+      "build_pass_rate": null,
+      "rubric_avg": null,
+      "resolve_rate": null,
+      "tokens_total": 0,
+      "tokens_avg": null,
+      "cost_total": 0,
+      "cost_avg": null,
+      "duration_total": 0,
+      "duration_avg": null,
+      "build_pass_median": null,
+      "rubric_median": null,
+      "resolve_median": null,
+      "categories": {
+        "resolution": 0,
+        "build": 0,
+        "test": 0,
+        "license": 0,
+        "timeout": 0,
+        "other": 0
+      }
+    }
+  ],
+  "per_pair": [
+    {
+      "pair_id": "fixture-spot-go",
+      "ecosystem": "go",
+      "status": "succeeded",
+      "build_pass": true,
+      "rubric_score": null,
+      "resolve_rate": null,
+      "tokens": 12,
+      "cost": 0.01,
+      "duration": 328,
+      "error_code": null
+    },
+    {
+      "pair_id": "fixture-spot-js",
+      "ecosystem": "js",
+      "status": "succeeded",
+      "build_pass": true,
+      "rubric_score": null,
+      "resolve_rate": null,
+      "tokens": 12,
+      "cost": 0.01,
+      "duration": 345,
+      "error_code": null
+    },
+    {
+      "pair_id": "fixture-spot-py",
+      "ecosystem": "python",
+      "status": "succeeded",
+      "build_pass": false,
+      "rubric_score": null,
+      "resolve_rate": null,
+      "tokens": 12,
+      "cost": 0.01,
+      "duration": 172,
+      "error_code": null
+    }
+  ],
+  "totals": {
+    "pairs": 3,
+    "build_pass_rate": 0.6667,
+    "rubric_avg": null,
+    "resolve_rate": null,
+    "tokens_total": 36,
+    "cost_total": 0.03,
+    "duration_total": 845
+  }
+}

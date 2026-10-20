@@ -10,7 +10,7 @@
 // never "scored as zero".
 
 import { z } from 'zod';
-import { evalPairSchema } from './schema.js';
+import { EVAL_ECOSYSTEMS, evalPairSchema } from './schema.js';
 
 export { evalPairSchema };
 export type { EvalPair } from './schema.js';
@@ -32,6 +32,9 @@ export const evalResultSchema = z.looseObject({
   human_scores: z.array(z.looseObject({})).nullish(),
   human_rater: z.string().nullish(),
   rubric_score: z.number().min(1).max(5).nullable(),
+  // P-329: the ecosystem of the corpus pair (optional + nullable so a result
+  // written before the field still validates).
+  ecosystem: z.enum(EVAL_ECOSYSTEMS).nullish(),
   resolve_rate: z.number().min(0).max(1).nullable(),
   tokens: z.number().int().nonnegative(),
   cost: z.number().nonnegative(),
