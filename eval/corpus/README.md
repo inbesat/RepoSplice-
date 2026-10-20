@@ -107,3 +107,39 @@ python -m pytest eval/test_shas.py -q
 5. Re-run `python eval/scripts/verify_shas.py` (must exit 0) and
    `python eval/scripts/validate_corpus.py` (must exit 0), then commit the
    manifest together with the note.
+
+## CI regression gate (P-328)
+
+Every pull request to `main` runs a **representative subset** of the corpus
+(5 pairs: one per ecosystem first, then the next pairs in corpus order) and
+compares the run's composite score against the last baseline. The full corpus
+runs on a `v*` tag.
+
+The composite is one number on a 0..100 scale:
+
+| component | source | scale |
+| --- | --- | --- |
+| build-pass rate | the sandbox verdicts | rate x 100 |
+| rubric average | the human ratings (1-5) | average x 20 |
+| resolve rate | build-pass AND rubric average >= 4 | rate x 100 |
+
+A component that carries no number (nobody rated a pair) is **skipped** - it
+is never a zero that would sink the score. The gate fails when the composite
+drops by **more than the threshold** (5 points by default).
+
+### Threshold tuning
+
+1. Run the full corpus locally:
+   `bun run --cwd packages/cli eval run eval/corpus --parallel 4 --output-dir eval/results/local-<ts>`
+2. Rate the pairs (both owners):
+   `bun run --cwd packages/cli eval rate <pair-id> --result-dir eval/results/local-<ts> --rater <you>`
+3. Compute the metrics:
+   `bun run --cwd packages/cli eval baseline --result-dir eval/results/local-<ts> --corpus eval/corpus --out eval/results/local-<ts>.json`
+4. Compare the composite with the baseline: a real regression is fixed in the
+   merge logic, not in the threshold.
+5. If the threshold itself must change, record an ADR (the threshold is a
+   contract, not a dial) and change `DEFAULT_THRESHOLD_POINTS` in
+   `packages/core/src/eval/ci_gate.ts` in the same commit.
+
+Never raise the threshold to make a red pull request green - a red gate is the
+signal to fix the merge quality.

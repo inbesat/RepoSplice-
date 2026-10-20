@@ -1454,4 +1454,13 @@ export type {
   BaselinePair,
   FailureCategory,
 } from './eval/baseline.js';
+export {
+  compositeScore,
+  DEFAULT_SUBSET_SIZE,
+  DEFAULT_THRESHOLD_POINTS,
+  evaluateGate,
+  gateFromMetrics,
+  selectSubset,
+} from './eval/ci_gate.js';
+export type { GateInput, GateVerdict } from './eval/ci_gate.js';
 export { runPipeline } from './pipeline/runPipeline.js';

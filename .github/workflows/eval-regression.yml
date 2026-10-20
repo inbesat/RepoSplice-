@@ -1,0 +1,45 @@
+name: eval-regression
+
+# P-328 — the CI regression gate: a PR that makes the corpus WORSE than the
+# last baseline is blocked. The job runs a light SUBSET (one pair per
+# ecosystem) so it stays short; the FULL corpus runs on a release tag
+# (eval-full.yml) and its artifact is the baseline.
+#
+# The baseline path comes from the repository variable EVAL_BASELINE; the
+# fallback is the committed dry-run artifact (a placeholder until a real
+# baseline is uploaded by the tag workflow).
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - name: install
+        run: bun install --frozen-lockfile
+      - name: run the eval subset
+        run: >-
+          bun run --cwd packages/cli eval run eval/corpus
+          --subset representative
+          --output-dir eval/results/pr-${{ github.run_id }}
+      - name: gate against the baseline
+        env:
+          BASELINE: ${{ vars.EVAL_BASELINE }}
+        run: |
+          BASELINE_PATH="${BASELINE:-eval/results/baseline-dryrun-20261021.json}"
+          bun run --cwd packages/cli eval gate \
+            --current "eval/results/pr-${{ github.run_id }}" \
+            --baseline "$BASELINE_PATH"
+      - name: summary
+        if: always()
+        run: |
+          {
+            echo "### Eval regression gate"
+            echo ""
+            echo "Results: eval/results/pr-${{ github.run_id }}"
+            echo "Baseline: ${BASELINE:-eval/results/baseline-dryrun-20261021.json}"
+          } >> "$GITHUB_STEP_SUMMARY"

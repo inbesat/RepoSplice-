@@ -5214,4 +5214,54 @@ Date: 2026-10-21. Phase: P-327 (Eval Harness). Owner: inbesat lane.
 
 ---
 
+## ADR-136: CI regression gate with a representative subset (P-328)
+
+Date: 2026-10-21. Phase: P-328 (Eval Harness). Owner: inbesat lane.
+
+1. **The gate rule.** A pull request is blocked when the corpus
+   COMPOSITE drops by MORE than the threshold: `passed = delta <=
+   threshold` where the delta is the baseline composite minus the
+   current one. A rise passes, and so does a drop inside the threshold.
+   The threshold is 5 composite POINTS by default; the composite lives
+   on a 0..100 scale, so the plan's "5%" is 5 points of that scale.
+2. **The composite is one number on a 0..100 scale.** It is the mean of
+   the components that actually carry a number: the build-pass rate x
+   100, the rubric average x 20 (a 1-5 average mapped onto 0..100) and
+   the resolve rate x 100. A component that is absent (nobody rated the
+   run) is SKIPPED, never a fake zero that would sink the score.
+3. **The subset is deterministic.** One pair per ecosystem first (the
+   first of each in corpus order), then the remaining pairs in corpus
+   order until the size is reached. The default size is 5; a PR gate
+   and a local run therefore pick the SAME pairs.
+4. **The runner stayed untouched.** The CLI (`stitch eval run --
+   subset`) selects the subset, writes `<outputDir>/subset/pairs.json`
+   and runs the P-323 runner on that file - the runner already accepts
+   a manifest path, so no core change was needed.
+5. **Two workflows.** `.github/workflows/eval-regression.yml` runs the
+   representative subset on every pull request to `main` and then
+   `stitch eval gate` against the baseline (the path comes from the
+   `EVAL_BASELINE` repository variable, defaulting to the committed dry
+   run). `.github/workflows/eval-full.yml` runs the FULL corpus on a
+   `v*` tag and uploads the baseline artifact.
+6. **The spec's step 5 (a test pull request that degrades a prompt) is
+   covered by the core test.** A degraded run fails the gate - the
+   mirror asserts exactly that - but a real pull request cannot be
+   opened from this repository run, so the deliberate PR is not part of
+   the deliverable. Recorded here as the deviation.
+7. **Threshold tuning is a deliberate procedure**
+   (`eval/corpus/README.md`): run the full corpus locally, rate it with
+   both owners, compare the composite, fix a real regression in the
+   merge logic - NEVER in the threshold. A threshold change needs an
+   ADR plus the `DEFAULT_THRESHOLD_POINTS` change in the same commit.
+8. **The gate command's exit codes.** 0 = the gate passed, 1 = the gate
+   failed (the CI job goes red), 2 = the inputs are unusable. The
+   current side may be a metrics artifact or a directory of per-pair
+   result files; the per-pair reading reuses the P-327 helpers so the
+   metric logic lives in one place.
+9. **Nothing else moved.** The P-320 pair schema, the P-323 runner, the
+   P-324 scoring module, the P-325 rubric module, the P-327 baseline
+   module and the 20-pair corpus are untouched; no frozen file changed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

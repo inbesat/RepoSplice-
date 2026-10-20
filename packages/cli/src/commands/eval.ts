@@ -5,15 +5,18 @@
 // reports the run. Exit codes: 0 = every pair succeeded, 1 = at least one
 // pair failed, 2 = the corpus/usage is unusable.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { err, ok } from 'neverthrow';
 import {
   cloneRepo,
+  DEFAULT_SUBSET_SIZE,
   EvalRunner,
+  evalPairSchema,
   extractPathsViaFilterRepo,
   runPipeline,
   scoreBuild,
+  selectSubset,
   type EvalPorts,
   type StitchError,
 } from '@repo-stitcher/core';
@@ -30,6 +33,11 @@ export interface EvalRunOptions extends GlobalOptions {
   timeout?: string;
   /** Print the run summary as JSON. */
   json?: boolean;
+  /**
+   * P-328 — run a SUBSET of the corpus: 'representative' (one pair per
+   * ecosystem, the CI default), 'all' (no subset) or a pair count.
+   */
+  subset?: string;
 }
 
 export interface EvalRunDeps {
@@ -114,7 +122,38 @@ export async function evalRun(options: EvalRunOptions, deps: EvalRunDeps = {}): 
   }
 
   const runner = deps.runner ?? new EvalRunner(defaultEvalPorts());
-  const result = await runner.run(corpus, {
+  // P-328: a subset run writes the selected pairs to <outputDir>/subset and
+  // runs the runner on THAT file — the runner itself stays untouched.
+  let corpusPath = corpus;
+  if (options.subset !== undefined && options.subset !== 'all') {
+    const size =
+      options.subset === 'representative'
+        ? DEFAULT_SUBSET_SIZE
+        : Number.parseInt(options.subset, 10);
+    if (!Number.isInteger(size) || size <= 0) {
+      process.stderr.write('eval: --subset must be "representative", "all" or a positive number\n');
+      return 2;
+    }
+    const manifestPath = corpus.endsWith('.json') ? corpus : join(corpus, 'pairs.json');
+    try {
+      const parsed = JSON.parse(await readFile(manifestPath, 'utf8')) as unknown;
+      const entries = Array.isArray(parsed) ? parsed : [];
+      const pairs = entries.flatMap(entry => {
+        const result = evalPairSchema.safeParse(entry);
+        return result.success ? [result.data] : [];
+      });
+      const subset = selectSubset(pairs, size);
+      const subsetDir = join(outputDir, 'subset');
+      await mkdir(subsetDir, { recursive: true });
+      corpusPath = join(subsetDir, 'pairs.json');
+      await writeFile(corpusPath, `${JSON.stringify(subset, null, 2)}\n`, 'utf8');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      process.stderr.write(`eval: cannot build the subset - ${reason}\n`);
+      return 2;
+    }
+  }
+  const result = await runner.run(corpusPath, {
     outputDir,
     parallel,
     ...(timeoutRaw !== undefined ? { timeoutMs: timeoutRaw } : {}),

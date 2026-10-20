@@ -41,6 +41,7 @@ import {
 import { deps, type DepsPromptContext } from './commands/deps.js';
 import { evalRate, type EvalRateOptions } from './commands/eval_rate.js';
 import { evalBaseline, type EvalBaselineOptions } from './commands/eval_baseline.js';
+import { evalGate, type EvalGateOptions } from './commands/eval_gate.js';
 import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
@@ -432,6 +433,10 @@ export function buildCLI(program: Command): Command {
     .option('--parallel <n>', 'how many pairs run at once (1-16)')
     .option('--output-dir <path>', 'where the per-pair results and the summary are written')
     .option('--timeout <ms>', 'the per-pair budget in milliseconds')
+    .option(
+      '--subset <size>',
+      'run a subset of the corpus: "representative", "all" or a pair count (P-328)'
+    )
     .option('--json', 'print the run summary as JSON')
     .action(async (options: EvalRunOptions) => {
       const globals = globalOptionsOf(program);
@@ -459,6 +464,17 @@ export function buildCLI(program: Command): Command {
     .action(async (options: EvalBaselineOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalBaseline({ ...globals, ...options });
+    });
+
+  evalCommand
+    .command('gate')
+    .description('Compare a run against the baseline and fail on a regression (P-328)')
+    .option('--current <path>', 'the current run: a results directory or a metrics file')
+    .option('--baseline <path>', 'the baseline metrics file to compare against')
+    .option('--threshold <points>', 'how many composite points may drop before the gate fails')
+    .action(async (options: EvalGateOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalGate({ ...globals, ...options });
     });
 
   program

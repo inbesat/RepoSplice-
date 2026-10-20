@@ -1,0 +1,33 @@
+name: eval-full
+
+# P-328 — the FULL corpus run on a release tag. Its baseline artifact is what
+# the PR gate (eval-regression.yml) compares against; the PR gate itself
+# never runs the full corpus, so the tag is where the real numbers live.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  eval-full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - name: install
+        run: bun install --frozen-lockfile
+      - name: run the full corpus
+        run: >-
+          bun run --cwd packages/cli eval run eval/corpus
+          --output-dir eval/results/full-${{ github.run_id }}
+      - name: score the baseline
+        run: >-
+          bun run --cwd packages/cli eval baseline
+          --result-dir eval/results/full-${{ github.run_id }}
+          --corpus eval/corpus
+          --out eval/results/baseline-${{ github.run_id }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-baseline-${{ github.run_id }}
+          path: eval/results/baseline-${{ github.run_id }}.json
