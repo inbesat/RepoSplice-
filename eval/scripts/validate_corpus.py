@@ -56,7 +56,10 @@ def resolve_ref(schema: Any, root: Any) -> Any:
     return schema
 
 
-def type_matches(expected: str, instance: Any) -> bool:
+def type_matches(expected: Any, instance: Any) -> bool:
+    """A JSON Schema `type` may be a list (a nullable field is ["boolean","null"])."""
+    if isinstance(expected, list):
+        return any(type_matches(one, instance) for one in expected)
     python_type = TYPE_MAP.get(expected)
     if python_type is None:
         return True
@@ -73,7 +76,7 @@ def validate_instance(schema: Any, instance: Any, root: Any, path: str = "$") ->
         return errors
 
     expected = schema.get("type")
-    if isinstance(expected, str) and not type_matches(expected, instance):
+    if expected is not None and not type_matches(expected, instance):
         errors.append(
             f"{path}: expected type {expected}, got {type(instance).__name__}"
         )

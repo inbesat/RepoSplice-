@@ -1418,3 +1418,21 @@ export {
   evalPairSchema,
 } from './eval/schema.js';
 export type { EvalPair } from './eval/schema.js';
+// P-323 — the eval harness: the runner, its ports and the result/config types.
+export { EvalRunner } from './eval/runner.js';
+export type {
+  EvalAgentContext,
+  EvalAgentOutcome,
+  EvalPorts,
+  EvalRunnerOptions,
+  EvalSandboxContext,
+  EvalSandboxOutcome,
+} from './eval/runner.js';
+export {
+  EVAL_STATUSES,
+  evalConfigSchema,
+  evalResultSchema,
+  evalRunSummarySchema,
+} from './eval/types.js';
+export type { EvalConfig, EvalResult, EvalRunSummary } from './eval/types.js';
+export { runPipeline } from './pipeline/runPipeline.js';

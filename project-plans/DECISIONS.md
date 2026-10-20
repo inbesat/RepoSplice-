@@ -4976,4 +4976,64 @@ Date: 2026-10-20. Phase: P-322 (Eval Harness). Owner: inbesat lane.
 
 ---
 
+## ADR-131: Eval harness runner with bounded parallelism (P-323)
+
+Date: 2026-10-21. Phase: P-323 (Eval Harness, Wave 1.5). Owner: inbesat.
+
+1. **The runner is a port-based orchestrator.** `EvalRunner` in
+   `packages/core/src/eval/runner.ts` receives `clone`, `extract`,
+   `agent`, `sandbox`, `now`, `mkdirp` and `writeJson` as injected
+   ports, so the existing core modules are reused, never duplicated
+   (the ADR-082 injection model). The CLI wires the real ones:
+   `cloneRepo`, `extractPathsViaFilterRepo`, `runPipeline` and
+   `runVerification`.
+2. **The agent port drives the real pipeline, with the AI handlers
+   still open.** The default agent port calls `runPipeline` with an
+   empty handler set: the nine-stage state machine really runs and
+   every stage is `skipped` by the pipeline's own documented contract.
+   The AI stage handlers arrive with the scoring phase (P-324) - the
+   port is the seam, so no pipeline logic is duplicated here.
+3. **A failing step is captured per pair; the run continues.** The
+   failing step's StitchError code and message land in the pair
+   result (`status: 'failed'`, `error_code`, `error_message`) and the
+   remaining pairs still run. The scoring fields (`build_pass`,
+   `rubric_score`, `resolve_rate`) stay `null` - "not scored yet"
+   (P-324/P-325), never a fake 0.
+4. **The parallelism bound comes from the core Pool (P-031)** and the
+   observed maximum is reported in the summary (`max_concurrency`),
+   so the bound is verifiable from the output rather than asserted.
+   A per-pair budget reports `SANDBOX_TIMEOUT` with a message naming
+   the pair and the budget.
+5. **A bad corpus is a config problem, not a pair failure.** The
+   manifest is validated with the P-320 zod schema; an unreadable
+   file or a schema-invalid entry fails the whole run with
+   `CONFIG_ERROR` (the harness cannot score a manifest it cannot
+   read).
+6. **The CLI exit code was being clobbered.** `main()` always
+   returned `EXIT_OK`, so `index.ts`'s `process.exitCode = code`
+   overwrote a command's own exit code - the eval command's "a pair
+   failed" (1) was lost. `main()` now resets `process.exitCode` per
+   run and honours it afterwards; the same latent issue for the
+   `deps` command is repaired with it.
+7. **The result schema sits next to the pair schema.**
+   `eval/corpus/result-schema.json` is emitted from
+   `evalResultSchema` by the same emitter (the `--check` mode
+   verifies both files semantically), and the stdlib python validator
+   learned JSON Schema type LISTS so a nullable field
+   (`["boolean","null"]`) validates.
+8. **The python tests drive the real runner.** The mandated ids
+   (`test_single_pair`, `test_parallel_execution`,
+   `test_result_schema_valid`) run the runner through a bun fixture
+   script with fake ports (the CI is bun-only, so a read-only bun
+   mirror - `packages/core/src/__tests__/eval-runner.test.ts` -
+   enforces the same contract in CI).
+9. **Nothing else moved.** The plan's `core/` + `cli/` test paths map
+   to `packages/core/` + `packages/cli/` (as the P-320 mapping did);
+   the P-320 schema and the 20-pair corpus are untouched; no frozen
+   file changed; the root typecheck (the authority) and the root lint
+   both pass - the one issue found (an unused local in the new test)
+   was fixed, not suppressed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

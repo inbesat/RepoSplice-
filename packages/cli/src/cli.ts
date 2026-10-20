@@ -39,6 +39,7 @@ import {
   type LicensePromptResult,
 } from './commands/license.js';
 import { deps, type DepsPromptContext } from './commands/deps.js';
+import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
 import { applyColorMode, resetColorMode } from './theme.js';
@@ -422,6 +423,21 @@ export function buildCLI(program: Command): Command {
     });
 
   program
+    .command('eval')
+    .description('Run the eval corpus headlessly (P-323)')
+    .command('run')
+    .description('Run every corpus pair and write the per-pair results')
+    .option('--corpus <path>', 'the corpus directory (or a pairs.json path)')
+    .option('--parallel <n>', 'how many pairs run at once (1-16)')
+    .option('--output-dir <path>', 'where the per-pair results and the summary are written')
+    .option('--timeout <ms>', 'the per-pair budget in milliseconds')
+    .option('--json', 'print the run summary as JSON')
+    .action(async (options: EvalRunOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalRun({ ...globals, ...options });
+    });
+
+  program
     .command('config')
     .description('Print the merged effective project config (defaults + stitch.toml + env) as JSON')
     .option('--edit', 'open stitch.toml in $VISUAL/$EDITOR and validate on close (P-201)')
@@ -588,11 +604,15 @@ export async function main(
   // call main() multiple times.
   resetColorMode();
   resetDiagnostics();
+  // P-323 — a command may set process.exitCode itself (the eval harness
+  // reports "a pair failed" with exit 1). Reset it per run so a previous run
+  // in the same process cannot leak into this one.
+  process.exitCode = undefined;
   try {
     // Default `from` is 'node': `process.argv` carries the [node, script, ...args]
     // prefix, which is exactly what this receives.
     await program.parseAsync([...argv]);
-    return EXIT_OK;
+    return process.exitCode === undefined ? EXIT_OK : process.exitCode;
   } catch (cause: unknown) {
     if (isCommanderError(cause)) {
       const plan = classifyCommanderError(cause);

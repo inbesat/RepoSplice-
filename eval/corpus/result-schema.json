@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pair_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "failed"]
+    },
+    "build_pass": {
+      "type": ["boolean", "null"]
+    },
+    "rubric_score": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolve_rate": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "cost": {
+      "type": "number",
+      "minimum": 0
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0
+    },
+    "error_code": {
+      "type": ["string", "null"]
+    },
+    "error_message": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": [
+    "pair_id",
+    "status",
+    "build_pass",
+    "rubric_score",
+    "resolve_rate",
+    "tokens",
+    "cost",
+    "duration",
+    "error_code",
+    "error_message"
+  ],
+  "additionalProperties": {}
+}

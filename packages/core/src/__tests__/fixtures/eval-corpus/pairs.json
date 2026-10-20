@@ -1,0 +1,30 @@
+[
+  {
+    "pair_id": "fixture-js-1",
+    "repo_a_url": "https://github.com/example/alpha",
+    "repo_b_url": "https://github.com/example/beta",
+    "repo_a_sha": "1111111111111111111111111111111111111111",
+    "repo_b_sha": "2222222222222222222222222222222222222222",
+    "extract_paths_a": ["./src"],
+    "extract_paths_b": ["./src"],
+    "ecosystem": "js",
+    "license_a": "MIT",
+    "license_b": "MIT",
+    "expected_outcome": "clean",
+    "note": "Fixture pair for the P-323 harness tests: fake repos, fake SHAs."
+  },
+  {
+    "pair_id": "fixture-py-1",
+    "repo_a_url": "https://github.com/example/gamma",
+    "repo_b_url": "https://github.com/example/delta",
+    "repo_a_sha": "3333333333333333333333333333333333333333",
+    "repo_b_sha": "4444444444444444444444444444444444444444",
+    "extract_paths_a": ["./src"],
+    "extract_paths_b": ["./src"],
+    "ecosystem": "python",
+    "license_a": "Apache-2.0",
+    "license_b": "BSD-3-Clause",
+    "expected_outcome": "conflicts",
+    "note": "Fixture pair for the P-323 harness tests: fake repos, fake SHAs."
+  }
+]
