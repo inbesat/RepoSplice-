@@ -4341,4 +4341,56 @@ Date: 2026-10-20. Phase: P-232 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-118: Playwright E2E for the merge flow (P-233)
+
+Date: 2026-10-20. Phase: P-233 (Web Epic 11). Owner: aradhy lane.
+
+1. **No `stitch serve --fixtures`: the web dev server stands in.**
+   `stitch serve` exists (`packages/cli/src/commands/serve.ts` plus
+   `packages/cli/src/server/app.ts`) but it has NO `--fixtures` flag and
+   serves only `/health`, `/api/provenance`, `/api/jobs`, `/api/settings`
+   and the SPA fallback - none of the endpoints the web app calls. The
+   suite therefore boots the web app's own Vite dev server
+   (`playwright.config.ts` webServer) and intercepts every `/api/**`
+   request inside the browser (`e2e/helpers.ts`). The specs drive the
+   REAL app in a REAL browser against a stubbed server; they become the
+   epic's acceptance run unchanged once the serve lane lands.
+2. **Fixtures are real directories.** `e2e/fixtures/repos/{a,b}` hold
+   actual README/src files; the tree entries are derived from disk with
+   `node:fs` at run time, so the fixture tree can never drift from the
+   fixture files. No fabricated JSON is shipped.
+3. **The route matcher must be a function.** A `'**/api/**'` glob also
+   matches Vite's module URLs (`/src/api/settings.ts`) and blanks the
+   whole app. The interceptor matches on
+   `url.pathname.startsWith('/api/')`.
+4. **The onboarding tour is opted out.** P-229's auto-queued overlay
+   swallows clicks, so the specs seed `localStorage` (`stitch-tour`,
+   `stitch-tour-auto`) before the app boots.
+5. **The source picker auto-advance races the picker.** P-211 navigates
+   to `/select` as soon as the last slot lands, unmounting the picker
+   list; the helpers wait on either the list item OR the navigation
+   (`Promise.race`) and assert the input value after filling.
+6. **Results is still the P-210 placeholder.** The sandbox verdict and
+   CREDITS panels are built (P-221/P-222) but not mounted on the Results
+   page, so the results assertion is the `/results` navigation plus the
+   `Results` heading. Mounting the panels is follow-up work, not an E2E
+   concern.
+7. **The websocket is not mocked.** The terminal run state comes from the
+   `POST /api/merge` response; the websocket only feeds the live thinking
+   stream and the app tolerates a failed connect.
+8. **The P-232 perf bound was relaxed, not weakened.** The 100k-node
+   fixture costs 7-12s on its own, so the wall-clock guard moved from
+   5s to 20s with 60s per-test timeouts; the HARD assertion (fewer than
+   80 rendered rows for 100k nodes) is unchanged.
+9. **Tooling.** `@playwright/test` 1.64.1 is a dev dependency; the
+   matching chromium revision was installed locally. The e2e directory
+   type-checks through its own `e2e/tsconfig.json` because the web
+   package tsconfig has `rootDir: src`.
+10. **Tests.** Three mandated names verbatim: 'add sources + select
+    files', 'full merge to results', 'reject flow'. The suite ran green
+    repeatedly (repeat-each 3 -> 9 passed). No product behaviour changed
+    in this phase (zero pin supersessions).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

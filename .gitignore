@@ -59,3 +59,9 @@ sandbox-tmp/
 **/.depcruise-fixture/
 **/.circular-fixture/
 **/.license-fixture/
+
+# Playwright artifacts (P-233 E2E)
+**/test-results/
+**/playwright-report/
+**/.playwright/
+
