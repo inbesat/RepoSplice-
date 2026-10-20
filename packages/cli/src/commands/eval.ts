@@ -13,7 +13,7 @@ import {
   EvalRunner,
   extractPathsViaFilterRepo,
   runPipeline,
-  runVerification,
+  scoreBuild,
   type EvalPorts,
   type StitchError,
 } from '@repo-stitcher/core';
@@ -38,12 +38,6 @@ export interface EvalRunDeps {
 }
 
 /** The corpus ecosystems (P-320) mapped onto the core's ecosystem names. */
-const ECOSYSTEM_BY_CORPUS: Readonly<Record<string, 'node' | 'python' | 'go' | 'rust'>> = {
-  js: 'node',
-  python: 'python',
-  go: 'go',
-  rust: 'rust',
-};
 
 function messageOf(error: StitchError): string {
   return 'message' in error && typeof error.message === 'string' ? error.message : error.code;
@@ -73,20 +67,24 @@ export function defaultEvalPorts(): EvalPorts {
       return ok({ tokens: 0, cost: 0 });
     },
     sandbox: async context => {
-      const run = await runVerification(
-        'build',
-        ECOSYSTEM_BY_CORPUS[context.pair.ecosystem] ?? 'node',
-        context.repoB,
-        {
-          outputDir: join(context.workDir, 'sandbox'),
-          ...(context.signal !== undefined ? { signal: context.signal } : {}),
-        }
-      );
-      if (run.isErr()) return err(run.error);
-      // The verdict shape is consumed loosely until the scoring phase (P-324)
-      // maps it onto build_pass/rubric_score/resolve_rate.
-      const verdict = run.value.verdict as unknown as { passed?: boolean } | undefined;
-      return ok({ buildPass: verdict?.passed ?? null });
+      // P-324: the real sandbox scoring (build + test verification, the
+      // logs and the artifacts dir) — the verdict is no longer read loosely.
+      const score = await scoreBuild({
+        ecosystem: context.pair.ecosystem,
+        repoPath: context.repoB,
+        outputDir: join(context.workDir, 'sandbox'),
+        ...(context.signal !== undefined ? { signal: context.signal } : {}),
+      });
+      if (score.isErr()) return err(score.error);
+      const value = score.value;
+      return ok({
+        buildPass: value.buildPass,
+        buildLogs: value.buildLogs,
+        testLogs: value.testLogs,
+        buildDurationMs: value.buildDurationMs,
+        testDurationMs: value.testDurationMs,
+        ...(value.artifactsDir !== undefined ? { artifactsDir: value.artifactsDir } : {}),
+      });
     },
     now: () => Date.now(),
     mkdirp: async dir => {

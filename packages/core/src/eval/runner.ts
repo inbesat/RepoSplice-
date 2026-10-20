@@ -47,6 +47,12 @@ export interface EvalSandboxContext {
 export interface EvalSandboxOutcome {
   readonly buildPass: boolean | null;
   readonly resolveRate?: number | null;
+  /** P-324: the sandbox logs + timings, when the port reports them. */
+  readonly buildLogs?: readonly string[];
+  readonly testLogs?: readonly string[];
+  readonly buildDurationMs?: number;
+  readonly testDurationMs?: number;
+  readonly artifactsDir?: string;
 }
 
 /** The injected steps. Every one returns a Result — a port never throws. */
@@ -140,6 +146,8 @@ export class EvalRunner {
       pair_id: pair.pair_id,
       status: 'failed',
       build_pass: null,
+      build_logs: null,
+      test_logs: null,
       rubric_score: null,
       resolve_rate: null,
       tokens: 0,
@@ -184,6 +192,8 @@ export class EvalRunner {
         pair_id: pair.pair_id,
         status: 'succeeded',
         build_pass: sandbox.value.buildPass,
+        build_logs: sandbox.value.buildLogs === undefined ? null : [...sandbox.value.buildLogs],
+        test_logs: sandbox.value.testLogs === undefined ? null : [...sandbox.value.testLogs],
         rubric_score: agent.value.rubricScore ?? null,
         resolve_rate: sandbox.value.resolveRate ?? agent.value.resolveRate ?? null,
         tokens: agent.value.tokens,

@@ -1435,4 +1435,6 @@ export {
   evalRunSummarySchema,
 } from './eval/types.js';
 export type { EvalConfig, EvalResult, EvalRunSummary } from './eval/types.js';
+export { ECOSYSTEM_BY_CORPUS, scoreBuild } from './eval/scoring.js';
+export type { BuildScore, ScoreBuildOptions, VerifyPort } from './eval/scoring.js';
 export { runPipeline } from './pipeline/runPipeline.js';

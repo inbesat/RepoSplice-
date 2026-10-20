@@ -13,6 +13,32 @@
     "build_pass": {
       "type": ["boolean", "null"]
     },
+    "build_logs": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "test_logs": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "rubric_score": {
       "anyOf": [
         {
@@ -61,6 +87,8 @@
     "pair_id",
     "status",
     "build_pass",
+    "build_logs",
+    "test_logs",
     "rubric_score",
     "resolve_rate",
     "tokens",

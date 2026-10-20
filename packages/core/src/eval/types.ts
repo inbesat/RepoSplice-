@@ -23,6 +23,10 @@ export const evalResultSchema = z.looseObject({
   pair_id: z.string().min(1),
   status: z.enum(EVAL_STATUSES),
   build_pass: z.boolean().nullable(),
+  // P-324: the build + test logs captured by the sandbox runner. NULL means
+  // the phase never ran (not an empty log).
+  build_logs: z.array(z.string()).nullable(),
+  test_logs: z.array(z.string()).nullable(),
   rubric_score: z.number().min(1).max(5).nullable(),
   resolve_rate: z.number().min(0).max(1).nullable(),
   tokens: z.number().int().nonnegative(),

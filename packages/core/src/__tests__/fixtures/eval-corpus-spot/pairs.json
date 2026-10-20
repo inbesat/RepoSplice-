@@ -1,0 +1,49 @@
+[
+  {
+    "pair_id": "fixture-spot-js",
+    "repo_a_url": "https://github.com/fixture/spot-js",
+    "repo_b_url": "https://github.com/fixture/spot-js-b",
+    "repo_a_sha": "1111111111111111111111111111111111111111",
+    "repo_b_sha": "2222222222222222222222222222222222222222",
+    "extract_paths_a": ["./"],
+    "extract_paths_b": ["./"],
+    "ecosystem": "js",
+    "license_a": "MIT",
+    "license_b": "MIT",
+    "expected_outcome": "clean",
+    "build_command": ["node", "-e", "process.stdout.write('build ok\\n')"],
+    "test_command": ["node", "-e", "process.stdout.write('tests ok\\n')"],
+    "note": "Spot-check fixture: the build and the tests both pass."
+  },
+  {
+    "pair_id": "fixture-spot-py",
+    "repo_a_url": "https://github.com/fixture/spot-py",
+    "repo_b_url": "https://github.com/fixture/spot-py-b",
+    "repo_a_sha": "3333333333333333333333333333333333333333",
+    "repo_b_sha": "4444444444444444444444444444444444444444",
+    "extract_paths_a": ["./"],
+    "extract_paths_b": ["./"],
+    "ecosystem": "python",
+    "license_a": "Apache-2.0",
+    "license_b": "Apache-2.0",
+    "expected_outcome": "conflicts",
+    "build_command": ["node", "-e", "process.stderr.write('compile error\\n'); process.exit(1)"],
+    "note": "Spot-check fixture: the build fails, so build_pass is false."
+  },
+  {
+    "pair_id": "fixture-spot-go",
+    "repo_a_url": "https://github.com/fixture/spot-go",
+    "repo_b_url": "https://github.com/fixture/spot-go-b",
+    "repo_a_sha": "5555555555555555555555555555555555555555",
+    "repo_b_sha": "6666666666666666666666666666666666666666",
+    "extract_paths_a": ["./"],
+    "extract_paths_b": ["./"],
+    "ecosystem": "go",
+    "license_a": "MIT",
+    "license_b": "MIT",
+    "expected_outcome": "clean",
+    "build_command": ["node", "-e", "process.stdout.write('go build ok\\n')"],
+    "test_command": ["node", "-e", "process.stderr.write('test failed\\n'); process.exit(1)"],
+    "note": "Spot-check fixture: the build passes, the tests fail."
+  }
+]

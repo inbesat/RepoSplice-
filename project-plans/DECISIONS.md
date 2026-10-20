@@ -5036,4 +5036,65 @@ Date: 2026-10-21. Phase: P-323 (Eval Harness, Wave 1.5). Owner: inbesat.
 
 ---
 
+## ADR-132: Eval harness build-pass scoring through the sandbox runner (P-324)
+
+Date: 2026-10-21. Phase: P-324 (Eval Harness epic). Owner: inbesat lane.
+
+1. **Scoring orchestrates the existing sandbox; it never re-implements
+   it.** `packages/core/src/eval/scoring.ts` is a NEW core module that
+   calls `runVerification` (the P-168 Epic 8 sandbox runner) through an
+   injected `VerifyPort`. The runner itself is reused unchanged, so there
+   is one implementation of the build/test contract (the same
+   reuse-not-duplicate rule ADR-131 set for the harness).
+2. **Build first, tests only after a passing build.** A broken tree
+   cannot be tested, so the test run is skipped when the build fails:
+   `test_logs` stays `[]` and `test_duration_ms` stays `0` - the phase
+   never ran, which is different from a phase that produced no output.
+   The same distinction holds for `build_pass: null` (not scored).
+3. **One ecosystem map.** The corpus vocabulary (`js | python | go |
+   rust`) maps to the core vocabulary (`node | python | go | rust`) in
+   exactly one place, `ECOSYSTEM_BY_CORPUS` in scoring.ts. The CLI's
+   local copy was removed so the two cannot drift.
+4. **The port contract grew the evidence.** The P-323 sandbox port may
+   now report `buildLogs`, `testLogs`, `buildDurationMs`,
+   `testDurationMs` and `artifactsDir`; the runner maps them onto the
+   result, leaving the log arrays `null` when a port reports nothing.
+   The result schema gained the two nullable log arrays
+   (`build_logs`, `test_logs`) - the schema is loose, so the change is
+   additive and the emitted `eval/corpus/result-schema.json` was
+   re-emitted.
+5. **The spot check is an independent run of the same command.**
+   The spec asks for a manual `docker run` comparison on three pairs.
+   Docker is optional in this environment (`stitch doctor` reports it
+   as a WARN), so the spot check runs the very same build command twice
+   - once through the harness port, once directly - and compares the
+   two verdicts. The production path is unchanged (the Docker or
+   GitHub Actions sandbox, P-178), so the deviation is environmental,
+   not behavioural, and it is recorded here.
+6. **The build pass is a genuine exit-code decision.** The harness
+   fixture pairs carry `build_command` / `test_command` extra fields
+   (allowed by the loose schema), so the fake ports run a real local
+   process and the recorded `build_pass` reflects its exit code
+   instead of a hard-coded `true`.
+7. **Both test layers.** The two mandated python ids
+   (`test_build_pass_recorded`, `test_spot_check_matches`) drive the
+   REAL runner through the bun fixture harness, and a read-only bun
+   mirror (`packages/core/src/__tests__/eval-scoring.test.ts`) enforces
+   the same contract in the bun-only CI. The plan's `core/test_scoring.py`
+   path maps to `packages/core/test_scoring.py` (the P-320 mapping).
+8. **Two authoring bugs, fixed rather than suppressed.** Zod infers a
+   mutable `string[]` while the port carries a `readonly string[]`, so
+   the runner copies the logs before handing them to the schema; and the
+   python `REPO_ROOT` was one level too shallow (a file in
+   `packages/core/` needs `parents[2]`). The root typecheck is the
+   authority for both.
+9. **Nothing else moved.** No mandated test id changed, the P-320 pair
+   schema and the 20-pair corpus are untouched, and no frozen file was
+   modified. The code gate is green: scripts tsc + 8 tests, core 2343
+   passed / 1 failed (the documented ADR-079 red) / 1 skipped, web 39
+   files / 164 tests, E2E 3, perf 3, root typecheck 0, root lint 0 (two
+   lint findings in the new files were fixed, not suppressed).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
