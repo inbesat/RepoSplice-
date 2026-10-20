@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import type { SourceRecord } from '../api/repos.js';
 import type { TreeEntry } from '../api/tree.js';
+import { useViewport } from '../hooks/useViewport.js';
 import { FileTree } from './FileTree.js';
 
 export interface SplitTreeViewProps {
@@ -25,6 +26,7 @@ export function SplitTreeView({
   const [entriesA, setEntriesA] = useState<readonly TreeEntry[]>([]);
   const [entriesB, setEntriesB] = useState<readonly TreeEntry[]>([]);
   const [cross, setCross] = useState(false);
+  const viewport = useViewport();
 
   const handleLoadedA = useCallback((entries: readonly TreeEntry[]) => setEntriesA(entries), []);
   const handleLoadedB = useCallback((entries: readonly TreeEntry[]) => setEntriesB(entries), []);
@@ -37,8 +39,8 @@ export function SplitTreeView({
   }, [entriesA, entriesB]);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <section aria-label="repo A tree" className="min-w-0 overflow-y-auto">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-viewport={viewport}>
+      <section aria-label="repo A tree" className="stitch-scroll min-w-0 overflow-y-auto">
         {sourceA === undefined ? (
           <p className="text-muted">Pick a repo A source first.</p>
         ) : (
@@ -51,7 +53,7 @@ export function SplitTreeView({
           />
         )}
       </section>
-      <section aria-label="repo B tree" className="min-w-0 overflow-y-auto">
+      <section aria-label="repo B tree" className="stitch-scroll min-w-0 overflow-y-auto">
         {sourceB === undefined ? (
           <p className="text-muted">Pick a repo B source first.</p>
         ) : (

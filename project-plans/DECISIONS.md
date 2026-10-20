@@ -4085,4 +4085,46 @@ Date: 2026-10-20. Phase: P-226 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-112: Responsive shell with a shared viewport hint (P-227)
+
+Date: 2026-10-20. Phase: P-227 (Web Epic 11). Owner: aradhy lane.
+
+1. **Data-driven viewport, not CSS-only media queries.** `hooks/useViewport.ts`
+   is a module-level store read through `useSyncExternalStore`: two
+   `matchMedia` queries (max-width 767px = mobile, 1023px = narrow) drive a
+   'mobile' | 'narrow' | 'wide' verdict. jsdom cannot apply CSS media
+   queries, so layout decisions made purely in CSS would be untestable and
+   unverifiable; the store hint makes components, layout logic, and tests
+   share one source of truth (the spec's store-hint contract).
+2. **No `matchMedia` means `wide`.** Both the hook and AppShell fall back
+   to 'wide' when `window.matchMedia` is unavailable (jsdom, older SSR).
+   Every pre-P-227 test and shell pin renders desktop and must stay green:
+   'desktop unchanged' is both a mandated test and the compatibility
+   guarantee.
+3. **Touch targets as classes, asserted by class presence.** Governed
+   controls (ThemeToggle, settings link, every stepper link) gain
+   `min-h-11` (+ `min-w-11` for icon buttons) = the 44px minimum. jsdom
+   computes no geometry, so tests assert the class, not pixels; a
+   Playwright pass can measure the real boxes later.
+4. **Compact nav form.** Below `lg` (narrow/mobile) the vertical Stepper
+   and the Sidebar unmount and a fixed bottom bar (`data-testid
+   "bottom-stepper"`) hosts `<Stepper horizontal />` — the same gate
+   logic (`gates` prop) in a horizontal `flex gap-1` form. The header
+   compact form drops the brand tagline below 'wide' (it is pinned only
+   at desktop).
+5. **Split-view stacking.** `SplitTreeView` already stacks via
+   `grid-cols-1 md:grid-cols-2`; this phase stamps the root with
+   `data-viewport={viewport}` so tests and future CSS can key off the
+   same verdict, and both panes get the new `stitch-scroll` utility.
+6. **Scroll hygiene.** `@utility stitch-scroll` in index.css sets
+   `overscroll-behavior: contain` + touch momentum; applied to the split
+   panes and the BuildLog pre (which also gains `min-h-32` so a short log
+   does not collapse the section).
+7. **Tests + audit.** The four mandated names verbatim ('compact nav
+   form', 'stacks split view', 'touch targets', 'desktop unchanged') use
+   an installMatchMedia(width) stub keyed on the max-width queries.
+   Zero pin supersessions — desktop rendering is unchanged by design.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

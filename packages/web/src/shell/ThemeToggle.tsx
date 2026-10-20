@@ -15,6 +15,8 @@ export function ThemeToggle(): JSX.Element {
   const attributes = {
     type: 'button' as const,
     'data-testid': 'dark-toggle',
+    // P-227: 44px touch target.
+    className: 'flex min-h-11 min-w-11 items-center justify-center',
     'aria-label': `theme: ${theme} (resolved ${resolved}); switch to ${next}`,
     'aria-pressed': resolved === 'dark',
     onClick: () => setTheme(next),

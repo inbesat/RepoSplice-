@@ -20,3 +20,10 @@
 /* Class-based dark mode (P-226): `dark:` variants respond to a `.dark`
    ancestor instead of the OS preference, so the dashboard can toggle it. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* P-227: scroll containers keep gestures inside their pane (no chained
+   overscroll to the page) and keep momentum on touch devices. */
+@utility stitch-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}

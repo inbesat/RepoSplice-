@@ -17,6 +17,7 @@ import { Sidebar } from './Sidebar.js';
 import { stepForPath } from '../router.js';
 import { useFlowStore } from '../store/flow.js';
 import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
+import { useViewport } from '../hooks/useViewport.js';
 
 export function AppShell(): JSX.Element {
   const { pathname } = useLocation();
@@ -25,6 +26,11 @@ export function AppShell(): JSX.Element {
   // P-212: the Select step is data-gated — both source slots must hold a
   // resolved source (the stepper also keeps its sequential visited unlock).
   const selectReady = useSourcesStore(state => canProceedSourceSelection(state));
+  // P-227: one shared breakpoint verdict drives nav + header shape (the
+  // store-hint contract — data-driven, not CSS-media-query driven, so the
+  // responsive tests can assert it in jsdom).
+  const viewport = useViewport();
+  const compact = viewport === 'mobile' || viewport === 'narrow';
 
   // Every route the user lands on becomes visited (drives the stepper unlock).
   useEffect(() => {
@@ -35,7 +41,10 @@ export function AppShell(): JSX.Element {
     <div className="bg-bg text-text min-h-screen">
       <header className="bg-surface border-border flex items-center gap-4 border-b px-4 py-3">
         <h1 className="text-lg font-bold text-stitch-700 dark:text-stitch-200">stitch</h1>
-        <p className="text-muted text-sm">AI-augmented multi-repo composition</p>
+        {/* P-227: brand tagline yields its row space on narrow screens. */}
+        {viewport === 'wide' && (
+          <p className="text-muted text-sm">AI-augmented multi-repo composition</p>
+        )}
         <span
           className="ml-auto rounded px-2 py-0.5 text-xs"
           data-testid="run-status"
@@ -44,17 +53,30 @@ export function AppShell(): JSX.Element {
           idle
         </span>
         <ThemeToggle />
-        <Link to="/settings" className="text-muted px-2 text-sm" data-testid="settings-link">
+        <Link
+          to="/settings"
+          className="text-muted flex min-h-11 items-center px-2 text-sm"
+          data-testid="settings-link"
+        >
           settings
         </Link>
       </header>
       <div className="flex">
-        <Stepper gates={{ select: selectReady }} />
-        <Sidebar />
+        {viewport === 'wide' && <Stepper gates={{ select: selectReady }} />}
+        {viewport === 'wide' && <Sidebar />}
         <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
+      {/* P-227: below lg the five-step flow becomes a fixed bottom bar. */}
+      {compact && (
+        <div
+          data-testid="bottom-stepper"
+          className="bg-surface border-border fixed inset-x-0 bottom-0 z-10 border-t"
+        >
+          <Stepper gates={{ select: selectReady }} horizontal />
+        </div>
+      )}
     </div>
   );
 }

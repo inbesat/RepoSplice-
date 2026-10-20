@@ -40,7 +40,7 @@ export function BuildLog({ name, lines }: BuildLogProps) {
       </button>
       {open && (
         <div>
-          <pre className="max-h-64 overflow-auto bg-surface p-2 text-caption font-mono">
+          <pre className="stitch-scroll max-h-64 min-h-32 overflow-auto bg-surface p-2 text-caption font-mono">
             {lines.map((line, i) => (
               <div key={i}>
                 <span className="text-muted">{i + 1}| </span>

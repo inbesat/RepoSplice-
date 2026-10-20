@@ -34,8 +34,11 @@ export function unlockedSteps(
 
 export function Stepper({
   gates = {},
+  horizontal = false,
 }: {
   gates?: Readonly<Record<string, boolean>>;
+  // P-227: bottom-bar form (AppShell renders this below lg).
+  horizontal?: boolean;
 }): JSX.Element {
   const { pathname } = useLocation();
   const visited = useFlowStore(state => state.visited);
@@ -44,7 +47,7 @@ export function Stepper({
 
   return (
     <nav aria-label="stitch steps">
-      <ol className="space-y-1">
+      <ol className={horizontal ? 'flex gap-1 p-1' : 'space-y-1'}>
         {STEPS.map((step, index) => {
           const isActive = step.id === activeId;
           const gated = gates[step.id] === false;
@@ -68,14 +71,14 @@ export function Stepper({
               {isUnlocked ? (
                 <Link
                   to={step.path}
-                  className={`block px-2 py-1 ${stateClass}`}
+                  className={`flex min-h-11 items-center px-2 py-1 ${stateClass}`}
                   aria-current={isActive ? 'step' : undefined}
                 >
                   {inner}
                 </Link>
               ) : (
                 <span
-                  className={`block px-2 py-1 ${stateClass}`}
+                  className={`flex min-h-11 items-center px-2 py-1 ${stateClass}`}
                   aria-disabled="true"
                   title={title}
                 >
