@@ -4208,4 +4208,44 @@ Date: 2026-10-20. Phase: P-229 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-115: Web session export/import bundle (P-230)
+
+Date: 2026-10-20. Phase: P-230 (Web Epic 11). Owner: aradhy lane.
+
+1. **Single hand-rolled wire schema.** `SessionBundle` in
+   `api/session.ts` is one shape shared by export and import (the spec's
+   round-trip handoff rule). No zod on the web side — every web api module
+   is hand-rolled per precedent (TS6059 rootDir constraint keeps core
+   schemas out anyway); `coerceBundle` does boundary validation manually.
+2. **Client contracts.** `GET /api/session/export` and
+   `POST /api/session/import` do not exist on the server yet (P-192
+   deferral family). The bundle restore story (resolutions,
+   licenseDecisions) is P-200/P-215 server-side work; the web module
+   fixes the wire shape now so both lanes converge.
+3. **Server-side fields ride along.** `resolutions` and
+   `licenseDecisions` round-trip as opaque records — the client has no
+   granular stores for them (deps outcomes and license decisions are
+   component-local state). `applyBundle` restores only the client-owned
+   slices (sources + selections) via the stores' public actions;
+   the server applies the rest at merge time.
+4. **Coercion rules.** Missing `version` defaults to 1; any other
+   version throws `unsupported session bundle version: N` (the only
+   deliberate throw — shape problems degrade to empty defaults instead,
+   matching the tolerant parsing precedent ADR-107 set).
+5. **Warnings, not failures.** Import returns server `{warnings}` (e.g.
+   ref-mismatch notices); SessionBar renders them as P-228 warning
+   Alerts and proceeds — an import with warnings is still a successful
+   restore.
+6. **Host guards.** Export checks `typeof URL.createObjectURL ===
+   'function'` and surfaces an error Alert otherwise (jsdom and hardened
+   hosts lack it). Import reads via `file.text()` (no FileReader).
+7. **SessionBar is thin glue** (blob download + picker + alerts), so no
+   dedicated component test file — the spec's Tests Required lists api
+   tests only; the four mandated names are verbatim
+   ('exports bundle', 'imports valid', 'warns ref mismatch',
+   'coerces version') plus a plumbing test proving `applyBundle`
+   populates the stores. Zero pin supersessions.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

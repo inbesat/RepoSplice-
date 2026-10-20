@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { useNavigate } from 'react-router';
 import { RepoPicker } from '../components/RepoPicker.js';
+import { SessionBar } from '../components/SessionBar.js';
 import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
 import { useTourStore, TOUR_AUTOSTART_KEY } from '../store/tour.js';
 
@@ -49,6 +50,9 @@ export function SourcesPage(): JSX.Element {
 
   return (
     <div>
+      {/* P-230: session export/import mounts first so bundles load even
+          when the hero is dismissed. */}
+      <SessionBar />
       {/* P-229 empty-state hero: shown while BOTH slots are empty and the
           tour hasn't been dismissed. Sits ABOVE the pickers (the P-212
           picker pins assert the pickers still render). */}
