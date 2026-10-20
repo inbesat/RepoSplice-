@@ -32,6 +32,32 @@ export async function getTree(repoId: string, ref?: string): Promise<TreeEntry[]
   return body.entries ?? [];
 }
 
+// P-232 — one directory page. The endpoint does not exist yet either (same
+// client-contract situation); the server lane implements it from core's
+// P-103 `listFiles` with paging so huge dirs hydrate on demand.
+export interface TreePage {
+  readonly entries: readonly TreeEntry[];
+  readonly nextCursor?: string;
+}
+
+/** GET /api/repos/:id/tree?dir=&cursor= — the children of one directory. */
+export async function getTreePage(repoId: string, dir: string, cursor?: string): Promise<TreePage> {
+  const params = new URLSearchParams({ dir });
+  if (cursor !== undefined) params.set('cursor', cursor);
+  const response = await fetch(
+    `/api/repos/${encodeURIComponent(repoId)}/tree?${params.toString()}`
+  );
+  if (!response.ok) throw new Error(await describeFailure(response));
+  const body = (await response.json()) as {
+    entries?: TreeEntry[];
+    nextCursor?: string;
+  };
+  return {
+    entries: body.entries ?? [],
+    ...(body.nextCursor !== undefined ? { nextCursor: body.nextCursor } : {}),
+  };
+}
+
 /** The server's `message` when it speaks JSON, else the status line. */
 async function describeFailure(response: Response): Promise<string> {
   try {

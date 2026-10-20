@@ -4295,4 +4295,50 @@ Date: 2026-10-20. Phase: P-231 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-117: Web virtualized tree with lazy dir paging and find-file filter (P-232)
+
+Date: 2026-10-20. Phase: P-232 (Web Epic 11). Owner: aradhy lane.
+
+1. **useVirtualTree owns the data model; arborist stays the renderer.**
+   `hooks/useVirtualTree.ts` turns the flat `/api/repos/:id/tree` list (P-213)
+   into a flat node map (parent links, child ids, sibling positions).
+   react-arborist@3.16 keeps rendering the virtualized window (P-213's
+   choice); the hook is the reusable model for P-217+ surfaces (provenance /
+   SBOM tables) if they grow.
+2. **Lazy hydration rule.** Expanding a directory that has NO recorded
+   children fires the paginated `GET /api/repos/:id/tree?dir=` client
+   contract (`getTreePage`, added to `api/tree.ts`; the server lane serves
+   it from core's P-103 `listFiles` with paging). A directory whose children
+   already arrived in the flat list never fetches. A directory that hydrates
+   empty is remembered, so the client never refetches it in a loop; a failed
+   hydration leaves the directory closed and a re-expand retries.
+3. **Find-file filter.** A debounced (200 ms) `find file` box filters file
+   paths; the tree is rebuilt from the matches plus their ancestor
+   directories, the ancestors auto-open, and the first match is scrolled
+   into view (`api.open` + `api.scrollTo`, guarded by try/catch because
+   jsdom has no layout engine).
+4. **A11y preserved under virtualization.** Rows keep arborist's
+   `role="treeitem"` / `aria-level` / `aria-expanded` attrs and gain
+   `aria-posinset` / `aria-setsize` from the sibling map, so screen-reader
+   position stays honest while only a slice is in the DOM. The P-231 roving
+   keyboard model is untouched.
+5. **Programmatic access.** FileTree accepts an optional `apiRef` that
+   receives the arborist `TreeApi` instance — generic programmatic control
+   (the filter navigation uses the internal ref; the tests use it to drive
+   the recycle scroll).
+6. **Perf gate in jsdom.** The 100k-entry fixture asserts wall-clock render
+   time and a bounded rendered-row count. Heap growth is not measurable in
+   jsdom; real-browser profiling is deferred to the P-237 perf pass.
+7. **Two gate fixes worth recording.** (a) The empty-state guard now keys
+   on `entries.length` (a directory-only source must still draw its tree) and
+   the filter-empty case is a separate branch. (b) The P-231 keyboard test
+   re-queries the row after the await: arborist remounts rows when a
+   directory opens, so the pre-click element reference is detached.
+8. **Tests.** Five mandated names verbatim ('renders visible slice',
+   'expand fetches', 'recycles scroll', 'filter scroll', 'perf gate') plus
+   an extra test proving the checked-file selection survives lazy
+   hydration. Web suite: 37 files / 155 tests. Zero pin supersessions.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

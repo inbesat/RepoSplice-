@@ -98,10 +98,12 @@ describe('a11y (P-231)', () => {
     await screen.findByText('src');
     const tree = screen.getByRole('tree');
     const rowSrc = within(tree).getAllByRole('treeitem')[0] as HTMLElement;
-    // ArrowRight expands the focused directory.
+    // ArrowRight expands the focused directory (arborist's store update
+    // lands on the next act flush — poll before asserting the attribute).
     fireEvent.keyDown(rowSrc, { key: 'ArrowRight' });
-    expect(rowSrc.getAttribute('aria-expanded')).toBe('true');
     await screen.findByText('a.ts');
+    // arborist remounts rows on open — re-query before reading the attribute.
+    expect(within(tree).getAllByRole('treeitem')[0]?.getAttribute('aria-expanded')).toBe('true');
     // ArrowDown moves focus to the next visible row.
     const rows = within(tree).getAllByRole('treeitem');
     rows[1]?.focus();

@@ -8,13 +8,14 @@
 // click handlers (not an effect) so the parent store update can't loop back
 // into this component's state.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HTMLAttributes, JSX, KeyboardEvent, ReactNode } from 'react';
 import { Tree } from 'react-arborist';
-import type { NodeApi, NodeRendererProps } from 'react-arborist';
+import type { NodeApi, NodeRendererProps, TreeApi } from 'react-arborist';
 import type { SourceRecord } from '../api/repos.js';
-import { getTree } from '../api/tree.js';
+import { getTree, getTreePage } from '../api/tree.js';
 import type { TreeEntry } from '../api/tree.js';
+import { useVirtualTree } from '../hooks/useVirtualTree.js';
 import { TreeNode } from './TreeNode.js';
 import type { TreeNodeData } from './TreeNode.js';
 
@@ -28,6 +29,11 @@ export interface FileTreeProps {
   readonly highlightPaths?: readonly string[];
   /** Viewport height in px (virtualization) — default 400. */
   readonly height?: number;
+  /**
+   * P-232: receives the arborist TreeApi instance (programmatic control —
+   * filter scroll today, general use later).
+   */
+  readonly apiRef?: { current: TreeApi<TreeNodeData> | null };
 }
 
 /** Derive the hierarchy from the flat list: dirs synthesized from segments,
@@ -85,10 +91,16 @@ export function FileTree({
   onLoaded,
   highlightPaths,
   height = 400,
+  apiRef,
 }: FileTreeProps): JSX.Element {
   const [entries, setEntries] = useState<readonly TreeEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
+  // P-232: debounced 'find file' filter + the arborist ref for programmatic
+  // open/scroll (filter auto-navigation and tests).
+  const [rawFilter, setRawFilter] = useState('');
+  const [query, setQuery] = useState('');
+  const treeRef = useRef<TreeApi<TreeNodeData> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +123,78 @@ export function FileTree({
     // load report.
   }, [source.id, source.ref]);
 
-  const treeData = useMemo(() => buildTree(entries ?? []), [entries]);
+  // P-232: 200 ms debounce between typing and filtering.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(rawFilter.trim().toLowerCase()), 200);
+    return () => window.clearTimeout(timer);
+  }, [rawFilter]);
+
+  // P-232: lazy dir hydration — the paginated contract fetches one dir and
+  // the fetched entries MERGE into the flat list; the hook's handleToggled
+  // only fires this when the dir had no recorded children.
+  const vtree = useVirtualTree(entries ?? [], {
+    onDemand: dir =>
+      getTreePage(source.id, dir).then(page => {
+        setEntries(prev => {
+          const known = new Set((prev ?? []).map(entry => entry.path));
+          const fresh = page.entries.filter(entry => !known.has(entry.path));
+          return [...(prev ?? []), ...fresh];
+        });
+        return page.entries;
+      }),
+  });
+
+  // P-232: when a filter is active, the tree contains only matching files
+  // plus their ancestor dirs; ancestors auto-open and the first match is
+  // scrolled into the fixed-size window.
+  const filteredEntries = useMemo(() => {
+    if (query === '') return entries ?? [];
+    const list = entries ?? [];
+    const matches = list.filter(
+      entry => entry.type === 'file' && entry.path.toLowerCase().includes(query)
+    );
+    const keep = new Set<string>();
+    for (const entry of matches) {
+      keep.add(entry.path);
+      const segments = entry.path.split('/');
+      for (let index = 1; index < segments.length; index += 1) {
+        keep.add(segments.slice(0, index).join('/'));
+      }
+    }
+    return list.filter(entry => entry.type === 'dir' || keep.has(entry.path));
+  }, [entries, query]);
+
+  // Ancestors open + first match scrolls (a moment after the data lands so
+  // the fresh rows exist in arborist's index).
+  const firstMatch = useMemo(() => {
+    if (query === '') return undefined;
+    return filteredEntries.find(
+      entry => entry.type === 'file' && entry.path.toLowerCase().includes(query)
+    );
+  }, [filteredEntries, query]);
+  useEffect(() => {
+    const api = treeRef.current;
+    if (api === null || firstMatch === undefined) return;
+    const segments = firstMatch.path.split('/');
+    for (let index = 1; index < segments.length; index += 1) {
+      api.open(segments.slice(0, index).join('/'));
+    }
+    try {
+      void api.scrollTo(firstMatch.path);
+    } catch {
+      // jsdom has no layout — scroll position is best-effort.
+    }
+  }, [firstMatch, query]);
+
+  // Publish the api instance for the caller (tests use it to force scrolls).
+  useEffect(() => {
+    if (apiRef !== undefined) apiRef.current = treeRef.current;
+  });
+
+  const treeData = useMemo(() => buildTree(filteredEntries), [filteredEntries]);
   const fileEntries = useMemo(
-    () => (entries ?? []).filter(entry => entry.type === 'file'),
-    [entries]
+    () => filteredEntries.filter(entry => entry.type === 'file'),
+    [filteredEntries]
   );
 
   const applyChecked = (next: ReadonlySet<string>): void => {
@@ -160,8 +240,11 @@ export function FileTree({
   if (entries === null) {
     return <p className="text-muted">Loading tree…</p>;
   }
-  if (fileEntries.length === 0) {
+  if (entries !== null && entries.length === 0) {
     return <p className="text-muted">No files in this source.</p>;
+  }
+  if (fileEntries.length === 0 && query !== '') {
+    return <p className="text-muted">No files match the filter.</p>;
   }
 
   const selectedBytes = fileEntries
@@ -179,6 +262,14 @@ export function FileTree({
       <span className="text-body text-muted" data-testid="tree-counts">
         {fileEntries.length} files, {checked.size} selected, {formatBytes(selectedBytes)}
       </span>
+      <input
+        type="search"
+        aria-label="find file"
+        placeholder="Find a file…"
+        value={rawFilter}
+        onChange={event => setRawFilter(event.target.value)}
+        className="ml-auto min-h-11 rounded border border-border bg-surface px-2 text-body text-text"
+      />
     </div>
   );
 
@@ -239,24 +330,34 @@ export function FileTree({
     attrs: HTMLAttributes<HTMLDivElement>;
     innerRef: (n: HTMLDivElement | null) => void;
     children: ReactNode;
-  }): JSX.Element => (
-    <div
-      {...attrs}
-      ref={innerRef}
-      onKeyDown={event => handleRowKeys(event, node)}
-      onFocus={event => event.stopPropagation()}
-      onClick={node.handleClick}
-    >
-      {children}
-    </div>
-  );
+  }): JSX.Element => {
+    // P-232: aria-posinset/aria-setsize from the hook's sibling map (keeps
+    // SR navigation honest under virtualization).
+    const info = vtree.siblingInfo(node.id);
+    return (
+      <div
+        {...attrs}
+        {...(info !== undefined ? { 'aria-posinset': info.pos, 'aria-setsize': info.size } : {})}
+        ref={innerRef}
+        onKeyDown={event => handleRowKeys(event, node)}
+        onFocus={event => event.stopPropagation()}
+        onClick={event => node.handleClick(event)}
+      >
+        {children}
+      </div>
+    );
+  };
 
   return (
     <div>
       {header}
       <Tree
+        ref={treeRef}
         data={treeData}
         openByDefault={false}
+        onToggle={id => {
+          if (id !== null) vtree.handleToggled(id);
+        }}
         rowHeight={28}
         indent={16}
         height={height}
