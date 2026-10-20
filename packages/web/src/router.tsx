@@ -21,6 +21,7 @@ import { SelectPage } from './pages/SelectPage.js';
 import { MergePage } from './pages/MergePage.js';
 import { ReviewPage } from './pages/ReviewPage.js';
 import { ResultsPage } from './pages/ResultsPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
 
 /** One flow step: the id the store keys by, the route, the label, the page. */
 export interface StepDef {
@@ -88,6 +89,7 @@ export function AppShellRoutes(): JSX.Element {
           {STEPS.map(step => (
             <Route key={step.id} path={step.path.slice(1)} element={<step.Page />} />
           ))}
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/sources" replace />} />
       </Routes>

@@ -4007,4 +4007,45 @@ Date: 2026-10-20. Phase: P-224 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-110: Web settings surface (P-225)
+
+Date: 2026-10-20. Phase: P-225 (Web Epic 11). Owner: aradhy lane.
+
+1. **Client contracts.** Serve today exposes only `GET /api/settings`
+   (optional payload, null when unwired — tolerate as an empty shape).
+   `PATCH /api/settings {patch}` is the spec's write path and a client
+   contract: the serve lane validates + persists via P-200 writeConfig so
+   CLI and web stay one config. One payload carries the provider-key
+   status map `keys: {openrouter: true}` — booleans ONLY, never values.
+2. **Core-mapped patch keys.** Every PATCH key matches core ConfigSchema
+   where a field exists: `openrouter.defaultModel` (model),
+   `agent.maxTokens` (token budget, P-143), `licensePolicy
+   {allow,warn,deny}` (P-127 overrides), `sandbox.limits {timeout,memory}`
+   (P-176). `appearance.theme` and `network.offline` are client-contract
+   extensions for the serve lane (core has no such sections); aesthetics
+   application lands with P-226's ThemeProvider.
+3. **Local model list.** Web tsconfig rootDir cannot import the core
+   barrel (TS6059 precedent), so `MODEL_OPTIONS` in api/settings.ts is a
+   static mirror of core ai/models.ts curated ids (P-135). shortcut: the
+   list can drift from the registry; upgrade to a GET /api/models client
+   contract when serve exposes the registry.
+4. **Unsaved-changes guard without a data router.** The app uses
+   declarative <Routes>, so react-router's useBlocker is unavailable. The
+   guard is a document-level CLICK listener in CAPTURE phase (react-router
+   navigates inside its own handler, so a bubble-phase preventDefault
+   would be too late) intercepting internal hrefs with window.confirm,
+   plus a beforeunload hook.
+5. **Sections are presentational.** components/settings/sections.tsx
+   renders five fieldsets (AI, Licenses, Sandbox, Appearance, Network) as
+   pure value+onChange components; SettingsPage owns the single draft,
+   validation (timeout int > 0, memory non-empty, maxTokens int >= 0 —
+   invalid input shows an alert and PATCHes nothing), per-section Save,
+   and the masked key-status line ('{provider} key: set|not set').
+6. **Wiring.** `/settings` route added OUTSIDE the STEPS table (not a
+   flow step); AppShell's settings anchor repointed to a react-router
+   Link (shell tests pin the data-testid, not the href — no pin
+   supersession). The six mandated test names are verbatim.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

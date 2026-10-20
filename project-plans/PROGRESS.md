@@ -1,9 +1,11 @@
-**Current Phase:** P-225 - Web: settings (aradhy lane; Web Epic 11) - NEXT
+**Current Phase:** P-226 - Web: dark mode (aradhy lane; Web Epic 11) - NEXT
 ## repo-stitcher: Live Phase Status Dashboard
 
 **Version:** 1.0.0
 **Status:** Updated every session
 **Last Updated:** 2026-10-20
+
+**P-225 DONE (2026-10-20) - gate green.** ADR-110. Files: `api/settings.ts` (GET /api/settings tolerant of an unwired null body + PATCH /api/settings client contract; patch keys core-mapped - openrouter.defaultModel, agent.maxTokens, licensePolicy, sandbox.limits - plus appearance.theme / network.offline extensions; keys map carries boolean set-status ONLY), `components/settings/sections.tsx` (five presentational fieldsets: AI provider/model/streaming/max-tokens, Licenses policy + allow/warn/deny tag lists, Sandbox timeout/memory + capability line, Appearance theme, Network offline), `pages/SettingsPage.tsx` (one draft; client-side validation blocks the PATCH with an alert; unsaved-changes guard = document-level CAPTURE-phase click interceptor + beforeunload - react-router navigates in its own handler so bubble-phase would be too late; key status rendered set/not-set, values never mapped), `SettingsPage.test.tsx` (six mandated names verbatim - loads sections / saves ai / edits license policy / unsaved guard / validates / masks key status - the masks test asserts the secret never appears in the DOM). Route /settings added outside the STEPS table; AppShell settings anchor repointed to a react-router Link (testid pin unchanged). MODEL_OPTIONS is a static mirror of core ai/models.ts P-135 ids; shortcut comment records the GET /api/models upgrade. Gate: web tsc 0; web vitest **30 files / 122 tests**; root typecheck 0; root lint 0 (8 auto-fixed); prettier clean. Post-P-224 root suite: still pending at commit time - record when it lands.
 
 **P-224 DONE (2026-10-20) - gate green.** ADR-109. Files: `packages/web/src/api/jobs.ts` (client contracts GET /api/jobs (tolerant array-or-{jobs}), GET /api/jobs/<id>, POST /api/jobs/<id>/rerun {jobId:id}; JobSummary {id, kind, status, started, finished?, durationMs?, result?} byte-stable per the P-194 stitch-status handoff; local wire types per TS6059 precedent), `components/JobRow.tsx` (status icons Loader2-spin/Check/text-X, fmtDuration ms/s/m+s, chevron expand to a detail with result line and /results + /review links only when a result exists, data-testid job-<id> + job-id-<id> + detail-<id>), `pages/HistoryPage.tsx` (feed-injectable live updates on the single `jobs` topic - patch by id or prepend; kind+status filters; rerun prepends the fresh summary; MAX_RENDER=300 cap with note; error alert; empty state), `HistoryPage.test.tsx` (five mandated names verbatim - renders history / live ws update / filters / rerun / empty error). HistoryPage NOT mounted (no history route in P-210 STEPS - SandboxPanel/CreditsPreview deferral precedent). Gate: web tsc 0; web vitest **29 files / 116 tests**; root typecheck 0; root lint 0 (25 prettier-shape errors auto-fixed); prettier clean. Found by test: the job id needed its own element for exact-text matching. Post-P-223 root suite: pending at commit time - record when it lands.
 
@@ -343,7 +345,7 @@
 - [x] **P-222** CREDITS preview *(2026-10-18, ADR-107)*
 - [x] **P-223** WS client+reconnect *(2026-10-20, ADR-108)*
 - [x] **P-224** Job history *(2026-10-20, ADR-109)*
-- [ ] **P-225** Settings (provider/model/keys)
+- [x] **P-225** Settings (provider/model/keys) *(2026-10-20, ADR-110)*
 - [ ] **P-226** Dark mode
 - [ ] **P-227** Responsive
 - [ ] **P-228** Error boundaries

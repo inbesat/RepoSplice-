@@ -5,14 +5,14 @@
 //   dark toggle — flips the `.dark` class on <html>, which is exactly the
 //                 mechanism P-226's `@custom-variant dark (&:where(.dark,…))`
 //                 responds to; that phase replaces the inline handler;
-//   settings   — a placeholder anchor (P-225 owns the screen).
+//   settings   — links to /settings (P-225's screen).
 //
 // The header keeps the P-208 tagline verbatim (`AI-augmented multi-repo
 // composition`) — App.test's shell pins assert on it.
 
 import { useEffect } from 'react';
 import type { JSX } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
 import { stepForPath } from '../router.js';
@@ -53,9 +53,9 @@ export function AppShell(): JSX.Element {
         >
           ◐
         </button>
-        <a href="#settings" className="text-muted px-2 text-sm" data-testid="settings-link">
+        <Link to="/settings" className="text-muted px-2 text-sm" data-testid="settings-link">
           settings
-        </a>
+        </Link>
       </header>
       <div className="flex">
         <Stepper gates={{ select: selectReady }} />
