@@ -9,6 +9,7 @@ import {
   type Provider,
   type ThemeChoice,
 } from '../../api/settings.js';
+import { SUPPORTED_LOCALES } from '../../i18n/index.js';
 
 const OPTION_CLASS = 'text-body bg-bg border border-border rounded px-2 py-1';
 const ROW_CLASS = 'flex items-center gap-2';
@@ -224,6 +225,39 @@ export function NetworkSection({ value, onChange }: SectionProps<boolean>): JSX.
           onChange={e => onChange(e.target.checked)}
         />
         offline mode
+      </label>
+    </fieldset>
+  );
+}
+
+/**
+ * Language: the UI locale (P-234). The labels arrive from the i18n catalog so
+ * this section stays purely presentational (value + onChange in, no fetching).
+ */
+export function LanguageSection({
+  value,
+  onChange,
+  labels,
+}: SectionProps<string> & {
+  readonly labels: { readonly legend: string; readonly label: string };
+}): JSX.Element {
+  return (
+    <fieldset aria-label="language settings" className="flex flex-col gap-2">
+      <legend className="text-title">{labels.legend}</legend>
+      <label className={ROW_CLASS}>
+        {labels.label}
+        <select
+          aria-label="language"
+          className={OPTION_CLASS}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        >
+          {SUPPORTED_LOCALES.map(code => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
       </label>
     </fieldset>
   );

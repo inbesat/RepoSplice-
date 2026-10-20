@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { Link, Outlet, useLocation } from 'react-router';
 import { SkipLink } from '../a11y/index.js';
+import { useT } from '../i18n/index.js';
 import { ThemeToggle } from './ThemeToggle.js';
 import { Stepper } from './Stepper.js';
 import { Sidebar } from './Sidebar.js';
@@ -23,6 +24,7 @@ import { useViewport } from '../hooks/useViewport.js';
 
 export function AppShell(): JSX.Element {
   const { pathname } = useLocation();
+  const { t } = useT();
   const complete = useFlowStore(state => state.complete);
   const activeId = stepForPath(pathname)?.id;
   // P-212: the Select step is data-gated — both source slots must hold a
@@ -45,15 +47,13 @@ export function AppShell(): JSX.Element {
       <header className="bg-surface border-border flex items-center gap-4 border-b px-4 py-3">
         <h1 className="text-lg font-bold text-stitch-700 dark:text-stitch-200">stitch</h1>
         {/* P-227: brand tagline yields its row space on narrow screens. */}
-        {viewport === 'wide' && (
-          <p className="text-muted text-sm">AI-augmented multi-repo composition</p>
-        )}
+        {viewport === 'wide' && <p className="text-muted text-sm">{t('shell.tagline')}</p>}
         <span
           className="ml-auto rounded px-2 py-0.5 text-xs"
           data-testid="run-status"
           aria-label="run status"
         >
-          idle
+          {t('shell.runStatus.idle')}
         </span>
         <ThemeToggle />
         <Link
@@ -61,7 +61,7 @@ export function AppShell(): JSX.Element {
           className="text-muted flex min-h-11 items-center px-2 text-sm"
           data-testid="settings-link"
         >
-          settings
+          {t('shell.settings')}
         </Link>
       </header>
       <div className="flex">

@@ -14,16 +14,21 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { createQueryClient } from './jobs.js';
 import { AppShellRoutes } from './router.js';
+import { I18nProvider } from './i18n/index.js';
 
 const queryClient = createQueryClient();
 
 export function App(): JSX.Element {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppShellRoutes />
-      </BrowserRouter>
-      <Toaster theme="system" position="bottom-right" richColors closeButton />
+      {/* P-234: the i18n provider sits inside the query client and outside
+          the router — every routed screen can translate. */}
+      <I18nProvider>
+        <BrowserRouter>
+          <AppShellRoutes />
+        </BrowserRouter>
+        <Toaster theme="system" position="bottom-right" richColors closeButton />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

@@ -41,6 +41,8 @@ export interface SettingsData {
   readonly offline?: boolean;
   /** Provider-key set status (true = configured). NEVER carries values. */
   readonly keys?: Readonly<Record<string, boolean>>;
+  /** P-234 extension: the chosen UI locale. */
+  readonly locale?: string;
 }
 
 /** Deep-partial patch body for PATCH /api/settings. */
@@ -53,6 +55,8 @@ export interface SettingsPatch {
   network?: { offline?: boolean };
   /** P-229 extension: tour dismissal rides the same PATCH funnel. */
   tour?: { dismissed?: boolean };
+  /** P-234 extension: the UI locale rides the same PATCH funnel. */
+  i18n?: { locale?: string };
 }
 
 type Body = {
@@ -64,6 +68,7 @@ type Body = {
   sandbox?: { limits?: { timeout?: unknown; memory?: unknown } };
   network?: { offline?: unknown };
   tour?: { dismissed?: unknown };
+  i18n?: { locale?: unknown };
   keys?: Record<string, unknown>;
 };
 
@@ -106,6 +111,7 @@ export async function getSettings(): Promise<SettingsData> {
       ? { memory: raw.sandbox.limits.memory }
       : {}),
     ...(typeof raw.network?.offline === 'boolean' ? { offline: raw.network.offline } : {}),
+    ...(typeof raw.i18n?.locale === 'string' ? { locale: raw.i18n.locale } : {}),
     ...(Object.keys(keys).length > 0 ? { keys } : {}),
   };
 }

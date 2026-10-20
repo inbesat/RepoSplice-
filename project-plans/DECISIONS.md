@@ -4393,4 +4393,55 @@ Date: 2026-10-20. Phase: P-233 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-119: Web i18n layer with a typed catalog (P-234)
+
+Date: 2026-10-20. Phase: P-234 (Web Epic 11, optional wave). Owner: aradhy lane.
+
+1. **Leaf module, spec file names kept.** The phase file names
+   `src/i18n/index.ts`, `en.ts`, `es.ts` and `i18n/index.test.ts`; those
+   files therefore stay JSX-free (the provider builds its context provider
+   with `createElement`, the test with `createElement` too). This keeps the
+   mandated paths exactly as specified — the alternative (renaming to .tsx)
+   was rejected here on purpose, unlike P-231's a11y module.
+2. **Typed catalog.** `Keys = keyof typeof en`; `es.ts` is typed
+   `Partial<Record<Keys, string>>`, so a key that does not exist in en.ts is
+   a compile error, while a key that exists but is untranslated falls back
+   to English at runtime (`translate`: locale catalog -> en -> the key
+   itself). Interpolation replaces `{name}` placeholders and leaves unknown
+   ones intact.
+3. **One copy of the English strings.** The error copy (titles +
+   recovery lines) is owned by `lib/errors.ts` (the code->family mapper);
+   `en.ts` REFERENCES the exported TITLES/RECOVERY instead of duplicating
+   them, so no string drifts and no em dash is retyped.
+4. **No hard dependency.** `useT()` returns a default English context when
+   no provider is mounted, so every screen renders without it; the provider
+   is mounted once, in App.tsx. The phase stays skippable.
+5. **Locale resolution.** Explicit provider prop > persisted localStorage
+   (`stitch-locale`) > `navigator.language` > `en`. Candidates are
+   normalised to their base language ('es-ES' -> 'es'); unsupported
+   languages fall back to `en`.
+6. **Config override deviation.** The `[web] locale` config key (P-200)
+   is NOT implemented — core's config schema has no `[web]` section (same
+   deviation recorded for the tour flag in ADR-114). The server-side copy
+   rides the settings PATCH extension key `i18n.locale` (client contract,
+   following the P-225 `tour.dismissed` precedent) plus the localStorage
+   copy that the provider persists.
+7. **RTL.** `ar` ships as an RTL sample with no strings of its own (they
+   fall back to English); the provider sets `<html dir="rtl"|"ltr">` and
+   `lang`. A full directional audit of every flex/margin usage is NOT
+   done — the catalog plus the `dir` attribute is the contract here, and
+   the audit belongs with the locale that actually has translations.
+8. **Localized validation set.** Shell tagline/settings/idle, the P-229
+   hero + the tour step counter, the P-228 error titles/recoveries, and the
+   P-225 settings title + the new Language section. The remaining strings
+   migrate opportunistically.
+9. **The boundary stays a class.** `ErrorBoundary` cannot call hooks, so
+   the fallback copy is rendered by a function component (`ErrorFallback`)
+   that reads the i18n context; the class keeps state, logging and the id.
+10. **Tests.** Four mandated names verbatim: 'interpolates', 'falls back
+    missing', 'detects locale', 'rtl dir'. Zero pin supersessions — the
+    English output is byte-identical to the previous inline strings.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

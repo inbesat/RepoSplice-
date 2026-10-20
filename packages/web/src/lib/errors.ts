@@ -54,7 +54,9 @@ function rawMessage(raw: unknown): string {
   return '';
 }
 
-const RECOVERY: Readonly<Record<Exclude<ErrorFamily, 'internal'>, string>> = {
+/** The recovery line per family — exported so the i18n catalog (P-234) can
+ * reference the SAME copy instead of duplicating it. */
+export const RECOVERY: Readonly<Record<Exclude<ErrorFamily, 'internal'>, string>> = {
   config: 'run stitch config and fix the highlighted field.',
   license: 'run stitch license — allow, deny, or decide the flagged licenses.',
   sandbox: 'check Docker (or the GitHub Actions fallback) is available and retry.',
@@ -64,7 +66,9 @@ const RECOVERY: Readonly<Record<Exclude<ErrorFamily, 'internal'>, string>> = {
   path: 'check the source paths and re-pick the file selection.',
 };
 
-const TITLES: Readonly<Record<ErrorFamily, string>> = {
+/** The title per family — exported so the i18n catalog (P-234) references the
+ * SAME copy. */
+export const TITLES: Readonly<Record<ErrorFamily, string>> = {
   config: 'Configuration problem',
   license: 'License policy blocked this',
   sandbox: 'Verification environment problem',

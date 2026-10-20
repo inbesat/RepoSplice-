@@ -12,11 +12,13 @@ import { getSettings, patchSettings, type SettingsData } from '../api/settings.j
 import {
   AiSection,
   AppearanceSection,
+  LanguageSection,
   LicensesSection,
   NetworkSection,
   SandboxSection,
 } from '../components/settings/sections.js';
 import { getSandboxCapabilities } from '../api/sandbox.js';
+import { useT } from '../i18n/index.js';
 
 const UNSAVED_MESSAGE = 'Unsaved changes — leave anyway?';
 
@@ -33,9 +35,10 @@ interface Draft {
   timeoutSec: number;
   memory: string;
   offline: boolean;
+  locale: string;
 }
 
-function snapToDraft(data: SettingsData): Draft {
+function snapToDraft(data: SettingsData, fallbackLocale: string): Draft {
   return {
     provider: 'openrouter',
     model: data.model ?? 'openrouter/anthropic/claude-3.5-sonnet',
@@ -49,6 +52,7 @@ function snapToDraft(data: SettingsData): Draft {
     timeoutSec: data.timeoutSec ?? 600,
     memory: data.memory ?? '2g',
     offline: data.offline ?? false,
+    locale: data.locale ?? fallbackLocale,
   };
 }
 
@@ -64,10 +68,12 @@ function snapOf(draft: Draft): string {
     timeoutSec: draft.timeoutSec,
     memory: draft.memory,
     offline: draft.offline,
+    locale: draft.locale,
   });
 }
 
 export function SettingsPage(): JSX.Element {
+  const { t, locale: activeLocale, setLocale } = useT();
   const [loaded, setLoaded] = useState<SettingsData | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [capability, setCapability] = useState('checking…');
@@ -80,7 +86,7 @@ export function SettingsPage(): JSX.Element {
       .then(([data, caps]) => {
         if (cancelled) return;
         setLoaded(data);
-        setDraft(snapToDraft(data));
+        setDraft(snapToDraft(data, activeLocale));
         setCapability(caps.backend);
       })
       .catch((e: unknown) => {
@@ -92,8 +98,11 @@ export function SettingsPage(): JSX.Element {
   }, []);
 
   const dirty = useMemo(
-    () => loaded !== null && draft !== null && snapOf(draft) !== snapOf(snapToDraft(loaded)),
-    [loaded, draft]
+    () =>
+      loaded !== null &&
+      draft !== null &&
+      snapOf(draft) !== snapOf(snapToDraft(loaded, activeLocale)),
+    [loaded, draft, activeLocale]
   );
 
   // Unsaved-changes guard: intercept internal anchor clicks + beforeunload.
@@ -195,10 +204,22 @@ export function SettingsPage(): JSX.Element {
     }
   }, [draft]);
 
+  const saveLanguage = useCallback(async (): Promise<void> => {
+    if (draft === null) return;
+    try {
+      await patchSettings({ i18n: { locale: draft.locale } });
+      setLocale(draft.locale);
+      setSaved(t('settings.language.saved'));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [draft, setLocale, t]);
+
   if (draft === null) {
     return (
       <section aria-label="settings" className="p-4">
-        <h2 className="text-title">Settings</h2>
+        <h2 className="text-title">{t('settings.title')}</h2>
         {error !== null ? (
           <div role="alert" className="text-body text-danger">
             ✘ {error}
@@ -226,7 +247,7 @@ export function SettingsPage(): JSX.Element {
 
   return (
     <section aria-label="settings" className="flex flex-col gap-6 p-4">
-      <h2 className="text-title">Settings</h2>
+      <h2 className="text-title">{t('settings.title')}</h2>
       {dirty && (
         <p role="status" data-testid="unsaved-note" className="text-caption text-warning">
           unsaved changes — saving a section clears the note
@@ -291,6 +312,12 @@ export function SettingsPage(): JSX.Element {
       {saveBtn('Save appearance', saveAppearance, 'save-appearance')}
       <NetworkSection value={draft.offline} onChange={next => set('offline', next)} />
       {saveBtn('Save network', saveNetwork, 'save-network')}
+      <LanguageSection
+        value={draft.locale}
+        onChange={next => set('locale', next)}
+        labels={{ legend: t('settings.language.legend'), label: t('settings.language.label') }}
+      />
+      {saveBtn(t('settings.language.save'), saveLanguage, 'save-language')}
       <div aria-label="provider key status" className="flex flex-col gap-1">
         <span className="text-title">Provider keys</span>
         {['openrouter', 'anthropic'].map(name => (

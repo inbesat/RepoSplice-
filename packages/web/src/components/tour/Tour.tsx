@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { TOUR_STEPS } from './steps.js';
 import { useTourStore } from '../../store/tour.js';
+import { useT } from '../../i18n/index.js';
 
 function systemReduced(): boolean {
   return (
@@ -22,6 +23,7 @@ export function Tour(): JSX.Element | null {
   const prev = useTourStore(state => state.prev);
   const skip = useTourStore(state => state.skip);
   const complete = useTourStore(state => state.complete);
+  const { t } = useT();
   const cardRef = useRef<HTMLDivElement>(null);
 
   const step = TOUR_STEPS[stepIdx];
@@ -89,7 +91,7 @@ export function Tour(): JSX.Element | null {
         data-testid="tour-card"
       >
         <p className="text-caption text-muted">
-          step {stepIdx + 1} of {TOUR_STEPS.length}
+          {t('tour.step', { current: stepIdx + 1, total: TOUR_STEPS.length })}
         </p>
         <h2 className="text-title mt-1">{step.title}</h2>
         <p className="text-body text-muted mt-2">{step.body}</p>

@@ -12,6 +12,7 @@ import { RepoPicker } from '../components/RepoPicker.js';
 import { SessionBar } from '../components/SessionBar.js';
 import { canProceedSourceSelection, useSourcesStore } from '../store/selection.js';
 import { useTourStore, TOUR_AUTOSTART_KEY } from '../store/tour.js';
+import { useT } from '../i18n/index.js';
 
 export function SourcesPage(): JSX.Element {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export function SourcesPage(): JSX.Element {
   const sourcesB = useSourcesStore(state => state.sourcesB);
   const dismissed = useTourStore(state => state.dismissed);
   const startTour = useTourStore(state => state.start);
+  const { t } = useT();
 
   // P-229: the hero shares the empty-state condition and hides once the
   // tour (or the user) has dismissed onboarding.
@@ -61,18 +63,18 @@ export function SourcesPage(): JSX.Element {
           aria-label="getting started"
           className="border-border bg-surface rounded-lg border p-6"
         >
-          <h2 className="text-title">Welcome to stitch</h2>
+          <h2 className="text-title">{t('tour.hero.title')}</h2>
           <ul className="text-body text-muted mt-3 list-disc space-y-1 pl-5">
-            <li>Pick repo A, pick repo B, click merge.</li>
-            <li>The AI plans the merge — you review the proposal.</li>
-            <li>Approve to create the merged repo C.</li>
+            <li>{t('tour.hero.bullet.1')}</li>
+            <li>{t('tour.hero.bullet.2')}</li>
+            <li>{t('tour.hero.bullet.3')}</li>
           </ul>
           <button
             type="button"
             className="text-primary border-primary mt-4 min-h-11 rounded border px-3"
             onClick={() => startTour()}
           >
-            Take the tour
+            {t('tour.hero.cta')}
           </button>
         </section>
       )}
