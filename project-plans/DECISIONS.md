@@ -4894,4 +4894,44 @@ Date: 2026-10-20. Phase: P-320 (Wave 1.5, inbesat lane).
 
 ---
 
+## ADR-129: Eval corpus - 20 real repo pairs with pinned SHAs and permissive licenses (P-321)
+
+Date: 2026-10-20. Phase: P-321 (Wave 1.5, Eval Harness). Owner: inbesat lane.
+
+1. **Real data only.** The corpus is 20 pairs (5 per ecosystem: js, python,
+   go, rust) built from real public repositories. Every commit SHA was
+   resolved with `git ls-remote --tags --refs` and is a real 40-hex
+   commit id of a real tag; no SHA is invented. The tag actually used is
+   recorded per side (`repo_a_tag` / `repo_b_tag`).
+2. **Licenses are real SPDX ids, with their source recorded.** Each side's
+   license was read from the repository's own license file and mapped to an
+   SPDX id; the per-side `license_a_source` / `license_b_source` field
+   records where it came from (`raw-file` for all 40 sides - the GitHub
+   API's unauthenticated 60 requests/hour budget was exhausted while
+   resolving the corpus).
+3. **Known limitation, recorded.** In this environment
+   `raw.githubusercontent.com` serves the default branch only: every
+   `.../<sha>/LICENSE` request answered 404 while `.../HEAD/LICENSE`
+   worked. The license was therefore read at HEAD, not at the pinned SHA.
+   P-322's SHA verification is where the pinned-tree check belongs.
+4. **One pair dropped, on purpose.** `redis/redis` was dropped: its
+   current license is AGPL-3.0, outside the permissive set. It was
+   replaced by `gorilla/mux` (BSD-3-Clause) + `labstack/echo` (MIT).
+5. **One permissive list, two languages.** The permissive set lives in
+   `packages/core/src/license/categories.ts` (the P-120..P-122 source of
+   truth). The vitest mirror asserts against that real table; the python
+   test repeats the list (python cannot import a TS module) with a
+   comment naming the TS file.
+6. **Schema drift is compared semantically.** The P-320 emitter compared
+   the committed `eval/corpus/schema.json` byte-for-byte, and lint-staged
+   prettier reformats that file - a formatting difference is not schema
+   drift. Both the emitter's `--check` and the vitest mirror now compare
+   the parsed documents (sorted-key canonical form / deep equality).
+7. **Scope.** The P-320 schema is unchanged, the frozen files are
+   untouched, the mandated python ids are unchanged, and the throwaway
+   resolvers used to gather the data were deleted before the commit. The
+   corpus is data plus its two test layers; the code gate stays green.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

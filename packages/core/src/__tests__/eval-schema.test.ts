@@ -13,6 +13,7 @@ import {
   evalPairJsonSchema,
   evalPairSchema,
 } from '../eval/schema.js';
+import { LICENSE_CATEGORIES } from '../license/categories.js';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..', '..');
 const SCHEMA_PATH = join(REPO_ROOT, 'eval', 'corpus', 'schema.json');
@@ -61,8 +62,10 @@ describe('eval corpus schema (P-320)', () => {
   });
 
   it('the committed json schema matches the emitted one', () => {
-    const committed = readFileSync(SCHEMA_PATH, 'utf8');
-    expect(committed).toBe(`${JSON.stringify(evalPairJsonSchema(), null, 2)}\n`);
+    // Semantic comparison: lint-staged may reformat the committed file
+    // (prettier), so the bytes can differ while the schema is identical.
+    const committed = readJson(SCHEMA_PATH);
+    expect(committed).toEqual(evalPairJsonSchema());
   });
 
   it('the corpus manifest parses', () => {
@@ -70,6 +73,53 @@ describe('eval corpus schema (P-320)', () => {
     expect(Array.isArray(manifest)).toBe(true);
     for (const entry of manifest) {
       expect(evalPairSchema.safeParse(entry).success).toBe(true);
+    }
+  });
+});
+
+// P-321 — the sourced corpus (20 real repo pairs). The python mirror with
+// the mandated pytest ids lives in `eval/test_corpus.py`.
+describe('eval corpus (P-321)', () => {
+  const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as Record<string, unknown>[];
+
+  it('holds 20 sourced pairs', () => {
+    expect(manifest.length).toBe(20);
+  });
+
+  it('balances 5 pairs per ecosystem', () => {
+    const counts = new Map<string, number>();
+    for (const pair of manifest) {
+      const ecosystem = String(pair['ecosystem']);
+      counts.set(ecosystem, (counts.get(ecosystem) ?? 0) + 1);
+    }
+    for (const ecosystem of EVAL_ECOSYSTEMS) {
+      expect(counts.get(ecosystem) ?? 0).toBe(5);
+    }
+  });
+
+  it('uses unique pair ids', () => {
+    const ids = manifest.map(pair => String(pair['pair_id']));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('validates every pair against the schema', () => {
+    for (const pair of manifest) {
+      expect(evalPairSchema.safeParse(pair).success).toBe(true);
+    }
+  });
+
+  it('pins every side to a 40 hex sha', () => {
+    for (const pair of manifest) {
+      expect(String(pair['repo_a_sha'])).toMatch(/^[0-9a-f]{40}$/);
+      expect(String(pair['repo_b_sha'])).toMatch(/^[0-9a-f]{40}$/);
+    }
+  });
+
+  it('uses permissive licenses only', () => {
+    for (const pair of manifest) {
+      for (const side of ['license_a', 'license_b']) {
+        expect(LICENSE_CATEGORIES[String(pair[side])]).toBe('permissive');
+      }
     }
   });
 });

@@ -18,6 +18,30 @@ export function renderSchema(): string {
   return `${JSON.stringify(evalPairJsonSchema(), null, 2)}\n`;
 }
 
+/** Canonical JSON: sorted keys, so a re-formatted file compares equal. */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0
+    );
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * Semantic comparison: lint-staged may reformat the committed schema file
+ * (prettier), so the bytes can differ while the schema is identical.
+ */
+export function sameSchema(committed: string, emitted: string): boolean {
+  try {
+    return canonical(JSON.parse(committed)) === canonical(JSON.parse(emitted));
+  } catch {
+    return false;
+  }
+}
+
 /** Write (or check) the emitted schema. Returns the process exit code. */
 export function main(argv: readonly string[]): number {
   const check = argv.includes('--check');
@@ -30,7 +54,7 @@ export function main(argv: readonly string[]): number {
       console.error(`eval schema: ${output} is missing - run: bun scripts/emit-eval-schema.ts`);
       return 1;
     }
-    if (readFileSync(output, 'utf8') !== text) {
+    if (!sameSchema(readFileSync(output, 'utf8'), text)) {
       console.error(`eval schema: ${output} is out of date - run: bun scripts/emit-eval-schema.ts`);
       return 1;
     }
