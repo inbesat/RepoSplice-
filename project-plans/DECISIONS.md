@@ -3971,4 +3971,40 @@ Date: 2026-10-20. Phase: P-223 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-109: Web job history with live updates (P-224)
+
+Date: 2026-10-20. Phase: P-224 (Web Epic 11). Owner: aradhy lane.
+
+1. **Client contracts.** `GET /api/jobs`, `GET /api/jobs/<id>`, and
+   `POST /api/jobs/<id>/rerun` do not exist on the serve side yet (P-247
+   job store / P-192 handler-map deferred). `api/jobs.ts` fixes the web
+   face, mirroring the ADR-106/107 client-contract pattern.
+2. **JobSummary is byte-stable.** The wire shape ({id, kind, status,
+   started, finished?, durationMs?, result?}) backs the CLI 'stitch
+   status' view (P-194). Keep field names and meanings identical across
+   lanes; the wire type is declared locally per the TS6059 precedent
+   (ADR-104).
+3. **Topic model deviation.** The spec's per-job 'job:*' wildcard
+   subscription is replaced by ONE 'jobs' topic carrying JobSummary
+   events, because WsClient (P-223) subscribes exact topic names and
+   wildcard support would grow the transport out of scope. The server
+   lane implements the single-topic contract.
+4. **Not mounted.** P-210's STEPS table has no history route, so
+   HistoryPage is built and tested but not routed — the same deliberate
+   decoupling as SandboxPanel (ADR-106) and CreditsPreview (ADR-107).
+5. **Cap over virtualization.** Rendering is capped at the latest 300
+   jobs with a 'Showing the latest N' note (P-217 diff-viewer precedent);
+   react-window remains the upgrade path and is noted as a shortcut.
+6. **Testability.** The page takes an injectable `feed` (connect+
+   subscribe pair). Default feed is inert without a WebSocket global
+   (P-216 pin family). FakeWebSocket stays inside lib/ws.test.ts only;
+   page tests never touch real sockets.
+7. **Zero pin supersessions.** Five mandated test names verbatim:
+   'renders history', 'live ws update', 'filters', 'rerun', 'empty
+   error'. The lint gate auto-fixed 25 prettier-shape errors; the only
+   behavioral fix was splitting the job id into its own testid element
+   (found by test).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
