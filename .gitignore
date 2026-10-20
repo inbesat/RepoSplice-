@@ -65,3 +65,5 @@ sandbox-tmp/
 **/playwright-report/
 **/.playwright/
 
+
+__pycache__/

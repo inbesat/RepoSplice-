@@ -1,0 +1,16 @@
+[
+  {
+    "pair_id": "example-0001",
+    "repo_a_url": "https://github.com/octocat/Hello-World",
+    "repo_b_url": "https://github.com/octocat/Spoon-Knife",
+    "repo_a_sha": "0000000000000000000000000000000000000000",
+    "repo_b_sha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "extract_paths_a": ["./"],
+    "extract_paths_b": ["./"],
+    "ecosystem": "js",
+    "license_a": "MIT",
+    "license_b": "MIT",
+    "expected_outcome": "clean",
+    "note": "Example entry: the SHAs are placeholders until P-321 pins the real commits."
+  }
+]

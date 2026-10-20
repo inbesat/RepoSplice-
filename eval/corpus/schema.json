@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pair_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_a_url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_b_url": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_a_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "repo_b_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "extract_paths_a": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "extract_paths_b": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "ecosystem": {
+      "type": "string",
+      "enum": ["js", "python", "go", "rust"]
+    },
+    "license_a": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*$"
+    },
+    "license_b": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9.+-]*$"
+    },
+    "expected_outcome": {
+      "type": "string",
+      "enum": ["clean", "conflicts", "license_block", "semantic_drift"]
+    }
+  },
+  "required": [
+    "pair_id",
+    "repo_a_url",
+    "repo_b_url",
+    "repo_a_sha",
+    "repo_b_sha",
+    "extract_paths_a",
+    "extract_paths_b",
+    "ecosystem",
+    "license_a",
+    "license_b",
+    "expected_outcome"
+  ],
+  "additionalProperties": {}
+}

@@ -4842,4 +4842,56 @@ Date: 2026-10-20. Phase: P-317 (workflow phases). Owner: inbesat lane.
 
 ---
 
+## ADR-128: Eval corpus schema (EvalPair) with an emitted JSON Schema and a dependency-free validator (P-320)
+
+Date: 2026-10-20. Phase: P-320 (Wave 1.5, inbesat lane).
+
+1. **Path mapping.** The plan names `core/test_eval_schema.py`; the repo
+   has no root `core/` folder - the core package is `packages/core`, so
+   the mandated pytest file lands at `packages/core/test_eval_schema.py`
+   (the same plan-vs-repo mapping style as the earlier phases).
+2. **The schema is a loose object.** `evalPairSchema` is a
+   `z.looseObject`, so a future corpus field (P-332's expansion) does
+   not invalidate an existing pair; unknown keys are preserved and
+   ignored by the validator.
+3. **The JSON Schema comes from zod 4.** `z.toJSONSchema(schema, {
+   target: 'draft-2020-12' })` is native in zod 4 - no
+   `zod-to-json-schema` dependency. `scripts/emit-eval-schema.ts`
+   writes `eval/corpus/schema.json` deterministically and its `--check`
+   mode fails when the committed file drifts (the CI gate).
+4. **The python validator is dependency-free.**
+   `eval/scripts/validate_corpus.py` implements the small JSON-Schema
+   subset the corpus uses (type/required/properties/enum/pattern/
+   minItems/minLength plus a local $ref) with the stdlib only, so a
+   fresh clone can validate the corpus without a pip install
+   (`jsonschema` happens to be installed locally but is deliberately
+   not assumed).
+5. **Both test layers.** The three mandated pytest ids
+   (`test_schema_valid`, `test_example_pair_validates`,
+   `test_invalid_rejected`) live in `packages/core/test_eval_schema.py`
+   and run both under pytest and standalone; the repo CI is bun-only,
+   so `packages/core/src/__tests__/eval-schema.test.ts` mirrors the
+   same eight assertions (including a byte-comparison of the committed
+   schema against the emitted one) and is what CI enforces. The python
+   side was verified locally with python 3.14.2 + pytest 9.1.1.
+6. **The example pair is honest.**
+   `eval/corpus/pair-example/pair.json` uses obviously placeholder SHAs
+   (40 zeros / `deadbeef` x5) and says so in its `note`; P-321 replaces
+   them with pinned real commits. Nothing fabricated is presented as
+   real.
+7. **The enums are the plan's.** Ecosystems js|python|go|rust, expected
+   outcomes clean|conflicts|license_block|semantic_drift, SHAs are 40
+   lowercase hex, licenses are SPDX-shaped ids.
+8. **No frozen file changes.** The schema is a new leaf module (zod
+   only), the core barrel gains one export line, `eval/**` is a new
+   top-level folder, and `scripts/emit-eval-schema.ts` reuses the
+   P-314 scripts tsconfig + vitest config.
+9. **Two authoring bugs caught by the gate** (recorded so the next
+   agent repeats neither): a write that turned `//` comments into `#`
+   comments inside a TypeScript file (a hard parse error, caught by a
+   byte-level check) and a repo-root path that was one segment short in
+   the vitest mirror.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

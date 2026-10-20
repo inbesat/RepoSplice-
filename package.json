@@ -18,6 +18,8 @@
     "test:coverage": "vitest run --coverage",
     "check:contracts": "bun scripts/contract-freeze.ts",
     "check:contracts:update": "bun scripts/contract-freeze.ts --update",
+    "eval:schema": "bun scripts/emit-eval-schema.ts",
+    "eval:schema:check": "bun scripts/emit-eval-schema.ts --check",
     "build": "bun run build:core",
     "build:core": "cd packages/core && bun run build",
     "build:cli": "echo \"build:cli: deferred to P-062 (tsup)\" && exit 0",

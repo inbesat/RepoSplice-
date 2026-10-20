@@ -1408,3 +1408,13 @@ export type {
   SQLiteRow,
   SQLiteRunInfo,
 } from './store/schema.js';
+
+// P-320 — the eval corpus contract: one EvalPair per corpus entry.
+export {
+  EVAL_ECOSYSTEMS,
+  EVAL_OUTCOMES,
+  EVAL_PAIR_SCHEMA_ID,
+  evalPairJsonSchema,
+  evalPairSchema,
+} from './eval/schema.js';
+export type { EvalPair } from './eval/schema.js';
