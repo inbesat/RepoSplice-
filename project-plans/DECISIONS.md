@@ -4747,4 +4747,59 @@ Date: 2026-10-20. Phase: P-315 (workflow phases). Owner: inbesat lane.
 
 ---
 
+## ADR-126: Wave 0 handoff package for aradhy (P-316)
+
+Date: 2026-10-20. Phase: P-316 (workflow phases). Owner: inbesat lane.
+
+1. **`HANDOFF.md` is the Wave 0 -> Wave 1 handoff document.** It carries
+   the Master Plan's "Wave 0 Handoff Checklist (inbesat -> aradhy)"
+   as a status table plus the clone route, the install steps, the run
+   commands, the verification loop, the ownership map, and the frozen
+   contract procedure. The PROGRESS one-liner's "zipped repo
+   instructions" are the `git archive --format=zip` route documented in
+   its own section.
+2. **The checklist lines that name files which do not exist are mapped
+   to the real contracts.** `packages/core/src/types/index.ts` and
+   `packages/core/src/types/ws.ts` were never created - that folder only
+   holds ambient `.d.ts` shims. The contracts that actually exist (and
+   that the P-314 freeze gate pins by hash) are
+   `packages/core/src/events/{topics,bus,progress}.ts`,
+   `packages/core/src/jobs/types.ts`, and the web mirror
+   `packages/web/src/lib/ws.ts`; the WS message schema lives in
+   `packages/core/src/events/topics.ts` (zod `eventEnvelopeSchema`).
+   HANDOFF.md says so instead of pointing at files that are not there.
+3. **"All deps already declared" is the workspace layout.** The root
+   manifest holds scripts and workspace globs only; the real
+   dependencies live in `packages/<pkg>/package.json`. aradhy adds a
+   dependency to their own package manifest, never to the root one, and
+   never to a frozen file.
+4. **The root `dev:*`/`build:web` scripts were echo stubs** left over
+   from the deferred phases ("deferred to P-189 / P-208 / P-048"), even
+   though the CLI (P-189) and the Vite web app (P-208) exist. A handoff
+   document that tells aradhy to run a stub would be a lie, so the root
+   scripts now run the real commands. `packages/cli`'s own build/dev
+   stubs stay: `tsup` is not a dependency, so the CLI runs from source.
+5. **`stitch doctor` is documented with the owner's verified output**
+   (PASS git / git-filter-repo / bun / node, WARN docker daemon and WARN
+   config validity - both optional) and exits 0. The machine-side
+   verification is aradhy's step.
+6. **The zip route has no `.git`.** An archive from `git archive` carries
+   the working tree but no history, so branches and the PR flow do not
+   apply; the document says to ask the owner for a fresh archive.
+7. **A bun workspace-script bug was found and fixed while verifying the
+   commands.** In bun 1.3.11 `bun --cwd <dir> run <script>` is a silent
+   no-op (it prints the usage text and exits 0) and `bun --filter <pkg>
+   run <script>` matches no package. The working forms are
+   `bun run --filter <pkg> <script>` and `bun run --cwd <dir> <script>`.
+   The three root scripts and all five CI web jobs used the broken
+   form, so the web CI jobs would have failed; they now use the
+   verified form.
+8. **Doc + root-script phase.** No contract or runtime behaviour changed,
+   no mandated test names exist for this one-line phase, and the full
+   code gate (scripts typecheck/tests, web typecheck, e2e typecheck, web
+   suite, Playwright E2E, the perf project, root typecheck and lint)
+   still runs green.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
