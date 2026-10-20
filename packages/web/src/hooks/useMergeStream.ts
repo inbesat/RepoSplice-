@@ -1,14 +1,19 @@
-// P-216 — the merge stream subscription.
+// P-216 — the merge stream subscription (P-223-rewired).
 //
 // CLIENT CONTRACT: the WS hub (P-193 serves /ws through the vite proxy) does
-// not exist yet — the default connector is written against the shape P-193
-// will emit and the auto-reconnect is a stub that P-223 replaces with real
-// backoff. Tests never touch it: they inject the event pump via `connect`.
+// not exist yet. Since P-223 the default connector rides the shared
+// WsClient singleton (lib/ws.ts): real exponential-backoff reconnect,
+// buffering, resubscription, heartbeat — the old fixed-2s stub is gone.
+// The Connector facade and injectability stay (tests inject the pump; the
+// P-216 plumbing pin "inert without a WebSocket global" is preserved).
 //
 // Event JSON shape is set by core P-162 (don't hardcode differing shapes): a
-// union of reasoning tokens, tool calls, and pipeline progress.
+// union of reasoning tokens, tool calls, and pipeline progress. The hub
+// envelope {id, topic, payload, ts} is unwrapped by WsClient — subscribers
+// see bare StreamEvents on the 'merge' topic.
 
 import { useEffect, useState } from 'react';
+import { wsClient } from '../lib/ws.js';
 
 export type StreamEvent =
   | { type: 'reasoning'; id: string; text: string }
@@ -20,44 +25,18 @@ export type StreamEvent =
     }
   | { type: 'progress'; step: string; status: string };
 
+export const MERGE_TOPIC = 'merge';
+
 /** Subscribes a handler to the merge stream; returns the unsubscribe fn. */
 export type Connector = (handler: (event: StreamEvent) => void) => () => void;
 
-const RECONNECT_MS = 2000;
-
 /**
- * Default connector: WebSocket to the serve hub through the vite /ws proxy.
- * Reconnect is a fixed-interval stub (P-223 replaces it with real backoff).
+ * Default connector: the 'merge' topic of the shared WsClient singleton.
+ * Inert without a WebSocket global (SSR / bare jsdom) — P-216 pin kept.
  */
 export const defaultConnect: Connector = handler => {
-  let closed = false;
-  let socket: WebSocket | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-
-  const open = (): void => {
-    if (closed) return;
-    // No WebSocket at runtime (SSR, jsdom without the global) — stay inert;
-    // P-223's real reconnect logic replaces this connector anyway.
-    if (typeof WebSocket === 'undefined') return;
-    socket = new WebSocket(`${location.origin.replace(/^http/, 'ws')}/ws`);
-    socket.onmessage = message => {
-      try {
-        handler(JSON.parse(String(message.data)) as StreamEvent);
-      } catch {
-        // Malformed frame — drop it, keep the stream alive.
-      }
-    };
-    // shortcut: reconnect stub fires blindly after a close; P-223 adds backoff/jitter.
-    socket.onclose = () => {
-      if (!closed) timer = setTimeout(open, RECONNECT_MS);
-    };
-  };
-  open();
-  return () => {
-    closed = true;
-    if (timer !== undefined) clearTimeout(timer);
-    socket?.close();
-  };
+  if (typeof WebSocket === 'undefined') return () => undefined;
+  return wsClient.subscribe<StreamEvent>(MERGE_TOPIC, payload => handler(payload));
 };
 
 export interface MergeStream {

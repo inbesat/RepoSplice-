@@ -3929,4 +3929,46 @@ Date: 2026-10-18. Phase: P-222 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-108: Web WS client with backoff and heartbeat reconnect (P-223)
+
+Date: 2026-10-20. Phase: P-223 (Web Epic 11). Owner: aradhy lane.
+
+1. **Shared singleton + topic multiplexer.** `lib/ws.ts` exports one
+   module-level `WsClient` (`wsClient`) pointed at the location-derived
+   `/ws` URL (the vite proxy to serve P-193). All consumers subscribe by
+   topic; the hub envelope `{id, topic, payload, ts}` is unwrapped by the
+   client so subscribers see bare payloads. The merge stream (P-216) now
+   subscribes to the `merge` topic through this singleton; P-224 job
+   history and later HIL messages ride the same transport.
+2. **Reconnect policy.** Exponential backoff starting at 500ms capped at
+   30s with jitter; the attempt counter resets on a successful open.
+   Unexpected drops move the client to `reconnecting` and rotate to a
+   fresh socket; `close()` is terminal (`closed`).
+3. **Offline buffering + resubscription.** Publishes issued while the
+   socket is not open are buffered and flushed (in order) immediately
+   after the `hello` handshake on (re)connect; active subscriptions are
+   re-announced via `hello {type:'hello', topics:[...]}` so the hub can
+   re-attach them (P-193 contract).
+4. **Redelivery dedupe.** Redelivered envelopes are deduped by envelope
+   id with a bounded 500-entry window (oldest evicted) — the hub may
+   replay during reconnect handshakes.
+5. **Heartbeat / stale detection.** A ping frame every heartbeatMs
+   (default 15s) arms a wait timer; ANY inbound frame clears it (traffic
+   proves liveness). If the next tick finds the timer still armed, the
+   socket is considered stale and force-closed, which flows into the
+   normal reconnect path.
+6. **useMergeStream rewired.** The old raw-socket default connector with
+   the fixed-2s reconnect stub is deleted — P-223's mandate replaces it.
+   The `Connector` facade and the P-216 pin 'inert without a WebSocket
+   global' are preserved (`typeof WebSocket === 'undefined'` guard).
+   `useWsTopic<T>(topic)` gives per-topic {events (capped 499), last,
+   status, send} so future consumers isolate their re-renders.
+7. **Testing.** Tests inject an in-memory `FakeWebSocket` via
+   `deps.open` (no globalThis stubbing) and use fake timers for backoff
+   and heartbeat. Six tests: the five mandated names verbatim
+   ('round trips', 'reconnects', 'buffers while down', 'resubscribes',
+   'heartbeat stale') plus 'dedupes redelivered envelopes by id'.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
