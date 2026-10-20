@@ -4127,4 +4127,48 @@ Date: 2026-10-20. Phase: P-227 (Web Epic 11). Owner: aradhy lane.
 
 ---
 
+## ADR-113: Web typed error boundaries with UI error mapping (P-228)
+
+Date: 2026-10-20. Phase: P-228 (Web Epic 11). Owner: aradhy lane.
+
+1. **ErrorBoundary replaces the router's RouteErrorBoundary.** The P-210
+   class had no tests referencing its output (grep-verified before the
+   swap), so replacing it created zero pin supersessions. One class now
+   serves as root and per-route boundary: AppShellRoutes wraps the whole
+   Routes tree with `label="root"` and each STEP page (plus /settings)
+   with its own `label=<step>` — one failing panel no longer kills the
+   shell.
+2. **Fallback anatomy.** Icon + toUiError-mapped title/message/recovery,
+   an `error id` (timestamp+random, rendered with data-testid
+   `error-id`) for trace correlation, 'reload' (location.reload) and
+   'copy error id' (clipboard, failure-swallowed) buttons. Logging is
+   console.error with the id — a web logger package is deferred; the id
+   keeps the trace when console output is available.
+3. **toUiError code mapping.** lib/errors.ts assigns each known core/CLI
+   code to a family (config/license/sandbox/ai/deps/hil/path) with a
+   human title and an actionable recovery line. Until P-192 delivers
+   typed error carries, thrown `Error(describeFailure(...))` strings are
+   scanned with /[A-Z][A-Z_]{3,}/ to recover the code; anything
+   unrecognized falls back to the internal family ('Something went
+   wrong') with the raw message. Raw stacks/JSON are never rendered.
+4. **Alert deferred sweep.** Alert.tsx is the standard severity-colored
+   surface (error/warning/success mapping to the P-209 semantic
+   tokens), but the 17 ad-hoc `role="alert"` sites across 12 panel
+   files were NOT swept this phase (shortcut comment in Alert.tsx):
+   swapping them one-by-one risks the panels' pinned tests for zero
+   behavior change; each panel upgrades to `<Alert>` + toUiError the
+   next time it is touched, which becomes trivial once P-192 typed
+   errors exist.
+5. **Dev throw button not implemented.** The spec's import.meta.env.DEV
+   'throw test' button is covered by the test Thrower component
+   instead; shipping a deliberate crash affordance in the bundle was
+   judged not worth the bytes (ponytail).
+6. **Foreign file.** `packages/web/src/SettingsForm.tsx` (+ test) at
+   the src root is not this lane's file and was left untouched.
+7. **Tests.** Four mandated names verbatim: 'boundary catches render
+   error', 'per route isolation', 'maps core codes', 'alert severities'.
+   console.error is spy-silenced in tests to keep output clean.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
