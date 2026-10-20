@@ -131,6 +131,12 @@ export async function evalRate(
     }
     record['human_score'] = rubric.data;
     record['human_rater'] = rater;
+    // P-327: both owners' scores must survive - human_score stays the
+    // latest, human_scores is the full list the baseline metrics read.
+    const scores = Array.isArray(record['human_scores'])
+      ? (record['human_scores'] as unknown[])
+      : [];
+    record['human_scores'] = [...scores, rubric.data];
     write(resultPath, `${JSON.stringify(record, null, 2)}\n`);
     if (options.json === true) {
       log(JSON.stringify(rubric.data));

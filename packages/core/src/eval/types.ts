@@ -27,6 +27,10 @@ export const evalResultSchema = z.looseObject({
   // the phase never ran (not an empty log).
   build_logs: z.array(z.string()).nullable(),
   test_logs: z.array(z.string()).nullable(),
+  /** P-326/P-327: the human rubric scores (the P-325 shape) + the rater. */
+  human_score: z.looseObject({}).nullish(),
+  human_scores: z.array(z.looseObject({})).nullish(),
+  human_rater: z.string().nullish(),
   rubric_score: z.number().min(1).max(5).nullable(),
   resolve_rate: z.number().min(0).max(1).nullable(),
   tokens: z.number().int().nonnegative(),

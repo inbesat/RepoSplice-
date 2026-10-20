@@ -40,6 +40,7 @@ import {
 } from './commands/license.js';
 import { deps, type DepsPromptContext } from './commands/deps.js';
 import { evalRate, type EvalRateOptions } from './commands/eval_rate.js';
+import { evalBaseline, type EvalBaselineOptions } from './commands/eval_baseline.js';
 import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
@@ -446,6 +447,18 @@ export function buildCLI(program: Command): Command {
     .action(async (pairId: string, options: EvalRateOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalRate(pairId, { ...globals, ...options });
+    });
+  evalCommand
+    .command('baseline')
+    .description(
+      'Score the corpus results into the baseline metrics and the GO/NO-GO decision (P-327)'
+    )
+    .option('--result-dir <path>', 'where the harness wrote the per-pair results')
+    .option('--corpus <path>', 'the corpus directory (for the expected pair ids)')
+    .option('--out <file>', 'where the baseline artifact is written')
+    .action(async (options: EvalBaselineOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalBaseline({ ...globals, ...options });
     });
 
   program

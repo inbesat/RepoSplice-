@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "generated_at": "2026-10-20T20:54:43.746Z",
+  "pairs": 3,
+  "rated": 0,
+  "build_pass_count": 2,
+  "build_pass_rate": 0.6667,
+  "rubric_avg": null,
+  "resolved_count": 0,
+  "resolve_rate": 0,
+  "decision": "pending",
+  "reasons": ["no pair carries a human rating - the decision stays pending"],
+  "categories": {
+    "resolution": 0,
+    "build": 0,
+    "test": 0,
+    "license": 0,
+    "timeout": 0,
+    "other": 1
+  },
+  "per_pair": [
+    {
+      "pair_id": "fixture-spot-js",
+      "status": "succeeded",
+      "build_pass": true,
+      "rubric_avg": null,
+      "ratings": 0,
+      "resolved": false,
+      "error_code": null,
+      "category": null
+    },
+    {
+      "pair_id": "fixture-spot-py",
+      "status": "succeeded",
+      "build_pass": false,
+      "rubric_avg": null,
+      "ratings": 0,
+      "resolved": false,
+      "error_code": null,
+      "category": "other"
+    },
+    {
+      "pair_id": "fixture-spot-go",
+      "status": "succeeded",
+      "build_pass": true,
+      "rubric_avg": null,
+      "ratings": 0,
+      "resolved": false,
+      "error_code": null,
+      "category": null
+    }
+  ]
+}

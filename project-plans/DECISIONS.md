@@ -5154,4 +5154,64 @@ Date: 2026-10-21. Phase: P-326 (Eval Harness epic). Owner: inbesat lane.
 
 ---
 
+## ADR-135: Eval baseline metrics with the GO/NO-GO decision (P-327)
+
+Date: 2026-10-21. Phase: P-327 (Eval Harness). Owner: inbesat lane.
+
+1. **The metrics live in the core; the CLI only wires IO.**
+   `packages/core/src/eval/baseline.ts` computes
+   `build_pass_rate`, `rubric_avg`, `resolve_rate` (a pair that builds AND
+   averages 4 or more), the preliminary failure categories and the
+   GO/NO-GO decision. `stitch eval baseline` (the third `eval` subcommand
+   beside `run` and `rate`) reads the corpus + the per-pair result JSONs,
+   writes `eval/results/baseline-<ts>.json` and exits 1 when a corpus pair
+   has no result - an incomplete run can never report a flattering number,
+   because a pair that never ran still counts in the denominator.
+2. **The decision follows the spec: the import-resolution failures must
+   sit in the top-two failure categories** for the cross-language work
+   (Epic 17) to be warranted. With no human rating at all the decision is
+   `pending` - a number nobody gave is never invented (a pair nobody
+   scored stays `rubric_avg: null`).
+3. **The real 20-pair run is DEFERRED, and the deferral is recorded.**
+   It needs Docker (the sandbox builds in a container; the doctor reports
+   the daemon as optional and the GitHub Actions fallback needs a token),
+   an AI provider key (without it every pipeline stage is `skipped` and no
+   merged child repo exists) and 30-60 minutes of wall clock. The exact
+   three-step sequence is in `eval/results/README.md`:
+   `stitch eval run eval/corpus --parallel 4 --output-dir ...` ->
+   `stitch eval rate <pair-id> --result-dir ...` for BOTH owners ->
+   `stitch eval baseline --result-dir ... --corpus eval/corpus --out ...`.
+4. **The shipped artifact is a DRY RUN, labelled as one.**
+   `eval/results/baseline-dryrun-20261021.json` was produced by the real
+   machinery over the P-324 fixture corpus (3 synthetic pairs, real local
+   builds, no human ratings): 3 pairs, build_pass_rate 0.6667,
+   rubric_avg null, resolve_rate 0, decision `pending` (the reason: "no
+   pair carries a human rating - the decision stays pending"). It proves
+   the machinery end to end; it is NOT a corpus measurement and the
+   GO/NO-GO gate stays open until the real run lands.
+5. **The failure taxonomy is preliminary** (P-331 formalizes it): the
+   codes are bucketed into resolution / build / test / license / timeout /
+   other, and an unknown code lands in `other` rather than being hidden.
+6. **Both raters' scores survive.** The P-326 rater tool appends to
+   `human_scores` (an array) and keeps `human_score` as the latest, so the
+   rubric average is over every rater; the result schema's three human
+   fields are OPTIONAL (`.nullish()`), so a result written before the
+   rating fields existed still validates.
+7. **The rubric average is computed with the real P-325 schema** - an
+   invalid rating is ignored rather than averaged in, and the per-pair
+   average is the mean of the raters' `meanScore` to one decimal.
+8. **Bugs found and fixed while building this phase** (implementation
+   side, not suppressed): the result schema's human fields were
+   `.nullable()` (which still REQUIRES the key) and broke two older
+   tests; the CLI's output directory was cut with `lastIndexOf('/')`,
+   which is wrong on Windows (`dirname` now); a missing pair was counted
+   out of the denominator; the CLI mirror compared a Promise; the unused
+   `listDir` dep and the dead `resultFiles` helper were removed.
+9. **Nothing else moved.** The P-320 pair schema, the P-323 runner, the
+   P-324 scoring module, the P-325 rubric module and the 20-pair corpus
+   are untouched; no frozen file changed; the two mandated python ids and
+   the bun mirrors are verbatim.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

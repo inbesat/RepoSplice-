@@ -39,6 +39,36 @@
         }
       ]
     },
+    "human_score": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": {}
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "human_scores": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": {}
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "human_rater": {
+      "type": ["string", "null"]
+    },
     "rubric_score": {
       "anyOf": [
         {

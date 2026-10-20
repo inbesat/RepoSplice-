@@ -1446,4 +1446,12 @@ export {
   semanticRubricSchema,
 } from './eval/rubric.js';
 export type { RubricDimension, RubricPair, SemanticRubric } from './eval/rubric.js';
+export { categoryFor, computeBaseline, RESOLVE_RUBRIC_THRESHOLD } from './eval/baseline.js';
+export type {
+  BaselineDecision,
+  BaselineInput,
+  BaselineMetrics,
+  BaselinePair,
+  FailureCategory,
+} from './eval/baseline.js';
 export { runPipeline } from './pipeline/runPipeline.js';
