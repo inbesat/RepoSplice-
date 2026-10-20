@@ -5139,4 +5139,19 @@ Date: 2026-10-21. Phase: P-325 (Eval Harness epic, inbesat lane).
 
 ---
 
+## ADR-134: Rater review tool for the human rubric (P-326)
+
+Date: 2026-10-21. Phase: P-326 (Eval Harness epic). Owner: inbesat lane.
+
+1. **The rater tool is a CLI command module** (`packages/cli/src/commands/eval_rate.ts`) in the P-198 house style: the question is a PORT (the real prompt is `ui/prompt.ts` `promptText`; tests inject a fake) and a broken prompt degrades to "cancelled" instead of throwing outward.
+2. **The rating is validated by the REAL P-325 `semanticRubricSchema`** before it is written, so a bad answer never lands in the result JSON. An out-of-range score is a usage error (exit 2), a cancelled prompt is exit 1, a saved rating is exit 0.
+3. **The write-back is additive**: `human_score` (the rubric object) and `human_rater` join the harness result, and the harness fields around them are preserved.
+4. **The diff is optional**: the harness writes no `.diff` artifact yet, so the tool reports the artifact when it exists and otherwise tells the rater to work from the result's build/test logs - recorded, not faked.
+5. **The `eval` command was restructured** so `run` and `rate` are two subcommands of one `eval` command (commander attaches subcommands to the command object); `eval run` behaves exactly as before.
+6. **Both test layers**: the two mandated python ids drive the REAL work function through a bun harness with a fake prompt, plus a read-only bun mirror (the CI is bun-only). The plan's `cli/` path maps to `packages/cli/`.
+7. **The optional web page is NOT built** - the spec marks it optional, the CLI is the acceptance path, and the web surface for the eval harness does not exist yet.
+8. **Nothing else moved**: the P-320 pair schema, the P-323 runner, the P-324 scoring module, the P-325 rubric module and the 20-pair corpus are untouched, and no frozen file changed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -39,6 +39,7 @@ import {
   type LicensePromptResult,
 } from './commands/license.js';
 import { deps, type DepsPromptContext } from './commands/deps.js';
+import { evalRate, type EvalRateOptions } from './commands/eval_rate.js';
 import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
@@ -422,9 +423,8 @@ export function buildCLI(program: Command): Command {
       });
     });
 
-  program
-    .command('eval')
-    .description('Run the eval corpus headlessly (P-323)')
+  const evalCommand = program.command('eval').description('Run the eval corpus headlessly (P-323)');
+  evalCommand
     .command('run')
     .description('Run every corpus pair and write the per-pair results')
     .option('--corpus <path>', 'the corpus directory (or a pairs.json path)')
@@ -435,6 +435,17 @@ export function buildCLI(program: Command): Command {
     .action(async (options: EvalRunOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalRun({ ...globals, ...options });
+    });
+  evalCommand
+    .command('rate')
+    .description('Score a corpus pair with the human rubric (P-326)')
+    .argument('<pair-id>', 'the corpus pair to score')
+    .option('--result-dir <path>', 'where the harness wrote the per-pair results')
+    .option('--rater <id>', 'who is scoring (recorded with the score)')
+    .option('--json', 'print the saved rubric as JSON')
+    .action(async (pairId: string, options: EvalRateOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalRate(pairId, { ...globals, ...options });
     });
 
   program
