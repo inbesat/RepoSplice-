@@ -1437,4 +1437,13 @@ export {
 export type { EvalConfig, EvalResult, EvalRunSummary } from './eval/types.js';
 export { ECOSYSTEM_BY_CORPUS, scoreBuild } from './eval/scoring.js';
 export type { BuildScore, ScoreBuildOptions, VerifyPort } from './eval/scoring.js';
+export {
+  RUBRIC_DIMENSIONS,
+  RUBRIC_SCHEMA_ID,
+  cohensKappa,
+  meanScore,
+  semanticRubricJsonSchema,
+  semanticRubricSchema,
+} from './eval/rubric.js';
+export type { RubricDimension, RubricPair, SemanticRubric } from './eval/rubric.js';
 export { runPipeline } from './pipeline/runPipeline.js';

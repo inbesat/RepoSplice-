@@ -5097,4 +5097,46 @@ Date: 2026-10-21. Phase: P-324 (Eval Harness epic). Owner: inbesat lane.
 
 ---
 
+## ADR-133: Human rubric schema with trial worksheet and inter-rater reliability (P-325)
+
+Date: 2026-10-21. Phase: P-325 (Eval Harness epic, inbesat lane).
+
+1. The rubric is a NEW leaf core module (`packages/core/src/eval/rubric.ts` -
+   zod only, no core service imports) with ONE barrel export; the CLI is
+   untouched (P-326 owns the rater tool).
+2. The three dimensions are REQUIRED and range-checked 1-5 (0, 6 and
+   non-integers are rejected); the loose wrapper keeps the corpus-expansion
+   path open (P-332).
+3. Cohen's kappa is computed over the PAIRED PER-DIMENSION scores (3 pairs x
+   3 dimensions = 9 paired observations) because the total-score variant over
+   3 pairs quantizes to ~0.19 steps, so one disagreement caps it below the
+   0.6 threshold; the degenerate `pe === 1` case returns 1 or 0, never a
+   division by zero.
+4. The trial worksheet ships with the schema and its seeded columns are
+   LABELLED as seeded - the human trial is the owner's step; the seed
+   reaches kappa 0.75 (8/9 paired agreements) so the 0.6 threshold is
+   demonstrably reachable.
+5. The emitted rubric JSON Schema joins the pair + result schemas in the
+   drift-checked emitter (a third target, `--rubric-out`); the python side
+   validates against the emitted document with the standard-library
+   validator (which has no minimum/maximum support, so the 1-5 range is
+   asserted directly on the document and by the real zod schema in the bun
+   mirror).
+6. The mean score (one decimal) is the value that binds to the result's
+   `rubric_score`.
+7. Both test layers: the 2 mandated python ids drive the REAL zod schema
+   through the bun harness + a read-only bun mirror (the CI is bun-only);
+   the plan's `core/` path maps to `packages/core/`.
+8. Nothing else moved: the P-320 pair schema, the P-323 runner, the P-324
+   scoring module and the 20-pair corpus are untouched; no frozen file
+   changed.
+9. A test bug this phase authored (not a spec-mandated expectation) asserted
+   a mean of 4.3 for a (5,4,3) rubric whose mean is 4.0; the EXPECTATION was
+   corrected to (5,4,4) = 4.333... -> 4.3 and the implementation was left
+   unchanged.
+10. Two prettier-shape lint fixes (a trailing comma in rubric.ts, the long
+    barrel export line) were applied, not suppressed.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

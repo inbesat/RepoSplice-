@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "seeded": true,
+  "note": "P-325 trial worksheet: three corpus pairs scored independently by two raters. The seed below is a STARTING POINT - each owner scores the same three pairs independently (replace the seeded columns with your own verdicts) and the inter-rater kappa is recomputed with `bun packages/core/src/__tests__/fixtures/rubric-harness.ts`. A kappa below 0.6 means the rubric wording is ambiguous and must be adjusted before the baseline run (P-327).",
+  "trials": [
+    {
+      "a": {
+        "pair_id": "js-axios-ky",
+        "rater": "rater-a",
+        "wiring_correctness": 4,
+        "unnecessary_changes": 4,
+        "respects_patterns": 4,
+        "notes": "Exports of A are imported in B where the modules meet; the only gap is the renamed helper in the shared util."
+      },
+      "b": {
+        "pair_id": "js-axios-ky",
+        "rater": "rater-b",
+        "wiring_correctness": 4,
+        "unnecessary_changes": 4,
+        "respects_patterns": 4,
+        "notes": "Wiring holds on both sides; no unrelated edits spotted; the style follows the existing modules."
+      }
+    },
+    {
+      "a": {
+        "pair_id": "py-requests-httpx",
+        "rater": "rater-a",
+        "wiring_correctness": 3,
+        "unnecessary_changes": 3,
+        "respects_patterns": 4,
+        "notes": "The adapters are wired, but one call site kept the old timeout style - a plausible edit, still inconsistent with the surrounding code."
+      },
+      "b": {
+        "pair_id": "py-requests-httpx",
+        "rater": "rater-b",
+        "wiring_correctness": 3,
+        "unnecessary_changes": 4,
+        "respects_patterns": 4,
+        "notes": "Wiring is partial: the retry wrapper is not re-used on one branch. No gratuitous edits, the style matches."
+      }
+    },
+    {
+      "a": {
+        "pair_id": "go-gin-chi",
+        "rater": "rater-a",
+        "wiring_correctness": 5,
+        "unnecessary_changes": 4,
+        "respects_patterns": 4,
+        "notes": "Every handler is routed through the merged router, the change set is minimal, and the naming follows the existing packages."
+      },
+      "b": {
+        "pair_id": "go-gin-chi",
+        "rater": "rater-b",
+        "wiring_correctness": 5,
+        "unnecessary_changes": 4,
+        "respects_patterns": 4,
+        "notes": "Clean wiring, no unrelated churn, the idioms of both sides are preserved."
+      }
+    }
+  ]
+}

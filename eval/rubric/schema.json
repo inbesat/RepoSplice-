@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "pair_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rater": {
+      "type": "string",
+      "minLength": 1
+    },
+    "wiring_correctness": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "unnecessary_changes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "respects_patterns": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "pair_id",
+    "rater",
+    "wiring_correctness",
+    "unnecessary_changes",
+    "respects_patterns",
+    "notes"
+  ],
+  "additionalProperties": {}
+}
