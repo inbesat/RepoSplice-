@@ -1470,4 +1470,17 @@ export type {
   EcosystemStats,
   PairReportInput,
 } from './eval/report.js';
+export {
+  budgetAlert,
+  costFor,
+  costPerSuccessfulMerge,
+  priceFor,
+  summarizeCalls,
+} from './eval/cost.js';
+export type {
+  BudgetAlert,
+  CostBreakdown,
+  ModelPrice,
+  TokenUsage as EvalTokenUsage,
+} from './eval/cost.js';
 export { runPipeline } from './pipeline/runPipeline.js';

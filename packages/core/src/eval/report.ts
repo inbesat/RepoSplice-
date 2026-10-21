@@ -10,6 +10,7 @@
 // yet, so the CI summary table always has the same four rows.
 
 import { categoryFor, type FailureCategory } from './baseline.js';
+import { costPerSuccessfulMerge } from './cost.js';
 import { EVAL_ECOSYSTEMS } from './schema.js';
 
 /** The corpus ecosystems (P-103). */
@@ -40,6 +41,8 @@ export interface EcosystemStats {
   readonly tokens_avg: number | null;
   readonly cost_total: number;
   readonly cost_avg: number | null;
+  /** The cost of ONE successful merge (null when the language had no success). */
+  readonly cost_per_success_usd: number | null;
   readonly duration_total: number;
   readonly duration_avg: number | null;
   readonly build_pass_median: number | null;
@@ -129,6 +132,10 @@ function statsFor(ecosystem: EcosystemKey, group: readonly PairReportInput[]): E
     tokens_avg: round(mean(group.map(pair => pair.tokens)), 1),
     cost_total: round(costTotal, 4) as number,
     cost_avg: round(mean(group.map(pair => pair.cost)), 4),
+    cost_per_success_usd: costPerSuccessfulMerge(
+      costTotal,
+      group.filter(pair => pair.build_pass === true).length
+    ),
     duration_total: durationTotal,
     duration_avg: round(mean(group.map(pair => pair.duration)), 1),
     build_pass_median: round(median(buildPasses), 4),
@@ -182,16 +189,16 @@ function number(value: number | null): string {
 /** The CI summary markdown table (one row per ecosystem + a totals row). */
 export function ecosystemTable(report: EcosystemReport): string {
   const lines = [
-    '| ecosystem | pairs | build-pass | rubric | resolve | tokens | cost | duration |',
+    '| ecosystem | pairs | build-pass | rubric | resolve | tokens | cost | cost/success | duration |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const stats of report.ecosystems) {
     lines.push(
-      `| ${stats.ecosystem} | ${stats.pairs} | ${percent(stats.build_pass_rate)} | ${number(stats.rubric_avg)} | ${percent(stats.resolve_rate)} | ${stats.tokens_total} | ${number(stats.cost_total)} | ${stats.duration_total} |`
+      `| ${stats.ecosystem} | ${stats.pairs} | ${percent(stats.build_pass_rate)} | ${number(stats.rubric_avg)} | ${percent(stats.resolve_rate)} | ${stats.tokens_total} | ${number(stats.cost_total)} | ${number(stats.cost_per_success_usd)} | ${stats.duration_total} |`
     );
   }
   lines.push(
-    `| all | ${report.totals.pairs} | ${percent(report.totals.build_pass_rate)} | ${number(report.totals.rubric_avg)} | ${percent(report.totals.resolve_rate)} | ${report.totals.tokens_total} | ${number(report.totals.cost_total)} | ${report.totals.duration_total} |`
+    `| all | ${report.totals.pairs} | ${percent(report.totals.build_pass_rate)} | ${number(report.totals.rubric_avg)} | ${percent(report.totals.resolve_rate)} | ${report.totals.tokens_total} | ${number(report.totals.cost_total)} | ${number(costPerSuccessfulMerge(report.totals.cost_total, report.per_pair.filter(pair => pair.build_pass === true).length))} | ${report.totals.duration_total} |`
   );
   return lines.join('\n');
 }

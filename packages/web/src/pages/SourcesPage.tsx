@@ -87,7 +87,7 @@ export function SourcesPage(): JSX.Element {
           disabled={!swappable}
           onClick={swapAB}
         >
-          ⇄ Swap A/B
+          ⇄ Swap A and B
         </button>
       </div>
       {/* Paired pickers: A is the base, B the overlay (the A/B order is what

@@ -9,7 +9,7 @@
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { aggregateByEcosystem, ecosystemTable, meanScore } from '@repo-stitcher/core';
+import { aggregateByEcosystem, budgetAlert, ecosystemTable, meanScore } from '@repo-stitcher/core';
 import type { EcosystemKey, PairReportInput } from '@repo-stitcher/core';
 import type { GlobalOptions } from '../globals.js';
 
@@ -18,6 +18,8 @@ export interface EvalReportOptions extends GlobalOptions {
   resultDir?: string;
   /** Where the breakdown artifact is written. */
   out?: string;
+  /** The run cost budget in USD (0 = off) - P-330. */
+  budget?: string;
 }
 
 export interface EvalReportDeps {
@@ -117,8 +119,8 @@ export async function evalReport(
       build_pass: typeof buildPass === 'boolean' ? buildPass : null,
       rubric_score: rubricOf(record),
       resolve_rate: optionalNumber(record['resolve_rate']),
-      tokens: numberOf(record['tokens']),
-      cost: numberOf(record['cost']),
+      tokens: numberOf(record['tokens_total'] ?? record['tokens']),
+      cost: numberOf(record['cost_usd'] ?? record['cost']),
       duration: numberOf(record['duration']),
       error_code: typeof record['error_code'] === 'string' ? record['error_code'] : null,
     });
@@ -129,5 +131,9 @@ export async function evalReport(
     log(`eval report: ${skipped} result file(s) carry no ecosystem and were skipped`);
   }
   log(ecosystemTable(report));
+  const budget = Number.parseFloat(options.budget ?? '0');
+  if (Number.isFinite(budget) && budget > 0) {
+    log(`eval report: ${budgetAlert(report.totals.cost_total, budget).message}`);
+  }
   return 0;
 }

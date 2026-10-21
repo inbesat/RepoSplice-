@@ -11,6 +11,13 @@
 
 import '@testing-library/jest-dom/vitest';
 
+// P-330 — the P-229 onboarding tour auto-queues on a first visit. It
+// mounts in an effect, so under load it can land between a render and an
+// assertion: the overlay then swallows a click (the SourcesPage flow) or
+// trips an axe rule (the sources scan). The marker keeps the tour out of
+// every other test file; Tour.test.tsx starts it explicitly.
+localStorage.setItem('stitch-tour-auto', '1');
+
 /** The shape of the matchMedia stub. */
 export interface MediaStub {
   matches: boolean;

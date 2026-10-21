@@ -5311,4 +5311,86 @@ Date: 2026-10-21. Phase: P-329 (Eval Harness). Owner: inbesat lane.
 
 ---
 
+## ADR-139: Audit corrections follow completed phase boundaries
+
+Date: 2026-10-21. Scope: completed-phase regressions, not a new phase.
+
+1. **Progress gates the repair scope.** Repair invariants promised by completed
+   phases: filesystem containment and failed-mutation recovery, independent
+   agent-tool undo, move import preservation, sandbox limits/cache/log bounds,
+   pinned and cancellable eval runs, API fallback semantics, and the CI runner.
+   Preserve the concurrent P-330 work rather than replacing it or claiming its
+   phase completion as part of this maintenance pass.
+2. **Deferred integration stays deferred.** P-192/P-252 own concrete merge
+   handlers and CLI/Web wiring. An unconfigured eval must report that limitation,
+   not manufacture a successful merge or score a parent as the child. P-239/P-240
+   still own job-claim fencing and interrupted-stage recovery; their unchecked
+   status is not changed by this audit pass.
+3. **Keep the accepted writable workspace.** ADR-044's writable `/workspace`
+   remains necessary for builds. Enforce the sandbox's network/resource policy
+   without introducing a new workspace-copy architecture in this repair pass.
+   A metadata-only dependency-cache hit is not proof that a fresh checkout has
+   installed dependencies.
+4. **Extend seams only where the invariant requires it.** Eval revision and
+   cancellation information belongs at its existing IO ports. Do not change the
+   frozen jobs/event/WebSocket contracts or add dependencies for these fixes.
+5. **Verification is not a live baseline.** Regression tests and simulated
+   backends do not replace P-327's real corpus baseline or P-333's publication.
+   Record actual checks and remaining environmental limits in `PROGRESS.md`.
+
+---
+
+## ADR-138: Eval cost and token tracking from the audited provider calls (P-330)
+
+Date: 2026-10-21. Phase: P-330 (Eval Harness). Owner: inbesat lane.
+
+1. **The numbers come from the audit rows.** The P-145 audit rows
+   already carry the token counts and the cost of every provider call, so
+   the module never re-prices a call it did not make: `summarizeCalls`
+   sums what was audited, and `costFor` is the estimator for a usage
+   with no audited row.
+2. **The pricing table is the core model registry.** `MODELS` in
+   `ai/models.ts` carries the USD cost per 1M input / 1M output tokens.
+   A model that is NOT in the registry prices at 0 while its tokens are
+   still counted, so a run never hides its volume behind a missing
+   price; `eval/cost/README.md` documents the assumption and the update
+   procedure.
+3. **The budget reuses the config convention.** 0 means OFF (the
+   `agent.maxCostUsd` convention, P-164); the `stitch eval report
+   --budget <usd>` flag carries the threshold today and the configured
+   knob lands with P-302.
+4. **The result carries both sets of fields.** The spec asks for
+   `tokens_total` and `cost_usd` (the audited totals) while the P-323
+   result already carries `tokens` and `cost`; both are kept (the
+   duplication is the spec's own wording) and the report reads the
+   audited names first.
+5. **The runner stamps the audited totals when the rows exist.** The
+   agent port may return the P-145 audit rows; the runner then uses
+   `summarizeCalls` for `tokens_total` / `cost_usd` and falls back to
+   the port's numbers otherwise (the honest fallback: the dry run makes
+   no AI calls).
+6. **The report adds cost-per-successful-merge.** The ecosystem stats
+   carry `cost_per_success_usd` (null when the language had no
+   success) and the CI summary table gained the column.
+7. **The four bugs found while building.** (a) My own edit landed the
+   `const usage` block twice in `eval/runner.ts` - the CLI suite caught
+   the parse error and the duplicate was removed. (b) The committed
+   `eval/corpus/result-schema.json` went stale when the result schema
+   gained the two new fields - the core suite caught it and the schema
+   was re-emitted in the same commit (the P-320/P-329 lesson). (c) The
+   web axe gate surfaced a REAL accessibility violation the load race
+   had been masking: the swap button's visible text ("Swap A/B") was not
+   contained in its accessible name ("Swap A and B") - fixed in the
+   product, not in the test. (d) The cost barrel export collided with
+   the existing `TokenUsage` export - the typecheck caught it and the
+   type is re-exported as `EvalTokenUsage`.
+8. **The shared web harness pins the tour off.** `src/test/setup.ts`
+   sets the P-229 auto-queue marker, so the onboarding overlay can
+   never land in the middle of another test's assertion.
+9. **Nothing else moved.** The P-320/323/324/325/327/328/329 modules
+   and the 20-pair corpus are untouched, no frozen file changed, and the
+   three mandated python ids plus the bun mirror are verbatim.
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

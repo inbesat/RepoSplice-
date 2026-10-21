@@ -35,6 +35,10 @@ export const evalResultSchema = z.looseObject({
   // P-329: the ecosystem of the corpus pair (optional + nullable so a result
   // written before the field still validates).
   ecosystem: z.enum(EVAL_ECOSYSTEMS).nullish(),
+  // P-330: the audited totals (the P-145 rows). The older tokens/cost
+  // stay as the P-323 lineage - the spec asks for both.
+  tokens_total: z.number().int().nonnegative().nullish(),
+  cost_usd: z.number().nonnegative().nullish(),
   resolve_rate: z.number().min(0).max(1).nullable(),
   tokens: z.number().int().nonnegative(),
   cost: z.number().nonnegative(),

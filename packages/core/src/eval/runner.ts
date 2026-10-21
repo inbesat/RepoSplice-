@@ -3,8 +3,8 @@
 // One pair = clone A -> clone B -> extract A -> extract B -> agent -> sandbox.
 // The runner ORCHESTRATES; it never duplicates the core modules: the steps
 // are PORTS (the ADR-082 injection model) and the CLI wires the real
-// implementations (git/clone, git/filterRepo, pipeline/runPipeline,
-// sandbox/runner).
+// implementations (git/clone, git/filterRepo). Production child creation
+// is deferred with P-192; the CLI defaults reject that missing integration.
 //
 // Failure policy: a failing step is CAPTURED into the pair result (status
 // 'failed' + the typed error code) and the run CONTINUES — one broken pair
@@ -13,6 +13,8 @@
 // Parallelism: the core Pool (P-031) bounds the concurrency; the observed
 // maximum is reported in the summary so the bound is verifiable.
 
+import type { AiCallAudit } from '../ai/audit.js';
+import { summarizeCalls } from './cost.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ok, err, type Result } from 'neverthrow';
@@ -32,6 +34,8 @@ export interface EvalAgentContext {
 export interface EvalAgentOutcome {
   readonly tokens: number;
   readonly cost: number;
+  /** P-330: the audited provider calls behind these numbers (P-145). */
+  readonly audit?: readonly AiCallAudit[];
   readonly resolveRate?: number | null;
   readonly rubricScore?: number | null;
 }
@@ -57,10 +61,16 @@ export interface EvalSandboxOutcome {
 
 /** The injected steps. Every one returns a Result — a port never throws. */
 export interface EvalPorts {
-  readonly clone: (url: string, targetDir: string) => Promise<Result<string, StitchError>>;
+  /** Implementations must checkout and verify sha before returning. Legacy two-argument fakes remain compatible. */
+  readonly clone: (
+    url: string,
+    targetDir: string,
+    options?: { readonly sha: string; readonly signal?: AbortSignal }
+  ) => Promise<Result<string, StitchError>>;
   readonly extract: (
     repoPath: string,
-    paths: readonly string[]
+    paths: readonly string[],
+    signal?: AbortSignal
   ) => Promise<Result<string, StitchError>>;
   readonly agent: (context: EvalAgentContext) => Promise<Result<EvalAgentOutcome, StitchError>>;
   readonly sandbox: (
@@ -151,6 +161,8 @@ export class EvalRunner {
       test_logs: null,
       rubric_score: null,
       resolve_rate: null,
+      tokens_total: 0,
+      cost_usd: 0,
       tokens: 0,
       cost: 0,
       duration: Math.max(0, this.ports.now() - started),
@@ -163,15 +175,34 @@ export class EvalRunner {
   async runPair(pair: EvalPair, options: EvalRunnerOptions): Promise<EvalResult> {
     const started = this.ports.now();
     const workDir = join(options.outputDir, 'work', pair.pair_id);
+    const cancelled = (): EvalResult =>
+      this.failure(pair, started, {
+        code: 'USER_CANCELLED',
+        reason: `pair ${pair.pair_id} was cancelled`,
+      });
+    const signal = options.signal;
+    const isCancelled = (): boolean => signal?.aborted === true;
     try {
+      if (isCancelled()) return cancelled();
       await this.ports.mkdirp(workDir);
-      const repoA = await this.ports.clone(pair.repo_a_url, join(workDir, 'repo-a'));
+      if (isCancelled()) return cancelled();
+      const repoA = await this.ports.clone(pair.repo_a_url, join(workDir, 'repo-a'), {
+        sha: pair.repo_a_sha,
+        ...(signal !== undefined ? { signal } : {}),
+      });
+      if (isCancelled()) return cancelled();
       if (repoA.isErr()) return this.failure(pair, started, repoA.error);
-      const repoB = await this.ports.clone(pair.repo_b_url, join(workDir, 'repo-b'));
+      const repoB = await this.ports.clone(pair.repo_b_url, join(workDir, 'repo-b'), {
+        sha: pair.repo_b_sha,
+        ...(signal !== undefined ? { signal } : {}),
+      });
+      if (isCancelled()) return cancelled();
       if (repoB.isErr()) return this.failure(pair, started, repoB.error);
-      const extractA = await this.ports.extract(repoA.value, pair.extract_paths_a);
+      const extractA = await this.ports.extract(repoA.value, pair.extract_paths_a, signal);
+      if (isCancelled()) return cancelled();
       if (extractA.isErr()) return this.failure(pair, started, extractA.error);
-      const extractB = await this.ports.extract(repoB.value, pair.extract_paths_b);
+      const extractB = await this.ports.extract(repoB.value, pair.extract_paths_b, signal);
+      if (isCancelled()) return cancelled();
       if (extractB.isErr()) return this.failure(pair, started, extractB.error);
       const agent = await this.ports.agent({
         pair,
@@ -180,6 +211,7 @@ export class EvalRunner {
         repoB: repoB.value,
         ...(options.signal !== undefined ? { signal: options.signal } : {}),
       });
+      if (isCancelled()) return cancelled();
       if (agent.isErr()) return this.failure(pair, started, agent.error);
       const sandbox = await this.ports.sandbox({
         pair,
@@ -188,7 +220,12 @@ export class EvalRunner {
         repoB: repoB.value,
         ...(options.signal !== undefined ? { signal: options.signal } : {}),
       });
+      if (isCancelled()) return cancelled();
       if (sandbox.isErr()) return this.failure(pair, started, sandbox.error);
+      const usage =
+        agent.value.audit !== undefined && agent.value.audit.length > 0
+          ? summarizeCalls(agent.value.audit)
+          : undefined;
       return {
         pair_id: pair.pair_id,
         ecosystem: pair.ecosystem,
@@ -198,6 +235,8 @@ export class EvalRunner {
         test_logs: sandbox.value.testLogs === undefined ? null : [...sandbox.value.testLogs],
         rubric_score: agent.value.rubricScore ?? null,
         resolve_rate: sandbox.value.resolveRate ?? agent.value.resolveRate ?? null,
+        tokens_total: usage?.tokensTotal ?? agent.value.tokens,
+        cost_usd: usage?.costUsd ?? agent.value.cost,
         tokens: agent.value.tokens,
         cost: agent.value.cost,
         duration: Math.max(0, this.ports.now() - started),
@@ -205,6 +244,7 @@ export class EvalRunner {
         error_message: null,
       };
     } catch (error) {
+      if (isCancelled()) return cancelled();
       return this.failure(pair, started, {
         code: 'INTERNAL',
         message: error instanceof Error ? error.message : String(error),
@@ -212,26 +252,39 @@ export class EvalRunner {
     }
   }
 
-  /** Run one pair under the per-pair budget. */
+  /**
+   * Abort at the budget, but keep the slot until the active port settles.
+   * Cancellation is cooperative: an uncooperative port delays completion
+   * indefinitely; releasing its slot early would violate the parallel bound.
+   */
   private async runPairBounded(pair: EvalPair, options: EvalRunnerOptions): Promise<EvalResult> {
     const timeoutMs = options.timeoutMs;
     if (timeoutMs === undefined) return this.runPair(pair, options);
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const expiry = new Promise<EvalResult>(resolve => {
-      timer = setTimeout(() => {
-        resolve(
-          this.failure(pair, this.ports.now(), {
-            code: 'SANDBOX_TIMEOUT',
-            timeoutMs,
-            message: `pair ${pair.pair_id} exceeded its ${timeoutMs}ms budget`,
-          })
-        );
-      }, timeoutMs);
-    });
+    const started = this.ports.now();
+    const controller = new AbortController();
+    let stopped: StitchError | undefined;
+    const cancel = (): void => {
+      if (controller.signal.aborted) return;
+      stopped = { code: 'USER_CANCELLED', reason: `pair ${pair.pair_id} was cancelled` };
+      controller.abort();
+    };
+    options.signal?.addEventListener('abort', cancel, { once: true });
+    if (options.signal?.aborted === true) cancel();
+    const timer = setTimeout(() => {
+      if (controller.signal.aborted) return;
+      stopped = {
+        code: 'SANDBOX_TIMEOUT',
+        timeoutMs,
+        message: `pair ${pair.pair_id} exceeded its ${timeoutMs}ms budget`,
+      };
+      controller.abort();
+    }, timeoutMs);
     try {
-      return await Promise.race([this.runPair(pair, options), expiry]);
+      const result = await this.runPair(pair, { ...options, signal: controller.signal });
+      return stopped === undefined ? result : this.failure(pair, started, stopped);
     } finally {
-      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(timer);
+      options.signal?.removeEventListener('abort', cancel);
     }
   }
 

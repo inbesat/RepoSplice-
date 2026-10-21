@@ -483,6 +483,7 @@ export function buildCLI(program: Command): Command {
     .description('Break a run down per ecosystem and print the CI summary table (P-329)')
     .option('--result-dir <path>', 'where the harness wrote the per-pair results')
     .option('--out <file>', 'where the breakdown artifact is written')
+    .option('--budget <usd>', 'the run cost budget in USD (0 = off) - P-330')
     .action(async (options: EvalReportOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalReport({ ...globals, ...options });
