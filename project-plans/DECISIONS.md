@@ -5813,4 +5813,53 @@ Date: 2026-10-21. Phase: P-339 (Wave 1.5, the last per-language resolver). Owner
 10. **Nothing else moved.** The concurrent maintenance lane's license reds
     are theirs and were left unstaged; no other frozen file changed.
 
+
+---
+
+## ADR-149: Heuristic fallback over tree-sitter for LSP-less environments (P-340)
+
+Date: 2026-10-21. Phase: P-340 (Wave 1.5). Owner: inbesat lane.
+
+1. **The fallback ships although the P-334 gate is closed.** P-340's own text
+   is unconditional, so the fallback is built on the four shipped resolvers.
+   The cross-language EPIC stays deferred - a resolver nobody uses changes no
+   baseline number.
+2. **It is a facade, not a fifth implementation.** The four per-language
+   resolvers (P-336-P-339) already carry deterministic fallbacks; built with
+   no `lspClient`, each one already IS heuristic-only mode. `HeuristicResolver`
+   dispatches on the file extension and RE-TAGS every edge
+   `heuristic-medium`, so a caller cannot mistake a fallback edge for an
+   `lsp-high` one.
+3. **The extraction is a real AST walk.** It calls the P-020 parser
+   (`analysis/treeSitter.ts`: `parse(source, grammar)`) and reads the
+   per-language import nodes (TS/JS `import_statement`/`export_statement` plus
+   the dynamic `require(`/`import(`, Python `import_statement` /
+   `import_from_statement`, Go `import_spec`, Rust `use_declaration`). The
+   P-149 lexical extractors (`agent/imports.ts`) remain available, but the
+   tree-sitter path is primary because it does not mistake a string in a
+   comment for an import.
+4. **The integration is `withHeuristicFallback(primary, heuristic)`** - the
+   `onLSPFailure` handler the spec asks for. It answers with the primary's
+   edges when they are non-empty; when the primary ERRORS (LSP unavailable,
+   timed out, refused) or answers an EMPTY list, the heuristic answers. If
+   both fail, the primary's error is the one reported, so the caller sees the
+   real cause.
+5. **`lspEnabled('never')` is the config flag** that forces heuristic-only
+   mode for CI and containers without an LSP binary; `'auto'` (the default)
+   tries the server first.
+6. **Nothing throws.** An unreadable file is `CONFIG_ERROR` with the field
+   `resolve.heuristic`; every other path returns `ok([])` for an unresolved
+   import (a finding, not a failure) - the same contract as P-336-P-339.
+7. **The gate found one real fixture-layout bug.** The harness originally
+   copied the WHOLE TS fixture into the temp workspace, so the fixture's own
+   `fake-pkg/` directory at the workspace root won the `baseUrl` lookup and
+   shadowed `node_modules/fake-pkg`. The workspace is now built from `src` +
+   `tsconfig.json` + `node_modules/<pkg>` only. Recorded because the same
+   shadowing would bite any future harness that copies a fixture wholesale.
+8. **Measured.** The five mandated python ids are green: the heuristic
+   resolves the four fixture languages 4/4 each and the LSP-failure case
+   falls back to `heuristic-medium`. The eight-case vitest mirror keeps the
+   contract enforced in the bun-only CI.
+9. **Nothing else moved.** The concurrent lane's license reds are theirs; no
+   frozen file changed.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

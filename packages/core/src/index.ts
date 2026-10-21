@@ -1520,4 +1520,18 @@ export {
   RustResolver,
 } from './resolve/rust-resolver.js';
 export type { RustBuildContext, RustResolverOptions } from './resolve/rust-resolver.js';
+export {
+  createHeuristicResolver,
+  extractSpecifiers,
+  HEURISTIC_CONFIDENCES,
+  HeuristicResolver,
+  languageForFile,
+  lspEnabled,
+  withHeuristicFallback,
+} from './resolve/heuristic-fallback.js';
+export type {
+  HeuristicLanguage,
+  HeuristicResolverOptions,
+  LspMode,
+} from './resolve/heuristic-fallback.js';
 export { runPipeline } from './pipeline/runPipeline.js';
