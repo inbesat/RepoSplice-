@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "crate_module",
+      "file": "src/main.rs",
+      "import_spec": "crate::a",
+      "target": "src/a.rs"
+    },
+    {
+      "name": "mod_tree",
+      "file": "src/main.rs",
+      "import_spec": "crate::b::child",
+      "target": "src/b/child.rs"
+    },
+    {
+      "name": "self_module",
+      "file": "src/b/mod.rs",
+      "import_spec": "self::child",
+      "target": "src/b/child.rs"
+    },
+    {
+      "name": "cfg_gated",
+      "file": "src/main.rs",
+      "import_spec": "crate::win",
+      "target": ""
+    }
+  ]
+}

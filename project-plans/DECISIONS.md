@@ -5758,4 +5758,59 @@ Date: 2026-10-21. Phase: P-338 (Wave 1.5). Owner: inbesat lane.
 10. **Nothing else moved.** The concurrent maintenance pass's license reds and
     the build.smoke load flake are theirs and were left unstaged; no frozen
     file changed.
+---
+
+## ADR-148: Rust import resolver, best-effort, with the module graph fallback (P-339)
+
+Date: 2026-10-21. Phase: P-339 (Wave 1.5, the last per-language resolver). Owner: inbesat lane.
+
+1. **The resolver ships although the P-334 gate is closed.** P-339's own text
+   is unconditional (it mandates the class, the fixture and the two test ids),
+   so the resolver is built on the shipped P-335 client, exactly like P-336,
+   P-337 and P-338. The cross-language EPIC stays deferred (`epic17-deferred`
+   per P-331): a resolver nobody uses yet changes no baseline number.
+2. **The Rust module graph is BEST-EFFORT BY DESIGN.** The spec's own words
+   call this phase lower-confidence and optional, given rust-analyzer's
+   startup cost and the complexity of Rust's module system (mod.rs, inline
+   modules, macros, cfg flags). The note is documented in ARCHITECTURE.md
+   section 11 (Extension Points) as a new row, and the tree-sitter heuristic
+   (P-020) is recorded there as the primary path for complex module graphs.
+3. **rust-analyzer IS installed in this environment** (`~/.cargo/bin/
+   rust-analyzer.exe`, with rustc and cargo), so unlike P-337 (no pyright)
+   and P-338 (no gopls) the LSP path is really attempted by the harness. It
+   exited during the measurement, so the LSP path is recorded as NOT
+   measured (`status: error`) while the module-graph fallback carried the
+   fixture 4/4. A missing measurement is never a zero.
+4. **The fallback is implemented in TypeScript.** Rust's module semantics are
+   deterministic enough to answer without an interpreter: `crate::` resolves
+   against `<root>/src`, `self::` against the file's own module directory,
+   `super::` against its parent, and a bare path is an external crate (an
+   empty edge list). A module path resolves to `<path>.rs` or
+   `<path>/mod.rs`. A file whose inner `#![cfg(...)]` the build context
+   fails is skipped; an UNKNOWN cfg predicate KEEPS the file, because a
+   wrong drop hides a real import while a wrong keep merely adds a candidate.
+5. **The resolver never throws.** Every step returns a Result and only the
+   existing StitchError codes are used: CONFIG_ERROR (with the field
+   `resolve.cargo`) when a Cargo.toml exists but carries no `[package]
+   name`, INTERNAL otherwise. An unresolved import is `ok([])` - a finding,
+   not a failure.
+6. **The confidence contract matches the TS, Python and Go resolvers**:
+   `lsp-high` when the server answered, `heuristic-medium` when the
+   fallback answered. The caller reads the tag instead of guessing.
+7. **The ground-truth fixture lives outside src**
+   (`packages/core/test-fixtures/rust-resolver-repo`) because the root
+   typecheck only covers `packages/*/src/**/*`.
+8. **Both test layers.** The two mandated python ids drive the real resolver
+   through the bun harness (`test_basic_imports` asserts the four
+   ground-truth cases and the accuracy, `test_fallback_documented` reads
+   ARCHITECTURE.md and asserts the best-effort note is really there), and
+   the eight-case vitest mirror keeps the contract enforced in the bun-only
+   CI.
+9. **The gate found and fixed two real defects in this phase's own code**: a
+   recursive call named `holds` instead of `predicateHolds` (a typecheck
+   failure) and a useless assignment in the position helper (a lint
+   failure).
+10. **Nothing else moved.** The concurrent maintenance lane's license reds
+    are theirs and were left unstaged; no other frozen file changed.
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

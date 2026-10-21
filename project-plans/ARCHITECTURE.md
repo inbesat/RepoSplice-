@@ -548,6 +548,7 @@ Built via GitHub Actions on tag push; pushed to `ghcr.io/<owner>/repo-stitcher-s
 | **New License Scanner** | `core/src/license/deepScan.ts` | Implement `DeepScanner` interface |
 | **Custom Tool** | `core/src/ai/tools/` | Add tool def + handler; register in `loop.ts` |
 | **Web UI Plugin** | `packages/web/src/components/extensions/` | React component + `registerExtension()` |
+| **New Language Resolver** | `core/src/resolve/` | Implement the `DependencyResolver` interface; the Rust resolver (P-339) is best-effort — the tree-sitter heuristic (P-020) is primary for complex module graphs (mod.rs, inline mods, macros, cfg flags) |
 
 ---
 

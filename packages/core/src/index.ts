@@ -1514,4 +1514,10 @@ export {
 export type { JediRunner, PythonResolverOptions } from './resolve/python-resolver.js';
 export { createGoResolver, GO_RESOLUTION_CONFIDENCES, GoResolver } from './resolve/go-resolver.js';
 export type { GoBuildContext, GoResolverOptions } from './resolve/go-resolver.js';
+export {
+  createRustResolver,
+  RUST_RESOLUTION_CONFIDENCES,
+  RustResolver,
+} from './resolve/rust-resolver.js';
+export type { RustBuildContext, RustResolverOptions } from './resolve/rust-resolver.js';
 export { runPipeline } from './pipeline/runPipeline.js';
