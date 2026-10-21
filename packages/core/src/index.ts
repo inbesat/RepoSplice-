@@ -1492,4 +1492,15 @@ export type {
   TaxonomyInput,
   TaxonomyReport,
 } from './eval/taxonomy.js';
+export { createLspClient, lspFrame } from './resolve/lsp-client.js';
+export type {
+  LspChild,
+  LspClient,
+  LspClientOptions,
+  LspInitializeResult,
+  LspNotificationHandler,
+  LspReadable,
+  LspSpawnFn,
+  LspWritable,
+} from './resolve/lsp-client.js';
 export { runPipeline } from './pipeline/runPipeline.js';

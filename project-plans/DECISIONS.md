@@ -5544,4 +5544,69 @@ Owner: inbesat lane.
 7. **Nothing else moved.** The P-320..P-333 modules, the 20-pair
    corpus and the measured artifacts are read-only inputs; no frozen
    file changed and no mandated id was renamed.
+
+---
+
+## ADR-144: Generic LSP client over JSON-RPC stdio (P-335)
+
+Date: 2026-10-21. Phase: P-335. Owner: inbesat lane.
+
+1. **The client is built although the P-334 gate is closed.** P-335's own
+   text is unconditional (it mandates the class, the four test ids and a
+   real-server test); only the P-334 handoff said "if the spike is go". The
+   client is language-agnostic infrastructure and stays inert until a
+   resolver uses it, while the per-language resolvers P-336-P-339 remain
+   deferred. This SUPERSEDES ADR-143's decision 6 ("P-335 does not start").
+2. **The bundled tsserver is not an LSP server.** The root `typescript`
+   package ships `tsserver.js`, which speaks its own tsserver protocol (it
+   tried to JSON.parse the literal "Content-Length: 107"; `--lsp` is not
+   supported). The real server is the `typescript-language-server` bridge
+   (6.0.2), added as a devDependency of `packages/core`; the harness falls
+   back to the hermetic stub when the binary is absent, so the suite runs
+   on a clone without it.
+3. **The client never throws.** Every fallible step returns a `Result`
+   (neverthrow) and the errors REUSE the existing `StitchError` codes - no
+   new code: `CONFIG_ERROR` (field `lsp.server` / `lsp.initialize`) for a
+   server that will not start or initialize, `INTERNAL` for a protocol
+   violation, a timeout, a server `error` response or a dead process. The
+   `message` is read defensively (`'message' in error`) because the union's
+   variants do not all carry one.
+4. **The wire contract.** The framing is `Content-Length: N\r\n\r\n{json}`
+   with N the BYTE length; the reader accumulates stdout, splits on
+   \r\n\r\n, parses the header and slices exactly N bytes (a malformed
+   header drops the buffer instead of throwing). The correlation uses a
+   monotonic id and a `Map<id, {resolve, timer, method}>`; an UNKNOWN id is
+   ignored so a late response cannot break the next request, and a server
+   `error` settles the request with INTERNAL. The notifications use a
+   `Map<method, Set<handler>>` with a disposer. The lifecycle is
+   initialize -> the `initialized` notification -> ready; the shutdown
+   sends the `shutdown` REQUEST plus the `exit` NOTIFICATION, waits for the
+   exit and SIGKILLs on the timeout; `isAlive()` is the health check; an
+   unexpected exit fails the pending requests and triggers ONE
+   auto-reconnect - the `closing` flag suppresses it during our own
+   shutdown.
+5. **The tests.** The four mandated python ids drive the REAL client
+   through a bun harness (the real typescript-language-server when it is
+   present, the stub otherwise) and a nine-case vitest mirror runs against
+   the hermetic stub (the CI is bun-only, so the mirror is the in-CI gate).
+   One expectation in the file this phase authored was corrected: a
+   response with a foreign id never answers its request, so the case
+   asserts the TIMEOUT, not a success.
+6. **The per-language resolvers stay deferred** (the closed gate); the
+   client is inert until P-336-P-339 land.
+7. **The gate, honestly.** scripts 8/8; the web suite 39 files / 164 tests
+   green; E2E 3 passed; PERF 3 passed; the root typecheck 0 and the root
+   lint 0 for the files this phase owns. The core suite shows three reds:
+   the documented ADR-079 red (`jobs/idempotency > mixed stages`) and TWO
+   license tests broken by the CONCURRENT maintenance pass's unstaged
+   license-module rewrite (`packages/core/src/license/{policy,dual,compat,
+   report,unknown}.ts`); the root lint red is likewise theirs
+   (`packages/core/src/deps/semver.ts` + the same license files). That work
+   is a different lane's in-flight change - it was deliberately left
+   unstaged and is NOT fixed here.
+8. **Nothing else moved** (the P-320..P-334 modules, the 20-pair corpus,
+   the eval harness and the frozen files are untouched).
+
+---
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
