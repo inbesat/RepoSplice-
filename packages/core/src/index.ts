@@ -1506,4 +1506,10 @@ export type {
 export { createTsResolver, RESOLUTION_CONFIDENCES, TSResolver } from './resolve/ts-resolver.js';
 export type { TsHost, TsModule, TsResolverOptions } from './resolve/ts-resolver.js';
 export type { DependencyResolver, ResolvedImport, ResolutionConfidence } from './resolve/types.js';
+export {
+  createPythonResolver,
+  PythonResolver,
+  RESOLUTION_CONFIDENCES as PYTHON_RESOLUTION_CONFIDENCES,
+} from './resolve/python-resolver.js';
+export type { JediRunner, PythonResolverOptions } from './resolve/python-resolver.js';
 export { runPipeline } from './pipeline/runPipeline.js';

@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "relative",
+      "file": "pkg/consumer.py",
+      "import_spec": ".module",
+      "target": "pkg/module.py"
+    },
+    {
+      "name": "absolute",
+      "file": "app.py",
+      "import_spec": "pkg.module",
+      "target": "pkg/module.py"
+    },
+    {
+      "name": "submodule",
+      "file": "pkg/consumer.py",
+      "import_spec": "pkg.sub.child",
+      "target": "pkg/sub/child.py"
+    },
+    {
+      "name": "conditional",
+      "file": "pkg/consumer.py",
+      "import_spec": ".typing_only",
+      "target": "pkg/typing_only.py"
+    }
+  ]
+}

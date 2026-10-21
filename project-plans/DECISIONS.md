@@ -5665,4 +5665,53 @@ Date: 2026-10-21. Phase: P-336 (Wave 1.5). Owner: inbesat lane.
 
 ---
 
+## ADR-146: Python import resolver with the jedi fallback (P-337)
+
+Date: 2026-10-21. Phase: P-337 (Wave 1.5). Owner: inbesat lane.
+
+1. **The resolver ships although the P-334 gate is closed.** P-337's own
+   text is unconditional (it mandates the class, the fixture and the four
+   test ids), so the resolver is built on top of the shipped P-335 client.
+   The cross-language EPIC stays deferred - a resolver nobody uses changes
+   no baseline number. This supersedes ADR-145's decision 6.
+2. **The jedi fallback is a python subprocess bridge.** jedi is a python
+   package and the core is TypeScript, so the resolver spawns an
+   interpreter with a small helper script (resolve/jedi_helper.py) and
+   reads one json line back. The interpreter discovery order is
+   STITCH_PYTHON, PYTHON, python3, python and finally the known
+   pythoncore path - on Windows the PATH names are the Store stubs.
+3. **The bridge uses the modern jedi API.** `Script.get_definitions()` is
+   gone in jedi 0.20; the bridge walks `script.get_names(...)`, calls
+   `name.goto()`, and prefers the definition whose file stem equals the
+   specifier's tail (a package's `__init__` is a weaker answer). Those
+   two facts are what make the relative and absolute cases land on the
+   module file instead of the package.
+4. **The sys.path extras ride with the bridge** (the workspace root plus
+   the caller's extra paths), so an absolute import resolves the way it
+   would on the real path.
+5. **pyright is not installed in this environment**, so the language
+   server path reports "unavailable" - a missing measurement is never a
+   zero. The LSP path itself is exercised by the vitest mirror through a
+   fake client, and it carries the same confidence tag as the TS
+   resolver.
+6. **The resolver never throws.** Every step returns a Result and only
+   the existing StitchError codes are used: CONFIG_ERROR (with a field)
+   when no interpreter or no helper is usable, INTERNAL otherwise. An
+   unresolved import is `ok([])` - a finding, not a failure.
+7. **The confidence contract matches the TS resolver**: lsp-high when
+   the server answered, heuristic-medium when the fallback answered; the
+   caller reads the tag instead of guessing.
+8. **The ground-truth fixture lives outside src**
+   (packages/core/test-fixtures/python-resolver-repo): the root typecheck
+   covers packages/*/src/**/* only, so a fixture that imports a package
+   which exists only in the temp workspace must not be compiled in place.
+9. **Both test layers.** The four mandated python ids drive the REAL
+   resolver through the bun harness with the real jedi (measured 4/4
+   across the relative, absolute, submodule and conditional cases); the
+   seven-case vitest mirror keeps the contract enforced in the bun-only
+   CI. Three authoring bugs were fixed by the gate (an unused helper, an
+   unused option that became a real feature, a useless assignment).
+10. **Nothing else moved.** The concurrent maintenance pass's license
+    reds (core policy/report + the CLI license test) and the build.smoke
+    load flake are theirs and were left unstaged; no frozen file changed.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
