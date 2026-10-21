@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "generated_at": "2026-10-21T00:31:18.918Z",
+  "entries": [
+    {
+      "pair_id": "fixture-spot-js",
+      "primary_category": "none",
+      "secondary_category": null,
+      "confidence": 1,
+      "notes": "the pair built and passed"
+    },
+    {
+      "pair_id": "fixture-spot-py",
+      "primary_category": "unknown",
+      "secondary_category": null,
+      "confidence": 0.2,
+      "notes": "the pair failed without an error code"
+    },
+    {
+      "pair_id": "fixture-spot-go",
+      "primary_category": "none",
+      "secondary_category": null,
+      "confidence": 1,
+      "notes": "the pair built and passed"
+    }
+  ],
+  "frequencies": {
+    "import-resolution": 0,
+    "semver-conflict": 0,
+    "license-block": 0,
+    "loop-cap-exceeded": 0,
+    "sandbox-timeout": 0,
+    "semantic-wrong-but-builds": 0,
+    "unknown": 1,
+    "none": 2
+  },
+  "total_pairs": 3,
+  "total_failures": 1,
+  "import_resolution_share": 0,
+  "decision": "epic17-deferred",
+  "reasons": [
+    "import-resolution failures: 0 of 1 (0.0%)",
+    "the top categories are none",
+    "the cross-language epic (Epic 17) is deferred"
+  ]
+}

@@ -43,6 +43,7 @@ import { evalRate, type EvalRateOptions } from './commands/eval_rate.js';
 import { evalBaseline, type EvalBaselineOptions } from './commands/eval_baseline.js';
 import { evalGate, type EvalGateOptions } from './commands/eval_gate.js';
 import { evalReport, type EvalReportOptions } from './commands/eval_report.js';
+import { evalTaxonomy, type EvalTaxonomyOptions } from './commands/eval_taxonomy.js';
 import { evalRun, type EvalRunOptions } from './commands/eval.js';
 import { configCommand, type ConfigCommandOptions } from './commands/config.js';
 import { defaultStoreDir, openStore, readSources, type JsonValue } from './config.js';
@@ -487,6 +488,17 @@ export function buildCLI(program: Command): Command {
     .action(async (options: EvalReportOptions) => {
       const globals = globalOptionsOf(program);
       process.exitCode = await evalReport({ ...globals, ...options });
+    });
+
+  evalCommand
+    .command('taxonomy')
+    .description('Classify the failures and apply the Epic 17 decision rule (P-331)')
+    .option('--result-dir <path>', 'where the harness wrote the per-pair results')
+    .option('--corpus <path>', 'the corpus directory (for the expected pair ids)')
+    .option('--out <file>', 'where the classification artifact is written')
+    .action(async (options: EvalTaxonomyOptions) => {
+      const globals = globalOptionsOf(program);
+      process.exitCode = await evalTaxonomy({ ...globals, ...options });
     });
 
   program

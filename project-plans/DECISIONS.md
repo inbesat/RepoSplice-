@@ -5326,11 +5326,18 @@ Date: 2026-10-21. Scope: completed-phase regressions, not a new phase.
    not manufacture a successful merge or score a parent as the child. P-239/P-240
    still own job-claim fencing and interrupted-stage recovery; their unchecked
    status is not changed by this audit pass.
-3. **Keep the accepted writable workspace.** ADR-044's writable `/workspace`
-   remains necessary for builds. Enforce the sandbox's network/resource policy
-   without introducing a new workspace-copy architecture in this repair pass.
-   A metadata-only dependency-cache hit is not proof that a fresh checkout has
-   installed dependencies.
+3. **Keep the accepted writable workspace, enforce the rest of the policy.**
+   ADR-044's writable `/workspace` remains necessary for builds; no
+   workspace-copy architecture is introduced here. Executions default to no
+   network, resolved memory/CPU limits, a read-only root filesystem with a
+   writable `/tmp`, `no-new-privileges`, and all capabilities dropped except
+   `DAC_OVERRIDE` for host-owned workspace files; installers opt into network
+   and a writable layer explicitly. The resolved ADR-047 profile (2048 MiB /
+   1 CPU / 600 s) still needs forwarding by the production execution caller
+   (P-192); the no-config fallback is 1536 MiB / 2 CPUs / 300 s. Docker output
+   keeps a bounded tail (500 lines, 1 MiB per stream, 16 KiB per line). A
+   metadata-only dependency-cache hit is not proof that a fresh checkout has
+   installed dependencies, so it no longer skips installation.
 4. **Extend seams only where the invariant requires it.** Eval revision and
    cancellation information belongs at its existing IO ports. Do not change the
    frozen jobs/event/WebSocket contracts or add dependencies for these fixes.
@@ -5392,5 +5399,19 @@ Date: 2026-10-21. Phase: P-330 (Eval Harness). Owner: inbesat lane.
    three mandated python ids plus the bun mirror are verbatim.
 
 ---
+
+## ADR-140: Failure taxonomy over the baseline run (P-331)
+
+Date: 2026-10-21. Phase: P-331 (Eval Harness). Owner: inbesat lane.
+
+1. **The taxonomy is a pure classifier in the core.** `packages/core/src/eval/taxonomy.ts` takes the P-327 baseline records (plus the build/test logs and the ratings) and returns the report; it does no IO and never throws (an unknown code yields `unknown`, never an exception). The CLI (`stitch eval taxonomy`, the sixth `eval` subcommand) owns the IO and the exit codes (0 = the report written, 2 = the corpus or the inputs are unusable).
+2. **The six categories are the plan's, in the plan's order** (import-resolution, semver-conflict, license-block, loop-cap-exceeded, sandbox-timeout, semantic-wrong-but-builds) plus two honest bookkeeping buckets: `unknown` (we could not tell) and `none` (the pair passed). A failure report that counts a success as a category would lie, so the successes get their own bucket.
+3. **The classification order is fixed and each step carries a confidence**: the error code (0.9) -> the log text (the iteration cap => loop-cap-exceeded, 0.6) -> the rater's rubric (a build that passes but the average score <= 3 => semantic-wrong-but-builds, 0.4) -> `unknown` (0.2). The secondary category is the runner-up, or null.
+4. **The failure denominator is the set of entries that carry a failure category**, not the set of pairs that failed to build: a pair that builds but is semantically wrong IS a failure. The first implementation divided by the non-building pairs and under-counted the failures (the harness caught it).
+5. **The decision rule follows the spec**: import-resolution >= 20% of the failures OR import-resolution among the top two categories => Epic 17 is warranted; no failures at all => `pending` (a verdict on an empty run would be a guess). The reasons name the counts, the share and the top categories so the verdict can be read without the code.
+6. **The recorded artifact is a labelled DRY RUN.** `eval/taxonomy/failure_categories.json` is generated over the P-324/P-327 fixture corpus (3 synthetic pairs, real local builds): 2 built => `none`, 1 failed without an error code => `unknown`, the import-resolution share 0 => `epic17-deferred`. The REAL 20-pair classification waits for the provider-backed run (the P-327 deferral) - the machinery is what this phase ships.
+7. **Every corpus pair gets an entry**, including a pair that never ran (`unknown`), so the report shows that the pair was looked at instead of silently vanishing.
+8. **Three bugs were found while building and fixed in the implementation** (the `none` branch short-circuiting before the semantic-wrong branch, so a build that passes with a low rubric was filed as a plain success; the failure denominator; the mirror's own wrong expectations about the `none` bucket and about `decide()` returning a verdict object rather than a string). The two mandated python ids and the bun mirror are verbatim.
+9. **Nothing else moved**: the P-320/323/324/325/327/328/329/330 modules and the 20-pair corpus are untouched, and no frozen file changed.
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

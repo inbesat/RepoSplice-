@@ -1483,4 +1483,13 @@ export type {
   ModelPrice,
   TokenUsage as EvalTokenUsage,
 } from './eval/cost.js';
+export { buildTaxonomy, classifyResult, decide, TAXONOMY_CATEGORIES } from './eval/taxonomy.js';
+export type {
+  Classification,
+  FailureCategoryName,
+  TaxonomyCategory,
+  TaxonomyEntry,
+  TaxonomyInput,
+  TaxonomyReport,
+} from './eval/taxonomy.js';
 export { runPipeline } from './pipeline/runPipeline.js';
