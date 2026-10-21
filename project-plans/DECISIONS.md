@@ -5607,6 +5607,62 @@ Date: 2026-10-21. Phase: P-335. Owner: inbesat lane.
 8. **Nothing else moved** (the P-320..P-334 modules, the 20-pair corpus,
    the eval harness and the frozen files are untouched).
 
+
+
+---
+
+## ADR-145: TypeScript/JavaScript import resolver on the LSP client (P-336)
+
+Date: 2026-10-21. Phase: P-336 (Wave 1.5). Owner: inbesat lane.
+
+1. **The resolver IS built although the P-334 gate is closed.** P-336's own
+   text is unconditional (it mandates the class, the interface and the four
+   test ids), so the resolver ships as language-agnostic infrastructure on
+   top of the P-335 client. The cross-language EPIC itself stays deferred
+   (the P-331 decision is `epic17-deferred`): a resolver nobody uses yet
+   changes no baseline number. This supersedes ADR-144's decision 6.
+2. **The compiler-API fallback needs the `typescript` RUNTIME dependency,
+   pinned to the 6.x line.** The root's `typescript` was 6.0.3; the 7.x
+   release is the Go port whose main entry is only a version stub, so the
+   compiler API is not there. `packages/core` now depends on
+   `typescript@^6.0.0`. The root manifest stays on `^6`.
+3. **The resolver never throws.** `resolve()` returns
+   `Promise<Result<ResolvedImport[], StitchError>>`; only existing codes are
+   used (CONFIG_ERROR with a `field` for a missing compiler API or an
+   unreadable tsconfig, INTERNAL otherwise). An unresolved import is DATA,
+   not a failure: it resolves to an empty list rather than a fabricated
+   edge.
+4. **The confidence contract is explicit.** `lsp-high` = the language
+   server answered; `heuristic-medium` = the compiler API answered. The
+   caller reads the tag instead of guessing which path ran.
+5. **The LSP path is tried first, the compiler path is the fallback.** The
+   LSP path needs a live client, a readable source file and the import
+   specifier's position; anything that cannot answer falls through to
+   `ts.resolveModuleName` over the project's tsconfig. Both paths
+   normalise their paths to the workspace root with posix separators.
+6. **The ground-truth fixture lives OUTSIDE `src`.**
+   `packages/core/test-fixtures/ts-resolver-repo` holds the four import
+   kinds (relative, alias via `paths`, node_modules, re-export) plus the
+   fake package. Two reasons: a committed `node_modules` folder would be
+   gitignored (so the harness copies the package into the temp workspace),
+   and the root typecheck only covers `packages/*/src/**/*` - a fixture
+   importing a package that exists only inside the temp workspace must not
+   be compiled in place. The language server also needs a TypeScript
+   installation inside the workspace, so the harness junctions the core's
+   copy in.
+7. **Both test layers.** The four mandated python ids drive the REAL
+   resolver through the bun harness (the compiler path, the real
+   language server best effort) and the eight-case vitest mirror covers
+   the same contract hermetically, because the CI is bun-only. Measured:
+   the compiler path 4/4 with `heuristic-medium`, the language server
+   answered with `lsp-high`.
+8. **Three authoring bugs found and fixed** (the tsserver protocol gap, the
+   tsconfig reading through the structural port, the missing workspace
+   TypeScript installation). The concurrent maintenance pass's license
+   reds (core `license/policy` + `license/report`, cli `license`) are
+   another lane's in-flight work and are left unstaged and unfixed here.
+   Nothing else moved.
+
 ---
 
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

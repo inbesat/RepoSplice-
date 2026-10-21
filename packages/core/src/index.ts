@@ -1503,4 +1503,7 @@ export type {
   LspSpawnFn,
   LspWritable,
 } from './resolve/lsp-client.js';
+export { createTsResolver, RESOLUTION_CONFIDENCES, TSResolver } from './resolve/ts-resolver.js';
+export type { TsHost, TsModule, TsResolverOptions } from './resolve/ts-resolver.js';
+export type { DependencyResolver, ResolvedImport, ResolutionConfidence } from './resolve/types.js';
 export { runPipeline } from './pipeline/runPipeline.js';

@@ -1,0 +1,29 @@
+{
+  "note": "The ground truth of the fixture repo: every import the resolver must answer, with the workspace-relative target it must land on. The harness copies the repo into a temp workspace (and the fake package into node_modules) before resolving, so the paths stay the same.",
+  "cases": [
+    {
+      "name": "relative",
+      "source": "src/index.ts",
+      "spec": "./helper",
+      "target": "src/helper.ts"
+    },
+    {
+      "name": "alias",
+      "source": "src/index.ts",
+      "spec": "@app/aliased",
+      "target": "src/aliased.ts"
+    },
+    {
+      "name": "node_modules",
+      "source": "src/index.ts",
+      "spec": "fake-pkg",
+      "target": "node_modules/fake-pkg/index.d.ts"
+    },
+    {
+      "name": "re_export",
+      "source": "src/reexport.ts",
+      "spec": "./helper",
+      "target": "src/helper.ts"
+    }
+  ]
+}
