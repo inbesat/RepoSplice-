@@ -5714,4 +5714,48 @@ Date: 2026-10-21. Phase: P-337 (Wave 1.5). Owner: inbesat lane.
 10. **Nothing else moved.** The concurrent maintenance pass's license
     reds (core policy/report + the CLI license test) and the build.smoke
     load flake are theirs and were left unstaged; no frozen file changed.
+
+---
+
+## ADR-147: Go import resolver over the module graph (P-338)
+
+Date: 2026-10-21. Phase: P-338 (Wave 1.5). Owner: inbesat lane.
+
+1. **The resolver ships although the P-334 gate is closed.** P-338's own text
+   is unconditional (it mandates the class, the fixture and the three test
+   ids), so the resolver is built on the shipped P-335 client. The
+   cross-language EPIC stays deferred - a resolver nobody uses changes no
+   baseline number.
+2. **The Go fallback is implemented IN TypeScript.** Go's import semantics are
+   deterministic (go.mod + go.work + the vendor tree + the build tags), so no
+   interpreter bridge is needed - unlike P-337, where jedi is a python package
+   and the resolver must spawn one.
+3. **Neither `go` nor `gopls` is installed in this environment**, so the
+   language server path reports "unavailable" - a missing measurement is
+   never a zero. The LSP path itself is covered by the vitest mirror through
+   an injected fake client, and it carries the same confidence tag as the
+   other resolvers.
+4. **The build-tag rule is real.** A file whose `//go:build` constraint the
+   build context does not satisfy is skipped, and in the fixture the excluded
+   file sorts FIRST, so the rule is exercised rather than assumed.
+5. **Both go.work forms are parsed** (the single-line `use ./x` and the
+   `use ( ... )` block); the modules are deduped by import path.
+6. **The resolver never throws.** Every step returns a Result: an unresolved
+   import is `ok([])` - a finding, not a failure - while a go.mod that exists
+   but will not parse is `CONFIG_ERROR` with the field `resolve.gomod`. Only
+   the existing StitchError codes are used.
+7. **The confidence contract matches** the TS and python resolvers: lsp-high
+   when the server answered, heuristic-medium when the fallback answered.
+8. **The ground-truth fixture lives outside src**
+   (packages/core/test-fixtures/go-resolver-repo): the root typecheck covers
+   packages/*/src/**/* only.
+9. **Both test layers.** The three mandated python ids drive the REAL resolver
+   through the bun harness (measured 4/4 across module, vendor, workspace and
+   build-tag cases); the eight-case vitest mirror keeps the contract enforced
+   in the bun-only CI. Two authoring bugs were found and fixed (the go.work
+   block form was unparsed; the harness's relative import was wrong), and the
+   unused-import error the gate surfaced became a real CONFIG_ERROR path.
+10. **Nothing else moved.** The concurrent maintenance pass's license reds and
+    the build.smoke load flake are theirs and were left unstaged; no frozen
+    file changed.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

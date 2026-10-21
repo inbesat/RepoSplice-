@@ -1512,4 +1512,6 @@ export {
   RESOLUTION_CONFIDENCES as PYTHON_RESOLUTION_CONFIDENCES,
 } from './resolve/python-resolver.js';
 export type { JediRunner, PythonResolverOptions } from './resolve/python-resolver.js';
+export { createGoResolver, GO_RESOLUTION_CONFIDENCES, GoResolver } from './resolve/go-resolver.js';
+export type { GoBuildContext, GoResolverOptions } from './resolve/go-resolver.js';
 export { runPipeline } from './pipeline/runPipeline.js';

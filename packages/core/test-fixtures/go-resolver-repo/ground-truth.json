@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "name": "module",
+      "file": "cmd/app/main.go",
+      "import_spec": "example.com/fixture/pkg",
+      "target": "pkg/pkg.go"
+    },
+    {
+      "name": "vendor",
+      "file": "cmd/app/main.go",
+      "import_spec": "example.com/dep/thing",
+      "target": "vendor/example.com/dep/thing/thing.go"
+    },
+    {
+      "name": "workspace",
+      "file": "cmd/app/main.go",
+      "import_spec": "example.com/other/pkg",
+      "target": "other/pkg/pkg.go"
+    },
+    {
+      "name": "build_tag",
+      "file": "cmd/app/main.go",
+      "import_spec": "example.com/fixture/tagged",
+      "target": "tagged/plain.go"
+    }
+  ]
+}
