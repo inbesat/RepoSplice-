@@ -5502,4 +5502,46 @@ Date: 2026-10-21. Phase: P-333 (Eval Harness). Owner: inbesat lane.
    and the measured artifacts are read-only inputs; no frozen file
    changed; no mandated test id was renamed.
 
+
+---
+
+## ADR-143: The LSP viability spike did not run - its gate is closed (P-334)
+
+Date: 2026-10-21. Phase: P-334 (Wave 1.5, cross-language research spike).
+Owner: inbesat lane.
+
+1. **The phase's own gate is not met.** P-334 runs only when the P-331
+   taxonomy shows import-resolution failures in the top-2 categories. The
+   recorded taxonomy (eval/taxonomy/failure_categories.json) decides
+   `epic17-deferred`: the import-resolution share is 0 of 1 failures
+   (0.0%) and the top categories are `none`. The spike therefore
+   MEASURED NOTHING - every language is recorded as `skipped-gate` and
+   no latency, stability or accuracy number is claimed. The nulls are
+   the point: a missing number is never a zero.
+2. **The harness ships anyway.** eval/scripts/lsp_spike.py reads the
+   taxonomy artifact first, so the spike is one command away when the
+   gate opens: it probes the server binaries, measures the cold start
+   (initialize), one textDocument/definition round trip, a burst of 100
+   sequential requests with the error rate and the recovery probe, and
+   reports a missing binary as `unavailable` and a misbehaving server as
+   an error string. It never raises: every failure is a status.
+3. **The licensing is a static fact.** tsserver, pyright and gopls are
+   MIT; rust-analyzer is MIT OR Apache-2.0. No GPL contamination risk
+   for the corpus. The licenses are recorded per language regardless of
+   whether the server was measured.
+4. **The fallback is the tree-sitter heuristics** (P-020/P-021/P-022).
+   The re-entry criterion is a real provider-backed corpus baseline
+   where import-resolution lands in the top-2 categories (or covers
+   20% or more of the failures) - the P-331 rule, unchanged.
+5. **The tests assert the shape, not a number.** The two mandated ids
+   (test_latency_measured, test_stability_100_requests) plus the gate
+   path case check that a MEASURED language carries a latency and the
+   stability fields while a non-measured one carries nulls - never a
+   fake zero. The suite therefore stays honest in both worlds.
+6. **P-335 does not start.** The generic LSP client is the next phase
+   and is conditional on the spike being a go; with the gate closed the
+   honest outcome is the same evaluation and a deferred client.
+7. **Nothing else moved.** The P-320..P-333 modules, the 20-pair
+   corpus and the measured artifacts are read-only inputs; no frozen
+   file changed and no mandated id was renamed.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -1,0 +1,55 @@
+{
+  "gate": {
+    "open": false,
+    "reason": "the P-331 decision is 'epic17-deferred' (import-resolution failures: 0 of 1 (0.0%); the top categories are none; the cross-language epic (Epic 17) is deferred)"
+  },
+  "generated_at": "2026-10-21T15:11:29Z",
+  "languages": [
+    {
+      "cold_start_ms": null,
+      "error_rate": null,
+      "language": "ts",
+      "license": "MIT",
+      "note": "the P-331 decision is 'epic17-deferred' (import-resolution failures: 0 of 1 (0.0%); the top categories are none; the cross-language epic (Epic 17) is deferred)",
+      "recovered": null,
+      "request_ms": null,
+      "server": "tsserver",
+      "status": "skipped-gate"
+    },
+    {
+      "cold_start_ms": null,
+      "error_rate": null,
+      "language": "python",
+      "license": "MIT",
+      "note": "the P-331 decision is 'epic17-deferred' (import-resolution failures: 0 of 1 (0.0%); the top categories are none; the cross-language epic (Epic 17) is deferred)",
+      "recovered": null,
+      "request_ms": null,
+      "server": "pyright",
+      "status": "skipped-gate"
+    },
+    {
+      "cold_start_ms": null,
+      "error_rate": null,
+      "language": "go",
+      "license": "MIT",
+      "note": "the P-331 decision is 'epic17-deferred' (import-resolution failures: 0 of 1 (0.0%); the top categories are none; the cross-language epic (Epic 17) is deferred)",
+      "recovered": null,
+      "request_ms": null,
+      "server": "gopls",
+      "status": "skipped-gate"
+    },
+    {
+      "cold_start_ms": null,
+      "error_rate": null,
+      "language": "rust",
+      "license": "MIT OR Apache-2.0",
+      "note": "the P-331 decision is 'epic17-deferred' (import-resolution failures: 0 of 1 (0.0%); the top categories are none; the cross-language epic (Epic 17) is deferred)",
+      "recovered": null,
+      "request_ms": null,
+      "server": "rust-analyzer",
+      "status": "skipped-gate"
+    }
+  ],
+  "requests": 100,
+  "version": 1
+}
