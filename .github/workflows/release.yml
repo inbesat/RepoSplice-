@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: write
@@ -12,6 +13,9 @@ permissions:
 jobs:
   release:
     name: Release
+    # A tag push regenerates EVAL.md (the eval-doc job below); the publish
+    # step belongs to a branch push only, so a tag can never publish twice.
+    if: github.ref_type == 'branch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,3 +29,33 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # P-333 - the published methodology follows the tagged tree: the renderer
+  # re-reads the committed artifacts and the refreshed document is committed
+  # back to main.
+  eval-doc:
+    name: Regenerate EVAL.md
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: render EVAL.md
+        run: python eval/scripts/render_eval_md.py
+      - name: commit the refreshed document
+        run: |
+          if git diff --quiet -- EVAL.md; then
+            echo "EVAL.md is already up to date"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add EVAL.md
+          git commit -m 'chore(eval): regenerate EVAL.md for the release tag'
+          git push origin HEAD:main

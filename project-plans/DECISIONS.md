@@ -5461,4 +5461,45 @@ Date: 2026-10-21. Phase: P-332 (Eval Harness). Owner: inbesat lane.
 8. **Nothing else moved.** The P-320/323/324/325/327/328/329/330/331
    modules and the 20-pair corpus are untouched, and no frozen file
    changed.
+
+---
+
+## ADR-142: Publish EVAL.md as a generated methodology document (P-333)
+
+Date: 2026-10-21. Phase: P-333 (Eval Harness). Owner: inbesat lane.
+
+1. **EVAL.md is GENERATED, never hand-written.** A stdlib-only renderer
+   (`eval/scripts/render_eval_md.py`) reads the committed artifacts and
+   writes the document, so the published methodology can never drift from
+   the measurements it describes. The document embeds a machine-readable
+   `<!-- eval-baseline {...} -->` block and the test compares the DOCUMENT
+   against the ARTIFACT - a hand-edit that drifts fails.
+2. **The shipped baseline is a labelled DRY RUN.** The Overview states
+   plainly that the numbers come from the fixture corpus, not from the
+   20-pair corpus: the real run is deferred per ADR-135 (it needs Docker,
+   an AI provider key and 30-60 minutes). A published document must not
+   claim a measurement it does not have.
+3. **Four artifacts, one document.** The renderer reads the corpus
+   manifest, the dry-run baseline, the per-ecosystem breakdown and the
+   failure taxonomy; the rubric dimensions and the taxonomy categories
+   live as constants in the generator so the document and the schemas
+   cannot disagree.
+4. **The ten sections follow the spec's list** (Overview, Corpus
+   Composition, Evaluation Methodology, Baseline Results, Failure
+   Taxonomy, Per-Ecosystem Breakdown, Cost Analysis, How to Run Locally,
+   How to Contribute Pairs, Versioning & Updates). The alias under
+   `docs/` points at the root document and says it is generated; the
+   README links it.
+5. **The release workflow regenerates the document on a v* tag** and
+   commits it back to main. The pre-existing publish job is guarded with
+   `if: github.ref_type == 'branch'` so a tag push can never double
+   publish.
+6. **The two mandated python ids** (`docs/test_eval_md.py::
+   test_sections_present` and `::test_baseline_numbers_match`) run
+   standalone as well as under pytest, and they assert the headings, the
+   alias, the README link and the numbers against the artifact.
+7. **Nothing else moved.** The P-320..P-332 modules, the 20-pair corpus
+   and the measured artifacts are read-only inputs; no frozen file
+   changed; no mandated test id was renamed.
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

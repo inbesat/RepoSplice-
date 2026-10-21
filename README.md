@@ -241,6 +241,7 @@ RepoSplice is built across **4 waves** with **366 phases** grouped into **19 epi
 | [CONTEXT.md](project-plans/CONTEXT.md) | Documentation navigation index |
 | [BRANCHING.md](BRANCHING.md) | Git branching model (`dev`/`main`), PR rules, ownership lanes |
 | [CONTRACTS.md](CONTRACTS.md) | Frozen core/web wire contracts and how to change them |
+| [EVAL.md](EVAL.md) | Evaluation methodology, the baseline numbers and how to reproduce them |
 
 ---
 
