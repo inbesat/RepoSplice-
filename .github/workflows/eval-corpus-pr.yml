@@ -1,0 +1,33 @@
+# P-332 - the corpus contribution check. A pull request that touches the
+# corpus must not dilute the benchmark: the whole corpus is validated and
+# every NEW pair must add coverage the corpus does not have yet.
+name: eval-corpus-pr
+
+on:
+  pull_request:
+    paths:
+      - 'eval/corpus/**'
+
+jobs:
+  corpus:
+    name: eval corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # the base branch's corpus is what the contribution is measured against
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: validate the whole corpus
+        run: python eval/scripts/validate_corpus.py
+
+      - name: validate the contribution
+        run: |
+          git show "origin/${{ github.base_ref }}:eval/corpus/pairs.json" > base-pairs.json
+          python eval/scripts/validate_contribution.py \
+            --corpus base-pairs.json \
+            --candidate eval/corpus/pairs.json

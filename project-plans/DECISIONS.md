@@ -5414,4 +5414,51 @@ Date: 2026-10-21. Phase: P-331 (Eval Harness). Owner: inbesat lane.
 8. **Three bugs were found while building and fixed in the implementation** (the `none` branch short-circuiting before the semantic-wrong branch, so a build that passes with a low rubric was filed as a plain success; the failure denominator; the mirror's own wrong expectations about the `none` bucket and about `decide()` returning a verdict object rather than a string). The two mandated python ids and the bun mirror are verbatim.
 9. **Nothing else moved**: the P-320/323/324/325/327/328/329/330 modules and the 20-pair corpus are untouched, and no frozen file changed.
 
+
+
+---
+
+## ADR-141: Eval corpus contribution process (P-332)
+
+Date: 2026-10-21. Phase: P-332 (Eval Harness). Owner: inbesat lane.
+
+1. **The contribution check reuses the existing validators.** A new
+   corpus pair is checked by a STDLIB-ONLY script
+   (`eval/scripts/validate_contribution.py`) that calls the P-320 schema
+   validator (`validate_instance`) and the P-322 SHA resolver
+   (`parse_owner_repo` + `LsRemoteResolver`) instead of re-implementing
+   either; the corpus has one schema and one pin checker.
+2. **Four axes, four messages.** Every problem is a message, never a
+   crash: the schema, the permissive license on BOTH sides, the 40-hex
+   pin, and the diversity rule. A pair that is ALREADY in the corpus is
+   exempt from the diversity rule so the pre-existing manifest keeps
+   validating.
+3. **The diversity rule is checkable because P-331 exists.** A new pair
+   must add coverage the corpus does not have: a new ecosystem, OR a new
+   expected outcome, OR a new failure mode from the P-331 taxonomy
+   (import-resolution / semver-conflict / license-block /
+   loop-cap-exceeded / sandbox-timeout / semantic-wrong-but-builds). The
+   taxonomy is what turns "adds something new" into a rule a script can
+   enforce; an unknown failure mode is an error, not a free pass.
+4. **The network check is opt-in.** The clonability check runs only
+   with `STITCH_EVAL_VERIFY_NETWORK=1` (the P-322 precedent), so the
+   default path is hermetic and CI needs no token; a timeout or a rate
+   limit becomes an error message, never an exception.
+5. **CI measures the contribution against the BASE branch.** The
+   `eval-corpus-pr` workflow is scoped to `eval/corpus/**`, validates the
+   whole corpus, and compares the candidate manifest against
+   `git show origin/<base>:eval/corpus/pairs.json` so the pre-existing
+   pairs stay valid while the new ones must earn their place.
+6. **The contributor path is documented end to end.**
+   `eval/corpus/CONTRIBUTING.md` covers the selection criteria, the
+   pinning, the schema, the license check, the diversity rule, the
+   local commands, the pull-request shape and the maintainer review
+   checklist (difficulty calibration, license confirmation, diversity
+   confirmation).
+7. **Both test layers.** The three mandated python ids
+   (`test_valid_contribution_passes`, `test_invalid_rejected`,
+   `test_diversity_check`) drive the real validator, hermetically.
+8. **Nothing else moved.** The P-320/323/324/325/327/328/329/330/331
+   modules and the 20-pair corpus are untouched, and no frozen file
+   changed.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
