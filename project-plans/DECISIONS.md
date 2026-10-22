@@ -5862,4 +5862,50 @@ Date: 2026-10-21. Phase: P-340 (Wave 1.5). Owner: inbesat lane.
    contract enforced in the bun-only CI.
 9. **Nothing else moved.** The concurrent lane's license reds are theirs; no
    frozen file changed.
+
+---
+
+## ADR-150: Unified resolver interface and registry (P-341)
+
+Date: 2026-10-21. Phase: P-341 (Wave 1.5). Owner: inbesat lane.
+
+1. **The contract ships although the P-334 gate is closed.** P-341's own
+   text is unconditional (it mandates the interface, the registry, the
+   fallback chain and three test ids), so the phase is built on the five
+   shipped resolvers. The cross-language EPIC itself stays deferred - a
+   registry nobody consumes yet changes no baseline number.
+2. **The interface is EXTENDED in place, never replaced.** `types.ts` grew
+   `getCapabilities()`, `healthCheck()` and `shutdown()` on top of the
+   P-336 `resolve()` + `ResolvedImport` + `ResolutionConfidence`, so every
+   existing consumer keeps compiling.
+3. **The three new methods are total.** `getCapabilities()` is synchronous
+   and cannot fail (it reports the language, the strategies and whether a
+   server is configured). `healthCheck()` reports `healthy: true` for a
+   resolver whose deterministic fallback can still answer, while the `lsp`
+   field carries the server's real state - a missing measurement is never
+   a zero. `shutdown()` releases what the resolver owns.
+4. **The registry is a per-session singleton.** `ResolverRegistry` maps the
+   P-103 `Ecosystem` ('node' | 'python' | 'go' | 'rust') onto the shipped
+   resolvers and shares ONE heuristic instance across them.
+5. **The chain is LSP -> Heuristic -> None.** `getResolver(ecosystem)`
+   returns the per-language resolver when a server may be used and the
+   heuristic when `lspMode: 'never'`; an unknown ecosystem yields
+   `undefined`. Each per-language resolver already carries its own
+   deterministic fallback (the compiler API, jedi, the Go and Rust module
+   graphs), so the chain never hard-fails.
+6. **`getCapabilities()` is the diagnostics surface and `shutdown()` is
+   the cleanup contract** - it stops every owned LSP client exactly once
+   and reports the first failure.
+7. **No new StitchError code.** The registry reuses the existing union
+   (CONFIG_ERROR with a field, INTERNAL) and never throws.
+8. **Both test layers.** The three mandated python ids drive the real
+   registry through the bun harness (interface compliance, ecosystem
+   selection, the fallback chain plus a real resolution), and an 8-case
+   vitest mirror keeps the contract enforced in the bun-only CI.
+9. **The gate caught the interface extension's blast radius:** five test
+   fakes and `withHeuristicFallback` returned a two-member object and no
+   longer satisfied the extended contract (TS2739). They now implement
+   the full interface.
+10. **Nothing else moved.** No frozen file changed and the concurrent
+    lane's reds are theirs.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

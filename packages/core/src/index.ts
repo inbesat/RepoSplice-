@@ -1534,4 +1534,10 @@ export type {
   HeuristicResolverOptions,
   LspMode,
 } from './resolve/heuristic-fallback.js';
+export {
+  createResolverRegistry,
+  REGISTRY_ECOSYSTEMS,
+  ResolverRegistry,
+} from './resolve/registry.js';
+export type { RegistryCapabilities, ResolverRegistryOptions } from './resolve/registry.js';
 export { runPipeline } from './pipeline/runPipeline.js';

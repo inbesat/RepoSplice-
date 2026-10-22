@@ -16,7 +16,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
 import type { LspClient } from './lsp-client.js';
-import type { DependencyResolver, ResolvedImport, ResolutionConfidence } from './types.js';
+import type {
+  DependencyResolver,
+  ResolvedImport,
+  ResolutionConfidence,
+  ResolverCapabilities,
+  ResolverHealth,
+} from './types.js';
 
 /** The build context the `//go:build` constraints are evaluated against. */
 export interface GoBuildContext {
@@ -160,6 +166,36 @@ function definitionUris(value: unknown): readonly string[] {
 
 export class GoResolver implements DependencyResolver {
   readonly language = 'go';
+
+  /** What this resolver can do (P-341). */
+  getCapabilities(): ResolverCapabilities {
+    return {
+      language: this.language,
+      strategies: ['lsp-high', 'heuristic-medium'],
+      lsp: this.lspClient === undefined ? 'absent' : 'configured',
+    };
+  }
+
+  /** Probe the language server; the module graph needs no server (P-341). */
+  async healthCheck(): Promise<Result<ResolverHealth, StitchError>> {
+    if (this.lspClient === undefined) {
+      return ok({ healthy: true, lsp: 'unavailable', detail: 'no language server was configured' });
+    }
+    if (!this.lspClient.isAlive()) {
+      return ok({
+        healthy: true,
+        lsp: 'unavailable',
+        detail: 'the language server is not running',
+      });
+    }
+    return ok({ healthy: true, lsp: 'available' });
+  }
+
+  /** Release the language server process, when there is one (P-341). */
+  async shutdown(): Promise<Result<void, StitchError>> {
+    if (this.lspClient === undefined) return ok(undefined);
+    return this.lspClient.shutdown();
+  }
 
   private readonly rootDir: string;
   private readonly lspClient: LspClient | undefined;

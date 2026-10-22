@@ -12,7 +12,7 @@
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { err } from 'neverthrow';
+import { err, ok } from 'neverthrow';
 import {
   createHeuristicResolver,
   extractSpecifiers,
@@ -153,6 +153,13 @@ async function runLspFailure(): Promise<Record<string, unknown>> {
         code: 'INTERNAL',
         message: 'the language server exited',
       }),
+    getCapabilities: () => ({
+      language: 'typescript',
+      strategies: ['lsp-high'],
+      lsp: 'configured',
+    }),
+    healthCheck: async () => ok({ healthy: true, lsp: 'available' }),
+    shutdown: async () => ok(undefined),
   };
   const workspace = prepareWorkspace(FIXTURE_SPECS[0] as FixtureSpec);
   try {

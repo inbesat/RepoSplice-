@@ -30,7 +30,12 @@ import { createGoResolver } from './go-resolver.js';
 import { createPythonResolver } from './python-resolver.js';
 import { createRustResolver } from './rust-resolver.js';
 import { createTsResolver } from './ts-resolver.js';
-import type { DependencyResolver, ResolvedImport } from './types.js';
+import type {
+  DependencyResolver,
+  ResolvedImport,
+  ResolverCapabilities,
+  ResolverHealth,
+} from './types.js';
 
 /** Whether language servers may be used at all. */
 export type LspMode = 'auto' | 'never';
@@ -207,6 +212,29 @@ export async function extractSpecifiers(
 export class HeuristicResolver implements DependencyResolver {
   readonly language = 'heuristic';
 
+  /** What this resolver can do (P-341). */
+  getCapabilities(): ResolverCapabilities {
+    return {
+      language: this.language,
+      strategies: ['heuristic-medium'],
+      lsp: 'absent',
+    };
+  }
+
+  /** The heuristic never uses a language server, so it is always healthy. */
+  async healthCheck(): Promise<Result<ResolverHealth, StitchError>> {
+    return ok({
+      healthy: true,
+      lsp: 'unavailable',
+      detail: 'the heuristic resolver never uses a language server',
+    });
+  }
+
+  /** Nothing to release: the heuristic owns no process (P-341). */
+  async shutdown(): Promise<Result<void, StitchError>> {
+    return ok(undefined);
+  }
+
   private readonly rootDir: string;
   private readonly options: HeuristicResolverOptions;
 
@@ -317,6 +345,15 @@ export function withHeuristicFallback(
       const fallback = await heuristic.resolve(filePath, importSpec);
       if (fallback.isErr()) return attempted.isErr() ? err(attempted.error) : ok([]);
       return ok(fallback.value);
+    },
+    getCapabilities() {
+      return primary.getCapabilities();
+    },
+    async healthCheck() {
+      return primary.healthCheck();
+    },
+    async shutdown() {
+      return primary.shutdown();
     },
   };
 }

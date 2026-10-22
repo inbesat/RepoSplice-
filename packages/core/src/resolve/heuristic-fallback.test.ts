@@ -23,6 +23,9 @@ const dead: DependencyResolver = {
   language: 'typescript',
   resolve: async () =>
     err<ResolvedImport[], StitchError>({ code: 'INTERNAL', message: 'the language server exited' }),
+  getCapabilities: () => ({ language: 'typescript', strategies: ['lsp-high'], lsp: 'configured' }),
+  healthCheck: async () => ok({ healthy: true, lsp: 'available' }),
+  shutdown: async () => ok(undefined),
 };
 
 describe('heuristic fallback (P-340)', () => {
@@ -89,6 +92,13 @@ describe('heuristic fallback (P-340)', () => {
         ok<ResolvedImport[], StitchError>([
           { sourceFile: 'src/index.ts', targetFile: 'src/helper.ts', confidence: 'lsp-high' },
         ]),
+      getCapabilities: () => ({
+        language: 'typescript',
+        strategies: ['lsp-high'],
+        lsp: 'configured',
+      }),
+      healthCheck: async () => ok({ healthy: true, lsp: 'available' }),
+      shutdown: async () => ok(undefined),
     };
     const combined = withHeuristicFallback(primary, createHeuristicResolver({ rootDir: TS_ROOT }));
     const result = await combined.resolve('src/index.ts', './helper');
