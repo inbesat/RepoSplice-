@@ -8,8 +8,10 @@
 // tree-sitter heuristic (P-340) when LSP is switched off for the session, and
 // nothing at all for an ecosystem nobody can resolve.
 
+import { isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { err, ok, type Result } from 'neverthrow';
 import type { Ecosystem } from '../deps/ecosystem.js';
+import { logger } from '../logger/index.js';
 import type { StitchError } from '../result/index.js';
 import { createGoResolver, type GoBuildContext } from './go-resolver.js';
 import { createHeuristicResolver, lspEnabled, type LspMode } from './heuristic-fallback.js';
@@ -17,7 +19,23 @@ import type { LspClient } from './lsp-client.js';
 import { createPythonResolver, type JediRunner } from './python-resolver.js';
 import { createRustResolver, type RustBuildContext } from './rust-resolver.js';
 import { createTsResolver, type TsModule } from './ts-resolver.js';
-import type { DependencyResolver, ResolutionConfidence } from './types.js';
+import {
+  summarizeConfidence,
+  type ConfidenceDistribution,
+  type DependencyResolver,
+  type ResolutionConfidence,
+  type ResolvedImport,
+} from './types.js';
+
+/** The ecosystem a file belongs to, from its extension (P-342). */
+export function ecosystemForFile(filePath: string): Ecosystem | undefined {
+  const name = filePath.toLowerCase();
+  if (/\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(name)) return 'node';
+  if (name.endsWith('.py')) return 'python';
+  if (name.endsWith('.go')) return 'go';
+  if (name.endsWith('.rs')) return 'rust';
+  return undefined;
+}
 
 /** Every ecosystem the registry can answer for. */
 export const REGISTRY_ECOSYSTEMS: readonly Ecosystem[] = ['node', 'python', 'go', 'rust'];
@@ -53,6 +71,13 @@ export class ResolverRegistry {
   private readonly primary = new Map<Ecosystem, DependencyResolver>();
   private readonly heuristic: DependencyResolver;
   private readonly mode: LspMode;
+  private readonly rootDir: string;
+  private lastDistribution: ConfidenceDistribution = {
+    'lsp-high': 0,
+    'heuristic-medium': 0,
+    unresolved: 0,
+    total: 0,
+  };
 
   constructor(options: ResolverRegistryOptions) {
     this.mode = options.lspMode ?? 'auto';
@@ -94,7 +119,62 @@ export class ResolverRegistry {
           : {}),
       })
     );
+    this.rootDir = options.rootDir;
     this.heuristic = createHeuristicResolver({ rootDir, lspMode: this.mode });
+  }
+
+  /**
+   * Resolve one import through the fallback chain (LSP -> Heuristic -> None).
+   *
+   * The first chain entry that answers a NON-EMPTY edge list wins, and its
+   * edges are re-tagged by IDENTITY (never by trusting the incoming string):
+   * the shared heuristic always tags `heuristic-medium`, while an
+   * ecosystem's own resolver keeps the tag its own path produced. A chain
+   * that resolves nothing reports ONE `unresolved` marker edge with an empty
+   * target, so "we could not resolve this" is data rather than silence.
+   */
+  async resolve(
+    filePath: string,
+    importSpec: string
+  ): Promise<Result<ResolvedImport[], StitchError>> {
+    const ecosystem = ecosystemForFile(filePath);
+    if (ecosystem === undefined) {
+      return ok(this.record([this.unresolvedEdge(filePath)]));
+    }
+    for (const resolver of this.getFallbackChain(ecosystem)) {
+      const answer = await resolver.resolve(filePath, importSpec);
+      if (answer.isErr()) continue;
+      if (answer.value.length === 0) continue;
+      const tagged = answer.value.map(edge => ({
+        ...edge,
+        confidence: resolver === this.heuristic ? 'heuristic-medium' : edge.confidence,
+      }));
+      return ok(this.record(tagged));
+    }
+    return ok(this.record([this.unresolvedEdge(filePath)]));
+  }
+
+  /** The confidence distribution of the most recent resolve() run (Epic 18). */
+  getConfidenceDistribution(): ConfidenceDistribution {
+    return this.lastDistribution;
+  }
+
+  /** Fold a run's edges into the distribution and log the run. */
+  private record(edges: readonly ResolvedImport[]): ResolvedImport[] {
+    const distribution = summarizeConfidence(edges);
+    this.lastDistribution = distribution;
+    logger.debug({ confidence: distribution }, 'resolution confidence distribution');
+    return [...edges];
+  }
+
+  /** The marker edge a chain that resolved nothing reports. */
+  private unresolvedEdge(filePath: string): ResolvedImport {
+    const absolute = isAbsolute(filePath) ? filePath : resolvePath(this.rootDir, filePath);
+    return {
+      sourceFile: relative(this.rootDir, absolute).split(sep).join('/'),
+      targetFile: '',
+      confidence: 'unresolved',
+    };
   }
 
   /** The fallback chain for an ecosystem: LSP -> Heuristic -> None. */

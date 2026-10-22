@@ -1536,8 +1536,11 @@ export type {
 } from './resolve/heuristic-fallback.js';
 export {
   createResolverRegistry,
+  ecosystemForFile,
   REGISTRY_ECOSYSTEMS,
   ResolverRegistry,
 } from './resolve/registry.js';
 export type { RegistryCapabilities, ResolverRegistryOptions } from './resolve/registry.js';
+export { summarizeConfidence } from './resolve/types.js';
+export type { ConfidenceDistribution, ConfidenceTag } from './resolve/types.js';
 export { runPipeline } from './pipeline/runPipeline.js';

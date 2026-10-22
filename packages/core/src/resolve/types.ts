@@ -5,22 +5,33 @@
 //
 // The confidence tag is the point of the contract: an edge the language server
 // answered is `lsp-high`; an edge a compiler-API heuristic produced is
-// `heuristic-medium`. A consumer gates on the tag instead of guessing.
+// `heuristic-medium`; an import nobody could resolve is `unresolved`. A
+// consumer gates on the tag instead of guessing, and Epic 18's composite score
+// (P-349) folds the distribution.
 
 import type { Result } from 'neverthrow';
 import type { StitchError } from '../result/index.js';
 
-/** How much we trust a resolved edge. */
-export type ResolutionConfidence = 'lsp-high' | 'heuristic-medium';
+/**
+ * How much we trust a resolved edge.
+ *
+ * P-342 added the third member: a chain that resolves nothing reports ONE
+ * `unresolved` marker edge with an empty target instead of staying silent, so
+ * "we could not resolve this" is data a consumer can see.
+ */
+export type ConfidenceTag = 'lsp-high' | 'heuristic-medium' | 'unresolved';
+
+/** The P-336 name for the same union; kept so existing imports keep working. */
+export type ResolutionConfidence = ConfidenceTag;
 
 /** One resolved import edge. */
 export interface ResolvedImport {
   /** The importing file, relative to the resolver root (posix separators). */
   readonly sourceFile: string;
-  /** The imported file, relative to the resolver root (posix separators). */
+  /** The imported file, relative to the resolver root; empty when unresolved. */
   readonly targetFile: string;
   /** Where the answer came from. */
-  readonly confidence: ResolutionConfidence;
+  readonly confidence: ConfidenceTag;
 }
 
 /** Whether a resolver was handed a language server to talk to. */
@@ -67,4 +78,30 @@ export interface DependencyResolver {
   healthCheck(): Promise<Result<ResolverHealth, StitchError>>;
   /** Release the language server process, when there is one; never throws. */
   shutdown(): Promise<Result<void, StitchError>>;
+}
+
+/** How many edges each confidence tag accounted for in one resolver run. */
+export interface ConfidenceDistribution {
+  readonly 'lsp-high': number;
+  readonly 'heuristic-medium': number;
+  readonly unresolved: number;
+  readonly total: number;
+}
+
+/** Fold a run's edges into the distribution Epic 18 consumes. */
+export function summarizeConfidence(edges: readonly ResolvedImport[]): ConfidenceDistribution {
+  let lspHigh = 0;
+  let heuristicMedium = 0;
+  let unresolved = 0;
+  for (const edge of edges) {
+    if (edge.confidence === 'lsp-high') lspHigh += 1;
+    else if (edge.confidence === 'heuristic-medium') heuristicMedium += 1;
+    else unresolved += 1;
+  }
+  return {
+    'lsp-high': lspHigh,
+    'heuristic-medium': heuristicMedium,
+    unresolved,
+    total: edges.length,
+  };
 }

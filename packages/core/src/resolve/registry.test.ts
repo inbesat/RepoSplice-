@@ -2,6 +2,7 @@
 // chain, and the interface compliance of all five resolvers.
 
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { ok, type Result } from 'neverthrow';
 import { createResolverRegistry } from './registry.js';
@@ -20,7 +21,7 @@ class FakeClient implements LspClient {
     return ok({ capabilities: {} });
   }
 
-  async request<T>(): Promise<Result<T, StitchError>> {
+  async request<T>(_method: string, _params?: unknown): Promise<Result<T, StitchError>> {
     return ok(undefined as T);
   }
 
@@ -43,6 +44,23 @@ class FakeClient implements LspClient {
 
   dispose(): void {
     this.stopped = true;
+  }
+}
+
+/** A language server that answers every definition with the same target. */
+class AnsweringClient extends FakeClient {
+  private readonly target: string;
+
+  constructor(target: string) {
+    super();
+    this.target = target;
+  }
+
+  override async request<T>(method: string): Promise<Result<T, StitchError>> {
+    if (method === 'textDocument/definition') {
+      return ok([{ uri: this.target }] as unknown as T);
+    }
+    return ok(undefined as T);
   }
 }
 
@@ -137,5 +155,60 @@ describe('ResolverRegistry (P-341)', () => {
     const stopped = await registry.shutdown();
     expect(stopped.isOk()).toBe(true);
     expect(client.stopped).toBe(true);
+  });
+
+  // --- P-342: the confidence tags on every edge ---------------------------
+
+  it('tags a language-server answer lsp-high', async () => {
+    const target = pathToFileURL(join(ROOT, 'src', 'helper.ts')).toString();
+    const registry = createResolverRegistry({
+      rootDir: ROOT,
+      lspClients: { node: new AnsweringClient(target) },
+    });
+    const result = await registry.resolve('src/index.ts', './helper');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0]?.confidence).toBe('lsp-high');
+      expect(result.value[0]?.targetFile).toBe('src/helper.ts');
+    }
+    expect(registry.getConfidenceDistribution()).toEqual({
+      'lsp-high': 1,
+      'heuristic-medium': 0,
+      unresolved: 0,
+      total: 1,
+    });
+  });
+
+  it('tags a heuristic answer heuristic-medium', async () => {
+    const registry = createResolverRegistry({ rootDir: ROOT, lspMode: 'never' });
+    const result = await registry.resolve('src/index.ts', './helper');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0]?.confidence).toBe('heuristic-medium');
+      expect(result.value[0]?.targetFile).toBe('src/helper.ts');
+    }
+    expect(registry.getConfidenceDistribution()['heuristic-medium']).toBe(1);
+  });
+
+  it('reports an import nothing could resolve as one unresolved edge', async () => {
+    const registry = createResolverRegistry({ rootDir: ROOT, lspMode: 'never' });
+    const result = await registry.resolve('src/index.ts', './does-not-exist');
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]?.confidence).toBe('unresolved');
+      expect(result.value[0]?.targetFile).toBe('');
+      expect(result.value[0]?.sourceFile).toBe('src/index.ts');
+    }
+  });
+
+  it('replaces the confidence distribution on every run', async () => {
+    const registry = createResolverRegistry({ rootDir: ROOT, lspMode: 'never' });
+    await registry.resolve('src/index.ts', './helper');
+    expect(registry.getConfidenceDistribution()['heuristic-medium']).toBe(1);
+    await registry.resolve('src/index.ts', './does-not-exist');
+    const second = registry.getConfidenceDistribution();
+    expect(second.unresolved).toBe(1);
+    expect(second['heuristic-medium']).toBe(0);
   });
 });

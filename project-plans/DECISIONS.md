@@ -5908,4 +5908,50 @@ Date: 2026-10-21. Phase: P-341 (Wave 1.5). Owner: inbesat lane.
    the full interface.
 10. **Nothing else moved.** No frozen file changed and the concurrent
     lane's reds are theirs.
+
+---
+
+## ADR-151: Resolution confidence tagging through the registry (P-342)
+
+Date: 2026-10-23. Phase: P-342 (Wave 1.5). Owner: inbesat lane.
+
+1. **The tagging ships although the P-334 gate is closed.** P-342's own text
+   is unconditional (it mandates the tag, the injection and the three test
+   ids), so the metadata layer is built on top of the shipped P-341 registry.
+   The cross-language EPIC stays deferred - a tag nobody consumes yet changes
+   no baseline number.
+2. **`ConfidenceTag` is the single source of truth.** The union is
+   `'lsp-high' | 'heuristic-medium' | 'unresolved'` and `ResolutionConfidence`
+   is kept as a DEPRECATED ALIAS for it, so every existing consumer keeps
+   compiling and P-336..P-341 keep their signatures.
+3. **The tag is injected by the registry, never by the consumer**, and it is
+   decided by RESOLVER IDENTITY: the shared heuristic resolver always tags
+   `heuristic-medium`; an ecosystem's own resolver keeps the tag its own path
+   produced (an LSP answer stays `lsp-high`, its deterministic fallback stays
+   `heuristic-medium`). Trusting the incoming string would let a mislabelled
+   edge through, so the identity check is the contract.
+4. **An emptiness that survives the whole chain is DATA, not a failure.** It
+   is reported as ONE `unresolved` marker edge with an EMPTY target (the
+   spec's step 4), never a silent `[]` and never an error: "we could not
+   resolve this import" is a finding the caller can count.
+5. **The distribution is folded per run** by `summarizeConfidence` and both
+   returned through `getConfidenceDistribution()` and logged through the
+   shared pino `logger` at debug level, so Epic 18 (P-349) can consume the
+   tags without re-deriving them.
+6. **No new StitchError code.** The registry never throws: an unknown
+   ecosystem resolves to the `unresolved` marker, and an unreadable file is
+   the delegated resolver's own CONFIG_ERROR (with a field).
+7. **Both test layers.** The three mandated python ids drive the REAL
+   registry through the bun harness (an injected client -> `lsp-high`, the
+   heuristic -> `heuristic-medium`, an unresolvable specifier -> the
+   `unresolved` marker) and a twelve-case vitest mirror keeps the contract
+   enforced in the bun-only CI. The mirror also covers the distribution being
+   replaced on every run.
+8. **The root typecheck found two strict-mode defects** in the new artefacts
+   (an override whose signature did not widen the base fake's `request`, and
+   a helper typed against a hand-rolled `{ isOk(); value }` shape instead of
+   the real `Result`); both were fixed rather than suppressed.
+9. **Nothing else moved.** The five per-language resolvers keep their own
+   tagging untouched; the eval tooling, the corpus, the CLI and the frozen
+   files are untouched; the concurrent lane's reds are theirs.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
