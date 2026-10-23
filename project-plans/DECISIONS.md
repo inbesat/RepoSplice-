@@ -6183,4 +6183,56 @@ Date: 2026-10-24. Phase: P-347 (Wave 1.5, Epic 18). Owner: inbesat lane.
    which `asProviderError` still classifies as a `ProviderError`).
 10. **Nothing else moved** (no new StitchError code, no frozen file, the
     eval tooling, the corpus, the CLI and the web untouched).
+
+---
+
+## ADR-157: The assess_confidence tool over five injected factors (P-348)
+
+Date: 2026-10-24. Phase: P-348 (Wave 1.5). Owner: inbesat lane.
+
+1. **The tool ships although the P-334 gate is closed.** Epic 18 continues on
+   the same reading as P-346/P-347: the cross-language work stays deferred
+   while the confidence machinery is built and measured locally.
+2. **The five factors arrive through INJECTED PORTS.** `assessConfidence`
+   takes a `ConfidencePorts` object (selfCritique, sandboxPass,
+   resolverConfidence, licenseRisk, testCoverage) instead of importing the
+   sandbox, license, resolver or coverage modules. Reasons: the sandbox and
+   license modules belong to another phase's lane, they are
+   environment-dependent (Docker, an AI key), and a port makes the whole
+   orchestration testable without any of them.
+3. **A missing port REFUSES; it is never a zero.** Each port is guarded and a
+   missing one returns CONFIG_ERROR with the field `confidence.ports` and a
+   message naming the port ("a missing measurement is never a zero"). An
+   invented 0 would silently destroy a composite score.
+4. **The composite is computed by the P-346 module, never re-derived here.**
+   `buildSemanticConfidence` owns the weights, the licence COMPLEMENT, the
+   clamping, the flags and the rationale; this tool only assembles the
+   components. One formula, one owner.
+5. **The P-342 tag -> 0-100 mapping is a documented judgement:**
+   `lsp-high` 100, `heuristic-medium` 60, `unresolved` 0, an empty edge set 0;
+   `resolverConfidenceFromTags` averages the tags. The numbers are explicit in
+   `RESOLVER_CONFIDENCE_SCORES` so a reader can disagree with them.
+6. **The automatic invocation is the `withConfidenceAssessment` decorator,**
+   not an edit to `agent/tools/propose_component.ts`: it wraps a
+   `ToolDefinition`, runs the inner tool, passes a failure through untouched,
+   and assesses on success. The spec's "runs after every propose_component"
+   is satisfied by wrapping that tool at registry time, with zero lane risk to
+   the agent tool that four other suites depend on.
+7. **The emission rides the EXISTING frozen `agent.tool` topic**
+   (`AgentPayload { iteration?, tool?, detail?, percent? }`) with
+   `{tool: 'assess_confidence', detail: <rationale>, percent: <composite>}`.
+   No contract change, therefore no ADR for `events/` and no
+   `check:contracts:update`.
+8. **The record is persisted through the injected `store`** (the proposal
+   metadata) and carries the proposal id, the components, the weights, the
+   prompt name+version and the timestamp.
+9. **Measured this phase:** the pinned components
+   `{sandbox_pass: 1, self_confidence: 82, resolver_confidence: 60,
+   license_risk: 40, test_coverage: 50}` produce the composite **75** with no
+   flags; the prompt version is the `self-critique` content hash (P-347).
+10. **The gate found and fixed six strict-mode defects + a literal-backslash
+    mishap** in this phase's own test files (a `Partial<T>` ports helper
+    widening to `T | undefined` under `exactOptionalPropertyTypes`, two
+    `StitchError.field` reads before narrowing, a generator without yield).
+    They were fixed in place, never suppressed. Nothing else moved.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

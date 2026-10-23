@@ -1591,4 +1591,22 @@ export type {
   SelfCritiqueInput,
   SelfCritiqueReport,
 } from './confidence/self-critique.js';
+export {
+  assessConfidence,
+  ASSESS_CONFIDENCE_PROMPT,
+  ASSESS_CONFIDENCE_TOOL,
+  CONFIDENCE_PORTS,
+  createAssessConfidenceTool,
+  defaultProposal,
+  resolverConfidenceFromTags,
+  RESOLVER_CONFIDENCE_SCORES,
+  withConfidenceAssessment,
+} from './tools/assess-confidence.js';
+export type {
+  AssessConfidenceDeps,
+  ConfidencePortName,
+  ConfidencePorts,
+  ConfidenceProposal,
+  ConfidenceRecord,
+} from './tools/assess-confidence.js';
 export { runPipeline } from './pipeline/runPipeline.js';
