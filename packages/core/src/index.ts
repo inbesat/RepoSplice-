@@ -1576,4 +1576,19 @@ export type {
   SemanticConfidence,
   SemanticConfidenceInput,
 } from './confidence/schema.js';
+export {
+  extractJsonObject,
+  parseSelfCritique,
+  rubricScoreToConfidence,
+  runSelfCritique,
+  selfCritiqueSchema,
+  SELF_CRITIQUE_SCORE_FIELDS,
+  SELF_CRITIQUE_TOOL,
+  toSelfCritiqueComponents,
+} from './confidence/self-critique.js';
+export type {
+  SelfCritiqueComponents,
+  SelfCritiqueInput,
+  SelfCritiqueReport,
+} from './confidence/self-critique.js';
 export { runPipeline } from './pipeline/runPipeline.js';

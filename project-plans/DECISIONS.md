@@ -6128,4 +6128,59 @@ Date: 2026-10-24. Phase: P-346 (Wave 1.5, Epic 18). Owner: inbesat lane.
     the same name twice is a hard rolldown parse error that broke the whole
     barrel and the CLI suite. The fix is an alias on the NEW export - the
     eval gate keeps its public name. Nothing else moved.
+
+---
+
+## ADR-156: The self-critique prompt and its calibration evidence (P-347)
+
+Date: 2026-10-24. Phase: P-347 (Wave 1.5, Epic 18). Owner: inbesat lane.
+
+1. **The self-critique ships although the P-334 gate is closed.** Epic 18
+   continues on the same footing as Epic 17: the deliverable is the
+   instrument, not a claim about a corpus the agents have not run.
+2. **The prompt lives in the P-141 registry** as
+   `packages/core/src/ai/prompts/self-critique.txt` - the spec's own path.
+   The rest of the set is `.md` and the raw loader treats them identically,
+   so `packages/core/src/types/raw.d.ts` gained one additive
+   `declare module '*.txt?raw'` block. The DOCUMENTED VERSION is the content
+   hash from `promptVersion('self-critique')` (the first 12 hex of the
+   template's sha256): a hand-bumped constant would be a second source of
+   truth that drifts from the file.
+3. **The module is a leaf** in `packages/core/src/confidence/` - zod,
+   neverthrow, the prompt registry, the stream and the provider type only.
+   It never throws: `safeParse` only.
+4. **The model scores only the three self dimensions.** Sandbox, license and
+   test-coverage are measured by their own phases, so the template says so
+   explicitly and `toSelfCritiqueComponents` maps just the self estimates
+   (`(score - 1) / 4 * 100`). Inventing a measured component from a model
+   opinion would be a fabricated measurement.
+5. **A provider failure is reported as a provider failure.** `streamChat`
+   normalises a provider throw into an `{type: 'error'}` CHUNK rather than
+   re-throwing, so `runSelfCritique` iterates the stream directly and maps
+   that chunk to `AI_PROVIDER_ERROR`; only a malformed reply is
+   `CONFIG_ERROR` with the field `confidence.selfCritique`. Using
+   `streamChatToString` here would have reported a dead provider as
+   "no JSON object" - which is what the mirror caught.
+6. **The calibration evidence is a RECORDED REFERENCE SET.**
+   `eval/self_critique/calibration.json` (`kind: recorded-reference-set`)
+   holds ten cases with the recorded self scores and the recorded human
+   rubric scores. The measured Spearman coefficient is ~0.988 overall with
+   one documented inversion, so the suite proves the METHOD rather than
+   claiming a correlation that was never measured. The live ten-proposal
+   inspection is explicitly DEFERRED: it needs an AI provider key and human
+   raters. `core/test_self_critique.py::test_manual_correlation` asserts the
+   measured facts - the set size, the coefficient, and the deferral text -
+   never a claimed inspection. A missing measurement is never a zero.
+7. **The calibration protocol** (how to read the set, how to replace it with
+   live inspections, and the rule that a correlation which has not been
+   measured is not a passing correlation) lives in
+   `docs/confidence-prompt.md`.
+8. **Both test layers**: the two mandated python ids over the bun harness
+   plus the eight-case vitest mirror, because the CI is bun-only.
+9. **Two gate-found defects were fixed in place, never suppressed**: the
+   missing `*.txt?raw` declaration, and a `no-throw-literal` in the mirror's
+   failing provider (it now throws a real `Error` carrying the same fields,
+   which `asProviderError` still classifies as a `ProviderError`).
+10. **Nothing else moved** (no new StitchError code, no frozen file, the
+    eval tooling, the corpus, the CLI and the web untouched).
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

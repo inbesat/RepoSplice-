@@ -10,12 +10,16 @@ import systemTemplate from './prompts/system.md?raw';
 import resolveDepsTemplate from './prompts/resolve-deps.md?raw';
 import generateComponentTemplate from './prompts/generate-component.md?raw';
 import detectGapsTemplate from './prompts/detect-gaps.md?raw';
+// P-347 names this template `.txt` (the rest of the set is `.md`); the raw
+// loader treats them the same, and the spec's path is the mandate.
+import selfCritiqueTemplate from './prompts/self-critique.txt?raw';
 
 const TEMPLATES: Record<string, string> = {
   system: systemTemplate,
   'resolve-deps': resolveDepsTemplate,
   'generate-component': generateComponentTemplate,
   'detect-gaps': detectGapsTemplate,
+  'self-critique': selfCritiqueTemplate,
 };
 
 let cachedPromptVersion: string | undefined;
@@ -114,5 +118,16 @@ export function detectGapsPrompt(treeSummary: string): { system: string; user: s
   return {
     system: systemPrompt(),
     user: render('detect-gaps', { treeSummary })._unsafeUnwrap(),
+  };
+}
+
+/** Build the self-critique prompt pair (P-347): the agent re-reads its own diff. */
+export function selfCritiquePrompt(
+  diff: string,
+  context: string
+): { system: string; user: string } {
+  return {
+    system: systemPrompt(),
+    user: render('self-critique', { diff, context })._unsafeUnwrap(),
   };
 }

@@ -5,3 +5,10 @@ declare module '*.md?raw' {
   const content: string;
   export default content;
 }
+
+// P-347: the self-critique prompt keeps the spec's own `.txt` path; the raw
+// loader treats it exactly like the markdown templates above.
+declare module '*.txt?raw' {
+  const content: string;
+  export default content;
+}

@@ -1,0 +1,11 @@
+{
+  "promptVersion": "deb30e7292f4",
+  "correlation": {
+    "cases": 10,
+    "overall": 0.9848,
+    "wiring": 0.9252,
+    "setKind": "recorded-reference-set",
+    "deferred": true,
+    "provenance": "Hand-authored directional reference set for the self-critique prompt (P-347). The live 10-proposal inspection the acceptance criteria ask for needs an AI provider key and human raters, neither of which is available in this environment, so this set encodes the expected ordering (a weaker change must self-score below a stronger one) and the harness measures the rank correlation over it. It is calibration evidence for the METHOD, not a claim that ten live proposals were inspected; docs/confidence-prompt.md records how to replace it with live data."
+  }
+}

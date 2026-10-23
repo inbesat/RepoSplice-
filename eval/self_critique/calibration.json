@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "kind": "recorded-reference-set",
+  "prompt": "self-critique",
+  "provenance": "Hand-authored directional reference set for the self-critique prompt (P-347). The live 10-proposal inspection the acceptance criteria ask for needs an AI provider key and human raters, neither of which is available in this environment, so this set encodes the expected ordering (a weaker change must self-score below a stronger one) and the harness measures the rank correlation over it. It is calibration evidence for the METHOD, not a claim that ten live proposals were inspected; docs/confidence-prompt.md records how to replace it with live data.",
+  "cases": [
+    {
+      "id": "case-01",
+      "proposal": "Adds an export nothing imports and leaves the call site unchanged.",
+      "self": {
+        "self_confidence": 20,
+        "wiring_self_score": 1,
+        "unnecessary_changes_self_score": 2,
+        "patterns_self_score": 2
+      },
+      "human": { "wiring_correctness": 1, "unnecessary_changes": 1, "respects_patterns": 1 }
+    },
+    {
+      "id": "case-02",
+      "proposal": "Rewrites an unrelated helper while adding the requested export.",
+      "self": {
+        "self_confidence": 35,
+        "wiring_self_score": 2,
+        "unnecessary_changes_self_score": 1,
+        "patterns_self_score": 3
+      },
+      "human": { "wiring_correctness": 2, "unnecessary_changes": 1, "respects_patterns": 2 }
+    },
+    {
+      "id": "case-03",
+      "proposal": "Wires the export correctly but duplicates an existing utility.",
+      "self": {
+        "self_confidence": 30,
+        "wiring_self_score": 3,
+        "unnecessary_changes_self_score": 2,
+        "patterns_self_score": 2
+      },
+      "human": { "wiring_correctness": 3, "unnecessary_changes": 2, "respects_patterns": 2 }
+    },
+    {
+      "id": "case-04",
+      "proposal": "Wires the export and reuses the shared helper, with one redundant type alias.",
+      "self": {
+        "self_confidence": 48,
+        "wiring_self_score": 4,
+        "unnecessary_changes_self_score": 3,
+        "patterns_self_score": 3
+      },
+      "human": { "wiring_correctness": 3, "unnecessary_changes": 3, "respects_patterns": 3 }
+    },
+    {
+      "id": "case-05",
+      "proposal": "Complete wiring, one extra debug branch left behind.",
+      "self": {
+        "self_confidence": 55,
+        "wiring_self_score": 4,
+        "unnecessary_changes_self_score": 3,
+        "patterns_self_score": 4
+      },
+      "human": { "wiring_correctness": 4, "unnecessary_changes": 3, "respects_patterns": 3 }
+    },
+    {
+      "id": "case-06",
+      "proposal": "Complete wiring, no extra edits, follows the surrounding module style.",
+      "self": {
+        "self_confidence": 62,
+        "wiring_self_score": 4,
+        "unnecessary_changes_self_score": 4,
+        "patterns_self_score": 4
+      },
+      "human": { "wiring_correctness": 4, "unnecessary_changes": 4, "respects_patterns": 4 }
+    },
+    {
+      "id": "case-07",
+      "proposal": "Complete wiring and tests added in the existing test file style.",
+      "self": {
+        "self_confidence": 70,
+        "wiring_self_score": 5,
+        "unnecessary_changes_self_score": 4,
+        "patterns_self_score": 4
+      },
+      "human": { "wiring_correctness": 4, "unnecessary_changes": 4, "respects_patterns": 4 }
+    },
+    {
+      "id": "case-08",
+      "proposal": "Minimal diff touching only the required files, consistent naming.",
+      "self": {
+        "self_confidence": 78,
+        "wiring_self_score": 5,
+        "unnecessary_changes_self_score": 5,
+        "patterns_self_score": 4
+      },
+      "human": { "wiring_correctness": 5, "unnecessary_changes": 4, "respects_patterns": 4 }
+    },
+    {
+      "id": "case-09",
+      "proposal": "Minimal diff, all call sites updated, tests alongside.",
+      "self": {
+        "self_confidence": 85,
+        "wiring_self_score": 5,
+        "unnecessary_changes_self_score": 5,
+        "patterns_self_score": 4
+      },
+      "human": { "wiring_correctness": 5, "unnecessary_changes": 4, "respects_patterns": 5 }
+    },
+    {
+      "id": "case-10",
+      "proposal": "Textbook change: complete wiring, no extra edits, indistinguishable from the surrounding code.",
+      "self": {
+        "self_confidence": 95,
+        "wiring_self_score": 5,
+        "unnecessary_changes_self_score": 5,
+        "patterns_self_score": 5
+      },
+      "human": { "wiring_correctness": 5, "unnecessary_changes": 5, "respects_patterns": 5 }
+    }
+  ]
+}

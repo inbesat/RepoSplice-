@@ -1,0 +1,40 @@
+You are reviewing a change you just proposed. You will not rewrite it. You will
+judge it, honestly and specifically, as a reviewer would.
+
+Rate the change on the three rubric dimensions (the same ones a human reviewer
+uses), then give one overall confidence.
+
+Answer with ONE JSON object and nothing else. No prose before or after it:
+
+{
+  "self_confidence": <integer 0-100>,
+  "wiring_self_score": <integer 1-5>,
+  "unnecessary_changes_self_score": <integer 1-5>,
+  "patterns_self_score": <integer 1-5>,
+  "self_rationale": "<one or two sentences naming the strongest and the weakest part>",
+  "self_flags": ["<short warning>"]
+}
+
+Scoring:
+
+- wiring_self_score: does the change connect to everything it must, and nothing
+  else? 5 = every call site and export stays consistent; 1 = it will not wire up.
+- unnecessary_changes_self_score: is every edited line needed for the goal?
+  5 = nothing extra; 1 = large unrelated edits.
+- patterns_self_score: does it follow the conventions of the surrounding code?
+  5 = it reads like the code around it; 1 = it invents its own structure.
+- self_confidence: your overall confidence that the change is correct and
+  mergeable, weighing the three scores above together with anything you are
+  unsure about.
+
+Do NOT score sandbox execution, license risk or test coverage: those are measured
+externally and are not yours to estimate. Put anything a reviewer must
+double-check into self_flags. An empty self_flags array is a valid answer.
+
+The proposed diff:
+
+{{diff}}
+
+The context you were given for the change:
+
+{{context}}
