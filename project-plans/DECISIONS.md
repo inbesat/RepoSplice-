@@ -6292,4 +6292,59 @@ Date: 2026-10-24. Phase: P-349 (Wave 1.5). Owner: inbesat lane.
    vitest mirror keeps the contract enforced in the bun-only CI.
 9. **Nothing else moved**: no new StitchError code, no frozen file, and the
    conventional commit for this phase changes no contract.
+
+---
+
+## ADR-159: The confidence threshold policy (P-350)
+
+Date: 2026-10-24. Phase: P-350 (Wave 1.5). Owner: inbesat lane.
+
+1. **The policy ships although the P-334 gate is closed.** The cross-language
+   EPIC stays deferred; the confidence stack (P-346-P-350) is additive and
+   changes no baseline number.
+2. **The threshold is configuration, not a constant.** The field is
+   `confidence.auto_approve_threshold` (default 75, range 0-100) and the
+   point of the policy is that a LOW SCORE OVERRIDES the auto-approval list
+   (SECURITY.md section 6.1), so the check lives in one exported function a
+   caller cannot forget to run.
+3. **A bad threshold refuses rather than clamps.** A non-finite or
+   out-of-range value is a CONFIG_ERROR with the field
+   `confidence.auto_approve_threshold`; a silently clamped threshold would
+   auto-approve changes nobody configured.
+4. **The boundary at the threshold approves.** Only a composite STRICTLY
+   below the threshold forces review; a composite equal to the threshold is
+   documented as auto-approvable.
+5. **Precedence is flag, then config, then default**, and WHICHEVER value
+   wins is validated, so a bad per-run flag cannot be masked by a good
+   config value.
+6. **The module never throws and never re-derives the composite.** Every
+   entry point returns a Result; the score is read from the P-346/P-349
+   modules (one formula), never recomputed here.
+7. **The HIL routing is the exported flag plus the decision object.** No
+   `requires_human_review` field existed anywhere in the core before this
+   phase, so P-350 defines it: `thresholdDecision` returns
+   `requiresHumanReview` alongside the composite, the threshold and a reason
+   string naming the gap, and `requiresHumanReview` exposes the flag alone.
+8. **The CLI flag is another lane's wiring.** `--confidence-threshold` is a
+   CLI concern; the core CONTRACT is the `flagValue` parameter of
+   `resolveThreshold`. This phase did not edit `packages/cli`.
+9. **The default 75 is PROVISIONAL pending P-354.** The rationale lives in
+   the machine-readable `THRESHOLD_RATIONALE`: the P-349 weights put 30% on
+   the sandbox and 45% on the resolver and self reads, so 75 means the
+   proposal passed its sandbox and rested on mostly high-confidence imports.
+   The P-354 calibration against the Epic 16 human rubric scores may move it,
+   and a missing measurement is never presented as a calibrated one.
+10. **The P-348 fixture scores 77, not 89.** Under the finalized P-349
+    weights the pinned components {1, 82, 60, 40, 50} give 77; the first run
+    of this phase's tests was wrong (it expected 89, the other fixture's
+    value) and was corrected in both test layers rather than by widening the
+    assertion.
+11. **Both test layers.** The three mandated python ids
+    (test_default_threshold / test_override_flag / test_hil_routing) drive
+    the real modules through a bun harness, and a nine-case vitest mirror
+    keeps the contract enforced in the bun-only CI. Adding the config field
+    also required the two config tests that enumerate or hand-write the
+    Config shape to be updated (the P-349 precedent).
+12. **Nothing else moved.** No new StitchError code; the eval tooling, the
+    corpus, the CLI and the frozen files are untouched.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

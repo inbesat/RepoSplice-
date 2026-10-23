@@ -1618,4 +1618,19 @@ export {
   explain,
   normalizeCompositeWeights,
 } from './confidence/scoring.js';
+export {
+  AUTO_APPROVE_THRESHOLD_RANGE,
+  DEFAULT_AUTO_APPROVE_THRESHOLD,
+  normalizeAutoApproveThreshold,
+  requiresHumanReview,
+  resolveThreshold,
+  shouldAutoApprove,
+  THRESHOLD_RATIONALE,
+  thresholdDecision,
+} from './confidence/threshold.js';
+export type {
+  ConfidenceInput,
+  ThresholdDecision,
+  ThresholdSources,
+} from './confidence/threshold.js';
 export { runPipeline } from './pipeline/runPipeline.js';

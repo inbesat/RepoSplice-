@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import { DEFAULT_COMPOSITE_WEIGHTS } from '../confidence/scoring.js';
+import {
+  AUTO_APPROVE_THRESHOLD_RANGE,
+  DEFAULT_AUTO_APPROVE_THRESHOLD,
+} from '../confidence/threshold.js';
 
 export const GitHubAuthTypeSchema = z.enum(['pat', 'app']);
 export type GitHubAuthType = z.infer<typeof GitHubAuthTypeSchema>;
@@ -175,6 +179,16 @@ export type ConfidenceWeightsConfig = z.infer<typeof ConfidenceWeightsSchema>;
 
 export const ConfidenceConfigSchema = z.object({
   weights: ConfidenceWeightsSchema.default(DEFAULT_COMPOSITE_WEIGHTS),
+  /**
+   * P-350: a composite below this forces human review even for a tool that is
+   * normally auto-approved (SECURITY.md section 6.1). The default is the
+   * documented provisional value pending the P-354 calibration.
+   */
+  auto_approve_threshold: z
+    .number()
+    .min(AUTO_APPROVE_THRESHOLD_RANGE.min)
+    .max(AUTO_APPROVE_THRESHOLD_RANGE.max)
+    .default(DEFAULT_AUTO_APPROVE_THRESHOLD),
 });
 export type ConfidenceConfig = z.infer<typeof ConfidenceConfigSchema>;
 
@@ -198,7 +212,10 @@ export const ConfigSchema = z.object({
   paths: PathsConfigSchema,
   licensePolicy: LicensePolicySchema,
   autonomy: AutonomySchema,
-  confidence: ConfidenceConfigSchema.default({ weights: DEFAULT_COMPOSITE_WEIGHTS }),
+  confidence: ConfidenceConfigSchema.default({
+    weights: DEFAULT_COMPOSITE_WEIGHTS,
+    auto_approve_threshold: DEFAULT_AUTO_APPROVE_THRESHOLD,
+  }),
   agent: AgentConfigSchema.default({
     maxToolResultBytes: 1_000_000,
     maxToolArgsDepth: 16,
@@ -224,7 +241,10 @@ export const defaultConfig: Config = {
   },
   licensePolicy: { allow: [], warn: [], deny: [] },
   autonomy: { auto: [], gated: [] },
-  confidence: { weights: DEFAULT_COMPOSITE_WEIGHTS },
+  confidence: {
+    weights: DEFAULT_COMPOSITE_WEIGHTS,
+    auto_approve_threshold: DEFAULT_AUTO_APPROVE_THRESHOLD,
+  },
   agent: {
     maxToolResultBytes: 1_000_000,
     maxToolArgsDepth: 16,

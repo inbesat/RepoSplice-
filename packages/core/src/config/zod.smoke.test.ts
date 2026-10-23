@@ -24,8 +24,9 @@ describe('P-015 zod smoke (ConfigSchema)', () => {
       paths: { cacheDir: '.cache', worktreeDir: '.wt' },
       licensePolicy: { allow: ['MIT'], warn: [], deny: [] },
       autonomy: { auto: ['fetch'], gated: ['merge'] },
-      // P-349 added the composite scoring weights (its defaults are asserted
-      // below); a config written before it still validates.
+      // P-349 added the composite scoring weights and P-350 the auto-approve
+      // threshold (their defaults are asserted below); a config written before
+      // either still validates.
       confidence: {
         weights: {
           sandbox_pass: 0.3,
@@ -34,6 +35,7 @@ describe('P-015 zod smoke (ConfigSchema)', () => {
           license_risk: 0.15,
           test_coverage: 0.1,
         },
+        auto_approve_threshold: 75,
       },
       // P-158 added the `[agent]` limits block and P-164 added the loop-cap
       // budgets. Their defaults mean a config written before either still
