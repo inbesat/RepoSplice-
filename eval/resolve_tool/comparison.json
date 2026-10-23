@@ -1,0 +1,248 @@
+{
+  "mode": "resolve-tool",
+  "registry": {
+    "ok": true,
+    "edges": [
+      {
+        "sourceFile": "src/index.ts",
+        "targetFile": "src/aliased.ts",
+        "confidence": "heuristic-medium"
+      },
+      {
+        "sourceFile": "src/index.ts",
+        "targetFile": "src/helper.ts",
+        "confidence": "heuristic-medium"
+      },
+      {
+        "sourceFile": "src/index.ts",
+        "targetFile": "src/reexport.ts",
+        "confidence": "heuristic-medium"
+      },
+      {
+        "sourceFile": "src/reexport.ts",
+        "targetFile": "src/helper.ts",
+        "confidence": "heuristic-medium"
+      }
+    ],
+    "required": ["fake-pkg"],
+    "missingFiles": ["A:src/aliased.ts", "A:src/helper.ts", "A:src/reexport.ts"]
+  },
+  "before": {
+    "resolved": 2,
+    "total": 16
+  },
+  "after": {
+    "resolved": 13,
+    "total": 16
+  },
+  "comparison": {
+    "beforeFailures": 14,
+    "afterFailures": 3,
+    "improvement": 11,
+    "cases": {
+      "before": [
+        {
+          "fixture": "typescript",
+          "name": "relative",
+          "target": "src/helper.ts",
+          "resolved": false
+        },
+        {
+          "fixture": "typescript",
+          "name": "alias",
+          "target": "src/aliased.ts",
+          "resolved": false
+        },
+        {
+          "fixture": "typescript",
+          "name": "node_modules",
+          "target": "node_modules/fake-pkg/index.d.ts",
+          "resolved": true
+        },
+        {
+          "fixture": "typescript",
+          "name": "re_export",
+          "target": "src/helper.ts",
+          "resolved": false
+        },
+        {
+          "fixture": "python",
+          "name": "relative",
+          "target": "pkg/module.py",
+          "resolved": false
+        },
+        {
+          "fixture": "python",
+          "name": "submodule",
+          "target": "pkg/sub/child.py",
+          "resolved": false
+        },
+        {
+          "fixture": "python",
+          "name": "conditional",
+          "target": "pkg/typing_only.py",
+          "resolved": false
+        },
+        {
+          "fixture": "python",
+          "name": "absolute",
+          "target": "pkg/module.py",
+          "resolved": false
+        },
+        {
+          "fixture": "go",
+          "name": "module",
+          "target": "pkg/pkg.go",
+          "resolved": false
+        },
+        {
+          "fixture": "go",
+          "name": "vendor",
+          "target": "vendor/example.com/dep/thing/thing.go",
+          "resolved": false
+        },
+        {
+          "fixture": "go",
+          "name": "workspace",
+          "target": "other/pkg/pkg.go",
+          "resolved": false
+        },
+        {
+          "fixture": "go",
+          "name": "build_tag",
+          "target": "tagged/plain.go",
+          "resolved": false
+        },
+        {
+          "fixture": "rust",
+          "name": "crate_module",
+          "target": "src/a.rs",
+          "resolved": false
+        },
+        {
+          "fixture": "rust",
+          "name": "mod_tree",
+          "target": "src/b/child.rs",
+          "resolved": false
+        },
+        {
+          "fixture": "rust",
+          "name": "cfg_gated",
+          "target": "",
+          "resolved": true
+        },
+        {
+          "fixture": "rust",
+          "name": "self_module",
+          "target": "src/b/child.rs",
+          "resolved": false
+        }
+      ],
+      "after": [
+        {
+          "fixture": "typescript",
+          "name": "relative",
+          "target": "src/helper.ts",
+          "resolved": true
+        },
+        {
+          "fixture": "typescript",
+          "name": "alias",
+          "target": "src/aliased.ts",
+          "resolved": true
+        },
+        {
+          "fixture": "typescript",
+          "name": "node_modules",
+          "target": "node_modules/fake-pkg/index.d.ts",
+          "resolved": true
+        },
+        {
+          "fixture": "typescript",
+          "name": "re_export",
+          "target": "src/helper.ts",
+          "resolved": true
+        },
+        {
+          "fixture": "python",
+          "name": "relative",
+          "target": "pkg/module.py",
+          "resolved": true
+        },
+        {
+          "fixture": "python",
+          "name": "submodule",
+          "target": "pkg/sub/child.py",
+          "resolved": true
+        },
+        {
+          "fixture": "python",
+          "name": "conditional",
+          "target": "pkg/typing_only.py",
+          "resolved": true
+        },
+        {
+          "fixture": "python",
+          "name": "absolute",
+          "target": "pkg/module.py",
+          "resolved": true
+        },
+        {
+          "fixture": "go",
+          "name": "module",
+          "target": "pkg/pkg.go",
+          "resolved": true
+        },
+        {
+          "fixture": "go",
+          "name": "vendor",
+          "target": "vendor/example.com/dep/thing/thing.go",
+          "resolved": true
+        },
+        {
+          "fixture": "go",
+          "name": "workspace",
+          "target": "other/pkg/pkg.go",
+          "resolved": true
+        },
+        {
+          "fixture": "go",
+          "name": "build_tag",
+          "target": "tagged/plain.go",
+          "resolved": true
+        },
+        {
+          "fixture": "rust",
+          "name": "crate_module",
+          "target": "src/a.rs",
+          "resolved": false
+        },
+        {
+          "fixture": "rust",
+          "name": "mod_tree",
+          "target": "src/b/child.rs",
+          "resolved": false
+        },
+        {
+          "fixture": "rust",
+          "name": "cfg_gated",
+          "target": "",
+          "resolved": true
+        },
+        {
+          "fixture": "rust",
+          "name": "self_module",
+          "target": "src/b/child.rs",
+          "resolved": false
+        }
+      ]
+    },
+    "artifact": "eval/resolve_tool/comparison.json"
+  },
+  "corpus": {
+    "measured": false,
+    "import_resolution_share": 0,
+    "decision": "epic17-deferred",
+    "reason": "the Epic 16 corpus re-run needs Docker and an AI provider key; the corpus-level import-resolution rate stays unmeasured (a missing measurement is never a zero)"
+  }
+}

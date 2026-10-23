@@ -34,6 +34,10 @@ import {
   type SelectedFile,
   type SourceRepo,
 } from '../types.js';
+import type { Ecosystem } from '../../deps/ecosystem.js';
+import { extractSpecifiers, languageForFile } from '../../resolve/heuristic-fallback.js';
+import { createResolverRegistry, type ResolverRegistry } from '../../resolve/registry.js';
+import type { ResolvedImport } from '../../resolve/types.js';
 
 /** Extensions whose imports we parse. `.rs`/`.go` carry no import statements. */
 const JS_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
@@ -132,9 +136,49 @@ function parseManifest(
  *  7. `missing` is split into `missingDirect` / `missingTransitive` and tagged
  *     in `severity`, which is the hint P-149 step 5 hands the fixer.
  */
+/** P-343: the resolver stack the walk may use, plus an ecosystem override. */
+export interface ResolveDependenciesOptions {
+  /** The P-341 stack. Absent = the P-149 lexical path only. */
+  readonly registry?: ResolverRegistry;
+  /** Force one ecosystem instead of detecting it per file. */
+  readonly ecosystem?: Ecosystem;
+}
+
+/**
+ * One specifier through the resolver stack (P-343).
+ *
+ * Only edges that land on a file of the SAME source repo are internal edges: a
+ * target under `node_modules`/`vendor` is a package requirement (the lexical
+ * rules below classify it) and the `unresolved` marker is not an answer at all.
+ * An empty list means "the stack could not help" — never an error.
+ */
+async function resolveThroughRegistry(
+  registry: ResolverRegistry,
+  filePath: string,
+  specifier: string,
+  listing: Set<string> | undefined,
+  ecosystem: Ecosystem | undefined
+): Promise<ResolvedImport[]> {
+  const forced = ecosystem === undefined ? undefined : registry.getResolver(ecosystem);
+  const answer =
+    forced === undefined
+      ? await registry.resolve(filePath, specifier)
+      : await forced.resolve(filePath, specifier);
+  if (answer.isErr()) return [];
+  const edges: ResolvedImport[] = [];
+  for (const edge of answer.value) {
+    if (edge.confidence === 'unresolved' || edge.targetFile === '') continue;
+    if (edge.targetFile.startsWith('../')) continue;
+    if (listing !== undefined && !listing.has(edge.targetFile)) continue;
+    edges.push(edge);
+  }
+  return edges;
+}
+
 export async function resolveDependenciesForFiles(
   selection: readonly SelectedFile[],
-  ctx: ToolContext
+  ctx: ToolContext,
+  options?: ResolveDependenciesOptions
 ): Promise<Result<DepClosure, StitchError>> {
   // Acceptance: an empty selection is an empty closure, not an error.
   if (selection.length === 0) return ok(emptyDepClosure());
@@ -172,6 +216,7 @@ export async function resolveDependenciesForFiles(
   const byFile: Record<string, string[]> = {};
   const missingFiles = new Set<string>();
   const visited = new Set<string>();
+  const resolvedEdges: ResolvedImport[] = [];
 
   // Breadth-first over internal edges. The queue is a plain array used as FIFO;
   // insertion order is deterministic because `selection` order is preserved.
@@ -196,19 +241,51 @@ export async function resolveDependenciesForFiles(
     }
 
     const ext = extensionOf(path);
+    // The lexical classification (a relative target versus a package
+    // requirement) is derived from the EXTENSION, never from which extractor
+    // ran. The stack answers where an import resolves internally; the lexical
+    // rules are what turns a package specifier into a requirement, so a
+    // registry miss on `fake-pkg` must still be reported as a package need.
+    const isJs = JS_EXTENSIONS.has(ext);
+    const isPython = PYTHON_EXTENSIONS.has(ext);
     const specifiers: string[] = [];
-    let isJs = false;
-    let isPython = false;
-    if (JS_EXTENSIONS.has(ext)) {
+    if (options?.registry !== undefined) {
+      // P-343: the stack extracts every language it knows — including `.go` and
+      // `.rs`, which the P-149 lexical extractors cannot read.
+      const language = languageForFile(path);
+      if (language !== undefined) {
+        const extracted = await extractSpecifiers(content.value, language);
+        if (extracted.isOk()) specifiers.push(...extracted.value);
+      }
+    } else if (isJs) {
       specifiers.push(...parseJsImports(content.value));
-      isJs = true;
-    } else if (PYTHON_EXTENSIONS.has(ext)) {
+    } else if (isPython) {
       specifiers.push(...parsePythonImports(content.value));
-      isPython = true;
     }
 
     const filePackages = new Set<string>();
     for (const specifier of specifiers) {
+      // P-343: the resolver stack answers first. An answered internal edge is
+      // recorded with its confidence tag and queued like any other internal
+      // file; anything it cannot answer falls through to the lexical rules.
+      if (options?.registry !== undefined) {
+        const edges = await resolveThroughRegistry(
+          options.registry,
+          path,
+          specifier,
+          listings.get(repo),
+          options.ecosystem
+        );
+        if (edges.length > 0) {
+          for (const edge of edges) {
+            resolvedEdges.push(edge);
+            const edgeKey = keyed(repo, edge.targetFile);
+            if (!selectedKeys.has(edgeKey)) missingFiles.add(edgeKey);
+            queue.push({ repo, path: edge.targetFile, isSelected: false });
+          }
+          continue;
+        }
+      }
       if (isJs) {
         const kind = classifyJsSpecifier(specifier);
         if (kind === 'relative') {
@@ -306,6 +383,9 @@ export async function resolveDependenciesForFiles(
     severity,
     missingFiles: [...missingFiles].sort(),
     visitedFiles: [...visited].sort(),
+    resolvedEdges: [...resolvedEdges].sort((a, b) =>
+      `${a.sourceFile}:${a.targetFile}`.localeCompare(`${b.sourceFile}:${b.targetFile}`)
+    ),
   });
 }
 
@@ -315,6 +395,8 @@ export const resolveDepsSchema = {
     .array(z.object({ repo: z.enum(['A', 'B']), path: z.string().min(1) }))
     .min(1)
     .max(2000),
+  /** P-343: force one ecosystem instead of detecting it per file. */
+  ecosystem: z.enum(['node', 'python', 'go', 'rust']).optional(),
 } satisfies Record<string, z.ZodTypeAny>;
 
 const resolveDepsObject = z.object(resolveDepsSchema);
@@ -337,6 +419,12 @@ export const resolveDepsTool: ToolDefinition = {
         message: `resolve_dependency_closure arguments validation failed: ${issues}`,
       });
     }
-    return resolveDependenciesForFiles(parsed.data.files, ctx);
+    // P-343: the tool drives the resolver stack itself. Heuristic-only by
+    // default — an agent turn must not spawn a language server per call
+    // (P-344 brings warm-server caching).
+    return resolveDependenciesForFiles(parsed.data.files, ctx, {
+      registry: createResolverRegistry({ rootDir: ctx.cwd, lspMode: 'never' }),
+      ...(parsed.data.ecosystem !== undefined ? { ecosystem: parsed.data.ecosystem } : {}),
+    });
   },
 };

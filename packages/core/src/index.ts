@@ -1543,4 +1543,9 @@ export {
 export type { RegistryCapabilities, ResolverRegistryOptions } from './resolve/registry.js';
 export { summarizeConfidence } from './resolve/types.js';
 export type { ConfidenceDistribution, ConfidenceTag } from './resolve/types.js';
+export {
+  defaultResolverRegistry,
+  resolveDependencyClosure,
+} from './tools/resolve-dependency-closure.js';
+export type { ResolveClosureOptions } from './tools/resolve-dependency-closure.js';
 export { runPipeline } from './pipeline/runPipeline.js';

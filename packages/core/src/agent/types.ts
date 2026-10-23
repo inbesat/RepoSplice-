@@ -117,6 +117,12 @@ export interface DepClosure {
   missingFiles: string[];
   /** Internal files the closure traversed, `repo:path`, sorted (diagnostics). */
   visitedFiles: string[];
+  /**
+   * P-343: the internal edges the resolver stack answered, each carrying its
+   * P-342 confidence tag (`lsp-high` / `heuristic-medium`). Empty when the
+   * caller did not supply a registry — the P-149 lexical path then answers.
+   */
+  resolvedEdges: import('../resolve/types.js').ResolvedImport[];
 }
 
 /** An empty closure — returned for an empty selection, never an error. */
@@ -133,6 +139,7 @@ export function emptyDepClosure(): DepClosure {
     severity: {},
     missingFiles: [],
     visitedFiles: [],
+    resolvedEdges: [],
   };
 }
 

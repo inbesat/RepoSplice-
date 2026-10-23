@@ -5954,4 +5954,51 @@ Date: 2026-10-23. Phase: P-342 (Wave 1.5). Owner: inbesat lane.
 9. **Nothing else moved.** The five per-language resolvers keep their own
    tagging untouched; the eval tooling, the corpus, the CLI and the frozen
    files are untouched; the concurrent lane's reds are theirs.
+
+---
+
+## ADR-152: Drive the dependency-closure tool through the resolver registry (P-343)
+
+Date: 2026-10-23. Phase: P-343 (Wave 1.5). Owner: inbesat lane.
+
+1. **The integration ships although the P-334 gate is closed.** The
+   cross-language EPIC stays deferred (P-331's taxonomy says
+   `epic17-deferred`), so this work changes no baseline number; it makes the
+   shipped resolver stack reachable from the agent loop.
+2. **The spec's path did not exist.** P-343 names
+   `packages/core/src/tools/resolve-dependency-closure.ts`; that directory
+   did not exist, and the tool's P-149 home is
+   `packages/core/src/agent/tools/resolve_deps.ts` (load-bearing for
+   `agent/policy.test.ts`, `agent/audit.test.ts`, `agent/prompts.test.ts`).
+   The new module is therefore the thin PUBLIC entry that owns the registry
+   wiring and delegates the walk; the agent tool keeps its name and schema.
+   Same path-mapping precedent as P-326 and P-337.
+3. **The change is additive.** The walk asks the registry first and falls
+   back to the P-149 lexical rules, so the five existing P-149 tests pass
+   unchanged (and the new mirror's "leaves the P-149 walk unchanged" case
+   proves the direct call still yields no edges).
+4. **Heuristic-only by default.** The tool builds
+   `createResolverRegistry({rootDir, lspMode: 'never'})` per call: spawning a
+   language server inside an agent tool call is exactly what P-344 exists to
+   fix. An injected registry is honoured, so a caller that owns a warm
+   server can pass one.
+5. **The `ecosystem` parameter** forces one resolver instead of per-file
+   detection, for a caller that already knows the ecosystem.
+6. **Measured before/after over the four ground-truth fixtures.** 16 cases
+   went from **2 resolved / 14 failures** (the lexical path cannot answer
+   `.go` or `.rs` at all) to **13 resolved / 3 failures** — an improvement
+   of 11 cases. The 3 residual failures are the Rust cases: the walker feeds
+   the rust resolver the full use path (`crate::a::helper`, from
+   `use crate::a::helper;`), which names an ITEM rather than a module, so
+   the module-graph fallback finds no `<path>.rs` or `<path>/mod.rs`. That
+   is a named limitation, not a doctored 16/16.
+7. **The corpus-level number is NOT measured.** AC step 4 asks for the
+   Epic 16 corpus re-run; it needs Docker and an AI provider key, and
+   `eval/taxonomy/failure_categories.json` still records
+   `import_resolution_share` 0 with the decision `epic17-deferred`. The
+   artifact `eval/resolve_tool/comparison.json` records the local
+   improvement AND that deferral: a missing measurement is never a zero.
+8. **Nothing else moved** (no new StitchError code; an unresolvable import
+   stays a `missingFiles` finding and the registry's `unresolved` marker
+   never becomes a resolved edge).
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
