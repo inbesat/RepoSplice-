@@ -6001,4 +6001,46 @@ Date: 2026-10-23. Phase: P-343 (Wave 1.5). Owner: inbesat lane.
 8. **Nothing else moved** (no new StitchError code; an unresolvable import
    stays a `missingFiles` finding and the registry's `unresolved` marker
    never becomes a resolved edge).
+
+---
+
+## ADR-153: LSP warm-server pool for per-session reuse (P-344)
+
+Date: 2026-10-23. Phase: P-344 (Wave 1.5). Owner: inbesat lane.
+
+1. **The pool ships although the P-334 gate is closed.** The cross-language
+   EPIC stays deferred; a warm server changes no baseline number.
+2. **It is a separate module, not a rewrite.** The pool lives in
+   `resolve/lsp-pool.ts` (the P-341/P-342 facade precedent) so the P-335
+   client contract stays frozen and its own `autoReconnect` is reused.
+3. **One server per ecosystem per session**, created on the first
+   `getClient(ecosystem)` and reused afterwards; an ecosystem with no
+   configured server is a CONFIG_ERROR with the field `lsp.pool`.
+4. **The idle timeout defaults to 5 minutes** (300_000 ms) and is
+   overridable through `STITCH_LSP_IDLE_TIMEOUT_MS` - the spec's
+   "configurable via env". The sweep timer is unref'd so it never keeps the
+   process alive.
+5. **The concurrency cap queues.** Requests beyond `maxConcurrentRequests`
+   (default 10) wait in FIFO order; `peakConcurrentRequests` records the
+   observed peak instead of a claimed one.
+6. **The health ping is bounded and treats a refusal as liveness.** It races
+   `textDocument/hover` against a 2 s timer. An OK answer or an error
+   RESPONSE both prove the pipe (the LSP answers unknown methods with
+   -32601); only silence fails. A dead or silent client is dropped so the
+   next use reconnects.
+7. **`present` means a live client is held**, not that a spec is configured.
+   That distinction was one of the two defects the first run found.
+8. **`stats()` exposes a measured number** - created, reused, idleShutdowns,
+   peakConcurrentRequests and the warm-latency samples - so the benchmark
+   reports evidence rather than an optimistic claim.
+9. **No new StitchError code** - CONFIG_ERROR with a field and INTERNAL only.
+10. **Both test layers.** The four mandated python ids drive the real module
+    through a bun harness (hermetic stub server plus a best-effort real
+    server) and the seven-case vitest mirror keeps the contract enforced in
+    the bun-only CI. The gate found and fixed four strict-mode defects: the
+    unused (now bounding) ping timeout, and two readonly-property
+    assignments in the test fakes.
+11. **Nothing else moved.** The concurrent lane's three real
+    `sandbox/capture` reds (confirmed in isolation) and its other reds are
+    theirs.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

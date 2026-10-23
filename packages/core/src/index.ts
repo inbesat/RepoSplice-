@@ -1548,4 +1548,12 @@ export {
   resolveDependencyClosure,
 } from './tools/resolve-dependency-closure.js';
 export type { ResolveClosureOptions } from './tools/resolve-dependency-closure.js';
+export { createLspPool, defaultServerSpecs, LSPPool } from './resolve/lsp-pool.js';
+export type {
+  LspClientFactory,
+  LspPoolHealth,
+  LspPoolOptions,
+  LspPoolStats,
+  LspServerSpec,
+} from './resolve/lsp-pool.js';
 export { runPipeline } from './pipeline/runPipeline.js';
