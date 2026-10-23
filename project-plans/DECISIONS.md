@@ -6397,4 +6397,56 @@ Date: 2026-10-24. Phase: P-351 (Wave 1.5). Owner: inbesat lane.
     rather than by dropping the em dash (which the P-182 convention uses).
 11. **Nothing else moved.** No other provenance file changed, the concurrent
     lane's checksums work was left alone, and no frozen file was touched.
+
+---
+
+## ADR-161: Confidence badges in the web diff and provenance views (P-352)
+
+Date: 2026-10-24. Phase: P-352 (Wave 1.5). Owner: aradhy lane.
+
+1. **The badges ship although the P-334 gate is closed.** Epic 18 continues:
+   the web surface now shows what P-346/P-348/P-349/P-351 compute. The
+   cross-language baseline epic itself stays deferred.
+2. **The lane boundary was surfaced, not crossed silently.** The phase is
+   owned by the aradhy lane (packages/web). The conflict was put to the user,
+   who delegated: "do whats best". `packages/web` was clean at the time
+   (`git status --short -- packages/web` was empty), so the work proceeded
+   there and the credit is shared rather than taken.
+3. **The spec's paths do not exist; the real surfaces are used.** The plan
+   names `pages/DiffViewer.tsx` and `pages/ProvenanceView.tsx`; this tree has
+   `components/DiffViewer.tsx` (the P-217 rail) and
+   `components/ProvenanceTable.tsx` (the P-222 attribution table). The
+   P-326/P-337/P-343 path-mapping precedent applies.
+4. **The mandated test paths map onto the web vitest glob.** The plan names
+   `web/test_confidence_badge.tsx` and `web/test_diff_viewer.tsx`; the web
+   vitest config collects `src/**/*.{test,spec}.{ts,tsx}`. The mandated names
+   are kept VERBATIM as the `it(...)` descriptions: `test_colors`,
+   `test_tooltip`, `test_a11y` and `test_confidence_integration`.
+5. **The wire shape is local.** The web tsconfig's rootDir cannot pull the
+   `@repo-stitcher/core` barrel (the P-218 evidence recorded in
+   `src/api/deps.ts`), so `src/api/confidence.ts` mirrors the confidence view
+   locally and `parseConfidence` reads it defensively. The badge DISPLAYS the
+   score; it never recomputes it.
+6. **The bands are the design tokens, not hexes.** Green >= 80, yellow 60-79,
+   red < 60, with the upper bound INCLUSIVE, expressed as the P-209 semantic
+   roles (success / warning / danger / muted) through `var(--token)`, and
+   overridable through the `thresholds` prop (the spec's theme-configurable
+   thresholds).
+7. **Accessibility is not colour-only.** The badge is `role="status"` with an
+   aria-label naming the score AND the band, plus a band glyph and the score
+   as text; the glyph and score spans are `aria-hidden` so the accessible name
+   stays clean. The tooltip carries the full breakdown (the five components,
+   the flags, the rationale) and the flags also render visibly.
+8. **A missing score is honest.** A file with no recorded confidence renders
+   `N/A` and the `unknown` band - never a silent zero (the P-351 rule, now
+   visible in the UI). The render is pure and defensive: a malformed record
+   cannot throw nor print `undefined`.
+9. **Nothing was frozen or coupled.** No core or cli file changed and no
+   frozen file moved (the frozen wire contract is `events/*`,
+   `jobs/types.ts`, `web/src/lib/ws.ts`), so no contract ADR and no
+   `check:contracts:update` was needed.
+10. **One type defect was found and fixed by the gate**: the optional
+    `confidence` prop needed an explicit `| undefined` under
+    `exactOptionalPropertyTypes`. Both test layers pass (the 4 mandated cases
+    plus the fuller web suites).
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

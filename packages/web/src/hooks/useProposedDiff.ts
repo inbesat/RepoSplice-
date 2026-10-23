@@ -5,6 +5,7 @@
 
 import { describeFailure } from '../api/repos.js';
 import { useEffect, useState } from 'react';
+import type { ConfidenceView } from '../api/confidence.js';
 
 export type DiffKind = 'add' | 'modify' | 'delete';
 
@@ -14,6 +15,8 @@ export interface ProposedDiffFile {
   readonly kind: DiffKind;
   readonly oldText?: string;
   readonly newText?: string;
+  /** P-352: this file's composite confidence, when the dry run reports one. */
+  readonly confidence?: ConfidenceView;
 }
 
 export async function fetchProposedDiff(): Promise<ProposedDiffFile[]> {

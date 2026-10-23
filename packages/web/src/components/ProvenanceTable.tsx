@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from 'react';
 import type { ProvenanceMap } from '../api/provenance.js';
+import { ConfidenceBadge } from './ConfidenceBadge.js';
 
 /** 'A' first, 'B' second, 'unknown' last, everything else alphabetical. */
 function repoRank(label: string): number {
@@ -77,6 +78,9 @@ export function ProvenanceTable({ map }: { map: ProvenanceMap }) {
                   <th scope="col" className="py-1 font-normal">
                     Author
                   </th>
+                  <th scope="col" className="py-1 font-normal">
+                    Confidence
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +94,9 @@ export function ProvenanceTable({ map }: { map: ProvenanceMap }) {
                         {formatCommit(row.commit)}
                       </td>
                       <td className="py-0.5 text-caption">{row.author ?? '—'}</td>
+                      <td className="py-0.5 text-caption">
+                        <ConfidenceBadge confidence={row.confidence} />
+                      </td>
                     </tr>
                   );
                 })}

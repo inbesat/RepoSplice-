@@ -8,6 +8,7 @@
 // barrel (TS6059, ADR-104 precedent).
 
 import { describeFailure } from './repos.js';
+import { parseConfidence, type ConfidenceView } from './confidence.js';
 
 /**
  * Simplified per-file attribution, per the P-222 spec.
@@ -18,6 +19,8 @@ export interface OriginRow {
   repo: string;
   commit: string;
   author?: string;
+  /** P-352: the file's composite confidence, when provenance recorded one. */
+  confidence?: ConfidenceView;
 }
 
 /** `GET /api/provenance/map` — path → simplified origin. */
@@ -48,10 +51,12 @@ export async function getProvenanceMap(): Promise<ProvenanceMap> {
   for (const path of Object.keys(raw)) {
     const v = raw[path] ?? {};
     const author = v.author ?? v.sourceAuthor;
+    const confidence = parseConfidence(v.confidence);
     map[path] = {
       repo: String(v.repo ?? 'unknown'),
       commit: String(v.commit ?? v.sourceCommit ?? ''),
       ...(author !== undefined && author !== null ? { author: String(author) } : {}),
+      ...(confidence !== undefined ? { confidence } : {}),
     };
   }
   return map;

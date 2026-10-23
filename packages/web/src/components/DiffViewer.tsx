@@ -6,6 +6,7 @@
 import { useMemo, useState, type JSX } from 'react';
 import { useProposedDiff, type DiffKind, type ProposedDiffFile } from '../hooks/useProposedDiff.js';
 import { DiffHunk, countChanges, normalizeText } from './DiffHunk.js';
+import { ConfidenceBadge } from './ConfidenceBadge.js';
 
 const GROUPS: ReadonlyArray<{ kind: DiffKind; label: string }> = [
   { kind: 'add', label: 'Added' },
@@ -109,9 +110,12 @@ export function DiffViewer(): JSX.Element {
                     aria-selected={file.path === (active?.path ?? null)}
                     tabIndex={file.path === (active?.path ?? null) ? 0 : -1}
                     data-testid={`rail-${file.path}`}
-                    className="block w-full truncate text-left text-caption text-muted hover:text-text"
+                    className="block w-full text-left text-caption text-muted hover:text-text"
                   >
-                    {file.path}
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate">{file.path}</span>
+                      <ConfidenceBadge confidence={file.confidence} />
+                    </span>
                   </button>
                 ))}
               </div>
