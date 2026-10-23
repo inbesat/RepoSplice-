@@ -1184,9 +1184,12 @@ export type {
 } from './provenance/index.js';
 export {
   generateCredits,
+  CREDITS_COLUMNS,
   CREDITS_FILENAME,
   SHORT_COMMIT_LENGTH,
   NO_COMMIT_CELL,
+  NO_CONFIDENCE_CELL,
+  NO_FLAGS_CELL,
   UNATTRIBUTED_HEADING,
 } from './provenance/index.js';
 export type { CreditsOptions } from './provenance/index.js';

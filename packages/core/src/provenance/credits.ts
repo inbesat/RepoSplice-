@@ -19,12 +19,16 @@
 //   — a guard rather than a convention, so a future edit to a template cannot
 //   leak an address that P-181 deliberately retained behind its own opt-in.
 //
-// The table columns (`| File in C | Source Commit | Author |`) are fixed: the
-// handoff states the web preview and CI checks parse them.
+// The first three table columns (`| File in C | Source Commit | Author |`) are
+// the P-182 contract: the web preview and CI checks parse them, so they keep
+// their indices. P-351 APPENDED two more (`Confidence`, `Flags`) behind them —
+// an append-only change, so a parser reading the first three cells reads the
+// same values it always did.
 
 import { ok, err, type Result } from 'neverthrow';
 import { outputFile } from 'fs-extra';
 import { type StitchError } from '../result/index.js';
+import { type SemanticConfidence } from '../confidence/schema.js';
 import { UNKNOWN_COMMIT, type FileOrigin, type ProvenanceMap } from './map.js';
 
 /** The file CREDITS is written to, at the root of child repo C. */
@@ -39,6 +43,26 @@ export const NO_COMMIT_CELL = '—';
 /** The section heading for files nothing could be attributed to. */
 export const UNATTRIBUTED_HEADING = 'Unattributed';
 
+/** The cell shown when a file has no recorded confidence score. */
+export const NO_CONFIDENCE_CELL = 'N/A';
+
+/** The cell shown when a file has no confidence flags. */
+export const NO_FLAGS_CELL = '—';
+
+/**
+ * The credits table columns, in order: P-182's three, then P-351's two.
+ *
+ * The header and the separator are both built from this list so the two rows
+ * cannot drift apart (a drifted separator renders the whole table as text).
+ */
+export const CREDITS_COLUMNS = [
+  'File in C',
+  'Source Commit',
+  'Author',
+  'Confidence',
+  'Flags',
+] as const;
+
 /** Options for {@link generateCredits}. */
 export interface CreditsOptions {
   /** Display name for source repo A (defaults to `A`). */
@@ -49,6 +73,15 @@ export interface CreditsOptions {
   includeEmails?: boolean;
   /** Replaces the generated title block entirely when supplied. */
   header?: string;
+  /**
+   * The confidence score per file in C, keyed by the C path (`origin.file`).
+   *
+   * P-351: when a file has an entry, its `composite_score` fills the Confidence
+   * column and its `flags` fill the Flags column; a file with no entry renders
+   * 'N/A' and a note under `## Notes` says why. Absent entirely is the legacy
+   * case — every file renders 'N/A'.
+   */
+  confidence?: Readonly<Record<string, SemanticConfidence>>;
   /**
    * Where to write `<repoC>/CREDITS.md`. When absent the document is only
    * returned — which is the pure path tests and the P-222 preview use.
@@ -124,8 +157,38 @@ function headerTimestamp(origins: readonly FileOrigin[], opts: CreditsOptions): 
   return latest;
 }
 
-function tableFor(group: RepoGroup, includeEmails: boolean): string[] {
-  const lines = ['| File in C | Source Commit | Author |', '| --- | --- | --- |'];
+/** The header row and the separator, both built from the one column list. */
+function tableHeader(): string[] {
+  return [
+    `| ${CREDITS_COLUMNS.join(' | ')} |`,
+    `| ${CREDITS_COLUMNS.map(() => '---').join(' | ')} |`,
+  ];
+}
+
+/** The Confidence cell: the rounded composite, or the N/A cell when absent. */
+function confidenceCell(record: SemanticConfidence | undefined): string {
+  const score: unknown = record?.composite_score;
+  if (typeof score !== 'number' || !Number.isFinite(score)) return NO_CONFIDENCE_CELL;
+  return String(Math.round(score));
+}
+
+/** The Flags cell: the warning strings joined by `, `, or the no-flags cell. */
+function flagsCell(record: SemanticConfidence | undefined): string {
+  const flags: unknown = record?.flags;
+  if (!Array.isArray(flags)) return NO_FLAGS_CELL;
+  const kept: string[] = [];
+  for (const flag of flags) {
+    if (typeof flag === 'string' && flag.trim() !== '') kept.push(flag.trim());
+  }
+  return kept.length === 0 ? NO_FLAGS_CELL : kept.join(', ');
+}
+
+function tableFor(
+  group: RepoGroup,
+  includeEmails: boolean,
+  confidence: Readonly<Record<string, SemanticConfidence>> | undefined
+): string[] {
+  const lines = tableHeader();
   for (const origin of group.origins) {
     // The C path always leads the cell (the fixed, parsed column); the original
     // source path is appended only when it differs, i.e. the teleport case.
@@ -136,7 +199,15 @@ function tableFor(group: RepoGroup, includeEmails: boolean): string[] {
     const author = origin.sourceAuthor ?? '_unknown_';
     const email =
       includeEmails && origin.sourceEmail !== undefined ? ` <${origin.sourceEmail}>` : '';
-    lines.push(`| ${file} | ${shortCommit(origin.sourceCommit)} | ${author}${email} |`);
+    const record = confidence?.[origin.file];
+    const cells = [
+      file,
+      shortCommit(origin.sourceCommit),
+      `${author}${email}`,
+      confidenceCell(record),
+      flagsCell(record),
+    ];
+    lines.push(`| ${cells.join(' | ')} |`);
   }
   return lines;
 }
@@ -154,6 +225,10 @@ export async function generateCredits(
   const includeEmails = opts.includeEmails === true;
   const origins = map.origins();
   const groups = groupOrigins(origins);
+  const confidence = opts.confidence;
+  // A file with no recorded score renders the N/A cell; when any file does, the
+  // Notes section says why (spec step 4) so a reader never has to guess.
+  const hasUnscored = origins.some(origin => confidence?.[origin.file] === undefined);
 
   const lines: string[] = [];
   const timestamp = headerTimestamp(origins, opts);
@@ -170,7 +245,7 @@ export async function generateCredits(
     if (group.remoteUrl !== undefined && group.remoteUrl !== '') {
       lines.push(`Repository: ${group.remoteUrl}`, '');
     }
-    lines.push(...tableFor(group, includeEmails), '');
+    lines.push(...tableFor(group, includeEmails, opts.confidence), '');
   }
 
   // Unattributed files get their own section rather than being dropped: a
@@ -184,7 +259,7 @@ export async function generateCredits(
       'nothing is silently omitted from attribution.',
       ''
     );
-    lines.push(...tableFor(group, includeEmails), '');
+    lines.push(...tableFor(group, includeEmails, opts.confidence), '');
   }
 
   // Transparency: say plainly which files the agent stitched.
@@ -199,6 +274,16 @@ export async function generateCredits(
     lines.push('The following files were edited or stitched by the agent:', '');
     for (const file of agentFiles) lines.push(`- \`${file}\``);
     lines.push('');
+  }
+
+  // Legacy files: say plainly that a blank Confidence cell is "not recorded"
+  // rather than "no confidence", so nobody reads N/A as a score of zero.
+  if (hasUnscored) {
+    lines.push(
+      'Files showing N/A in the Confidence column have no recorded confidence score',
+      '(they predate the confidence pipeline).',
+      ''
+    );
   }
 
   // Warnings P-181 retained (why a file is unattributed), when any were kept.

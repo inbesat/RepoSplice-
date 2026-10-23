@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type SemanticConfidence } from '../confidence/schema.js';
 import { ProvenanceMap, type FileOrigin, type ProvenanceWarning } from './map.js';
 import { CREDITS_FILENAME, generateCredits } from './credits.js';
 
@@ -35,6 +36,23 @@ function origin(over: Partial<FileOrigin> & { file: string }): FileOrigin {
     stitchedBy: 'manual',
   };
   return { ...base, ...over };
+}
+
+/** A minimal `SemanticConfidence` document for the P-351 renderer tests. */
+function confidence(score: number, flags: string[]): SemanticConfidence {
+  return {
+    composite_score: score,
+    components: {
+      sandbox_pass: 1,
+      self_confidence: score,
+      resolver_confidence: score,
+      license_risk: 0,
+      test_coverage: score,
+    },
+    rationale: 'fixture',
+    flags,
+    contributing_factors: {},
+  };
 }
 
 let scratch: string;
@@ -75,9 +93,10 @@ describe('P-182 credits', () => {
     expect(text).toContain('## B');
     expect(text.indexOf('## A')).toBeLessThan(text.indexOf('## B'));
 
-    // The FIXED table columns the web preview and CI parse.
-    expect(text).toContain('| File in C | Source Commit | Author |');
-    expect(text).toContain('| --- | --- | --- |');
+    // The table columns the web preview and CI parse: P-182's three (unchanged,
+    // same indices) then the two P-351 appended.
+    expect(text).toContain('| File in C | Source Commit | Author | Confidence | Flags |');
+    expect(text).toContain('| --- | --- | --- | --- | --- |');
 
     // Short commit (7 chars) + author.
     expect(text).toContain('| `lib/util.ts` | a1b2c3d | Ada Lovelace |');
@@ -234,5 +253,71 @@ describe('P-182 credits', () => {
       ProvenanceMap.from([origin({ file: 'a.ts', remoteUrl: 'https://example.test/a.git' })])
     );
     if (withUrl.isOk()) expect(withUrl.value).toContain('Repository: https://example.test/a.git');
+  });
+
+  it('adds the confidence and flags columns', async () => {
+    const map = ProvenanceMap.from([origin({ file: 'lib/util.ts' })]);
+    const rendered = await generateCredits(map, {
+      confidence: { 'lib/util.ts': confidence(77, ['low_test_coverage']) },
+    });
+    expect(rendered.isOk()).toBe(true);
+    if (rendered.isErr()) return;
+    const text = rendered.value;
+
+    expect(text).toContain('| File in C | Source Commit | Author | Confidence | Flags |');
+    expect(text).toContain('| --- | --- | --- | --- | --- |');
+    expect(text).toContain('| `lib/util.ts` | a1b2c3d | Ada Lovelace | 77 | low_test_coverage |');
+  });
+
+  it('renders the no-flags cell when a score has no warnings', async () => {
+    const map = ProvenanceMap.from([origin({ file: 'a.ts' })]);
+    const rendered = await generateCredits(map, {
+      confidence: { 'a.ts': confidence(90, []) },
+    });
+    if (rendered.isErr()) return;
+    expect(rendered.value).toContain('| `a.ts` | a1b2c3d | Ada Lovelace | 90 | — |');
+  });
+
+  it('shows N/A and says why for files with no recorded score', async () => {
+    const map = ProvenanceMap.from([origin({ file: 'legacy.ts' })]);
+    const rendered = await generateCredits(map, { confidence: {} });
+    if (rendered.isErr()) return;
+    const text = rendered.value;
+    expect(text).toContain('| `legacy.ts` | a1b2c3d | Ada Lovelace | N/A | — |');
+    expect(text).toContain('Files showing N/A in the Confidence column');
+  });
+
+  it('omits the N/A note when every file is scored', async () => {
+    const map = ProvenanceMap.from([origin({ file: 'a.ts' }), origin({ file: 'b.ts' })]);
+    const rendered = await generateCredits(map, {
+      confidence: { 'a.ts': confidence(88, []), 'b.ts': confidence(40, ['license_risk']) },
+    });
+    if (rendered.isErr()) return;
+    expect(rendered.value).not.toContain('Files showing N/A in the Confidence column');
+    expect(rendered.value).toContain('| 40 | license_risk |');
+  });
+
+  it('joins several flags and reads a malformed record defensively', async () => {
+    const map = ProvenanceMap.from([origin({ file: 'a.ts' }), origin({ file: 'b.ts' })]);
+    const rendered = await generateCredits(map, {
+      confidence: {
+        'a.ts': confidence(55, ['low_resolver_confidence', 'license_risk']),
+        // A record from an unknown writer must not make the renderer throw or
+        // print 'undefined': it falls back to the cells a missing value gets.
+        'b.ts': { composite_score: Number.NaN, flags: undefined } as unknown as SemanticConfidence,
+      },
+    });
+    if (rendered.isErr()) return;
+    expect(rendered.value).toContain('| 55 | low_resolver_confidence, license_risk |');
+    expect(rendered.value).toContain('| N/A | — |');
+  });
+
+  it('keeps the render stable with confidence data', async () => {
+    const origins = [origin({ file: 'a.ts' }), origin({ file: 'b.ts' })];
+    const opts = { confidence: { 'a.ts': confidence(77, ['x']), 'b.ts': confidence(20, []) } };
+    const first = await generateCredits(ProvenanceMap.from(origins), opts);
+    const second = await generateCredits(ProvenanceMap.from([...origins].reverse()), opts);
+    expect(first.isOk() && second.isOk()).toBe(true);
+    if (first.isOk() && second.isOk()) expect(second.value).toBe(first.value);
   });
 });

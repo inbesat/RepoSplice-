@@ -25,9 +25,12 @@ export type {
 // P-182 — CREDITS.md (the human read of the map).
 export {
   generateCredits,
+  CREDITS_COLUMNS,
   CREDITS_FILENAME,
   SHORT_COMMIT_LENGTH,
   NO_COMMIT_CELL,
+  NO_CONFIDENCE_CELL,
+  NO_FLAGS_CELL,
   UNATTRIBUTED_HEADING,
 } from './credits.js';
 export type { CreditsOptions } from './credits.js';

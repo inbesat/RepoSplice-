@@ -6347,4 +6347,54 @@ Date: 2026-10-24. Phase: P-350 (Wave 1.5). Owner: inbesat lane.
     Config shape to be updated (the P-349 precedent).
 12. **Nothing else moved.** No new StitchError code; the eval tooling, the
     corpus, the CLI and the frozen files are untouched.
+
+---
+
+## ADR-160: Confidence and flags columns in CREDITS.md (P-351)
+
+Date: 2026-10-24. Phase: P-351 (Wave 1.5). Owner: inbesat lane.
+
+1. **The section ships although the P-334 gate is closed.** Epic 18 continues:
+   the confidence pipeline now reaches the published attribution document.
+2. **The change is APPEND-ONLY, so the P-182 contract holds.** The first three
+   cells (File in C, Source Commit, Author) keep their indices and values, which
+   is why the api.test.ts and credits.test.ts column assertions were updated to
+   the wider header rather than the column order being changed. A parser keyed
+   on indices 0-2 keeps working.
+3. **`CREDITS_COLUMNS` is the ONE source for the header AND the separator.**
+   Both are built from the same array, so the two can never drift - a separator
+   that does not match the header renders the table as plain text on GitHub.
+4. **The confidence data arrives as a plain option record.** `CreditsOptions`
+   gains `confidence?: Readonly<Record<string, SemanticConfidence>>` keyed by the
+   C path, and the type is imported as a TYPE ONLY, so provenance has no runtime
+   dependency on the confidence module and no import cycle is created.
+5. **A missing entry is DATA, never an error and never a silent zero.** A file
+   without a score renders `N/A` (NO_CONFIDENCE_CELL) and, when at least one
+   rendered file lacks a score, the `## Notes` section says why - the spec's
+   step 4. The renderer takes a plain record and therefore adds no error path.
+6. **The cells are read DEFENSIVELY.** A non-finite score renders `N/A` and a
+   non-array `flags` (or a blank entry) is ignored, so a record written by an
+   unknown producer cannot break the renderer or print `undefined`. The flags
+   are joined with ', ' for a single-line cell; no flags renders the em-dash
+   NO_FLAGS_CELL, matching the existing NO_COMMIT_CELL convention.
+7. **The existing error surface is untouched.** The `repoC` CONFIG_ERROR and the
+   INTERNAL write failure stay exactly as they were; no new StitchError code was
+   added. Determinism (no clock; `opts.now()` or the map's latest `copiedAt`) and
+   the email PII redaction are unchanged.
+8. **Both test layers.** The three mandated python ids drive the real renderer
+   through the bun harness, and the vitest mirror grew six cases (the five
+   columns, a scored row, the no-flags cell, the N/A cell + note, the note
+   omitted when everything is scored, several flags plus a malformed record, and
+   determinism).
+9. **The harness measures through the REAL pipeline.** The scored documents are
+   built by `buildSemanticConfidence`, so the rendered scores are provably the
+   P-346/P-349 output: the weak components {0, 30, 20, 80, 10} render 16 with all
+   five derived flags, the strong components {1, 82, 60, 40, 50} render 77 with
+   none, and the legacy file renders N/A plus the note.
+10. **The python harness decodes stdout as UTF-8.** The table carries an em dash;
+    the default Windows locale decoding mangled it. That was the one defect this
+    phase's first test run found, and it was fixed with an explicit encoding
+    rather than by dropping the em dash (which the P-182 convention uses).
+11. **Nothing else moved.** No other provenance file changed, the concurrent
+    lane's checksums work was left alone, and no frozen file was touched.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

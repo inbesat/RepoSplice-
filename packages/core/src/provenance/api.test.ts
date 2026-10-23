@@ -174,7 +174,9 @@ describe('P-185 provenance api', () => {
     const markdown = response.body as string;
     // The CREDITS content itself (P-182), not a file path.
     expect(markdown).toContain('# Credits');
-    expect(markdown).toContain('| File in C | Source Commit | Author |');
+    // P-351 appended `Confidence` + `Flags`; the first three cells are still
+    // P-182's, so this parser keeps working.
+    expect(markdown).toContain('| File in C | Source Commit | Author | Confidence | Flags |');
     expect(markdown).toContain('`lib/util.go`');
     expect(markdown).toContain('## Unattributed');
 
