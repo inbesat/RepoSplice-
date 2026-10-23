@@ -101,10 +101,10 @@ describe('assess_confidence (P-348)', () => {
     const result = await assessConfidence(PROPOSAL, depsWith());
     expect(result.isOk()).toBe(true);
     if (result.isErr()) return;
-    // .30*100 + .20*82 + .25*60 + .15*60 + .10*50 = 75.4 -> 75
-    expect(result.value.confidence.composite_score).toBe(75);
+    // .30*100 + .25*82 + .20*60 + .15*60 + .10*50 = 76.5 -> 77
+    expect(result.value.confidence.composite_score).toBe(77);
     expect(result.value.confidence.flags).toEqual([]);
-    expect(result.value.confidence.rationale).toContain('75/100');
+    expect(result.value.confidence.rationale).toContain('77/100');
   });
 
   it('populates all five components from the port values', async () => {
@@ -158,7 +158,7 @@ describe('assess_confidence (P-348)', () => {
     expect(result.isOk()).toBe(true);
     expect(emitted).toHaveLength(1);
     expect(emitted[0]?.tool).toBe(ASSESS_CONFIDENCE_TOOL);
-    expect(emitted[0]?.percent).toBe(75);
+    expect(emitted[0]?.percent).toBe(77);
     expect(typeof emitted[0]?.detail).toBe('string');
     expect(stored).toHaveLength(1);
     expect(stored[0]?.proposalId).toBe('proposal-1');

@@ -6235,4 +6235,61 @@ Date: 2026-10-24. Phase: P-348 (Wave 1.5). Owner: inbesat lane.
     widening to `T | undefined` under `exactOptionalPropertyTypes`, two
     `StitchError.field` reads before narrowing, a generator without yield).
     They were fixed in place, never suppressed. Nothing else moved.
+
+---
+
+## ADR-158: The finalized composite scoring weights with rationale (P-349)
+
+Date: 2026-10-24. Phase: P-349 (Wave 1.5). Owner: inbesat lane.
+
+1. **The model is finalized although the P-334 gate is closed.** Epic 18
+   continues: the confidence score is infrastructure the merge loop consumes,
+   and its weights are now a documented, configurable part of the product
+   rather than a provisional constant.
+2. **The finalized weights SUPERSEDE the P-346 provisional set.** The spec
+   names sandbox 30%, self 25%, resolver 20%, license 15%, tests 10%; P-346
+   shipped `self 20% / resolver 25%`. The two are swapped DELIBERATELY: the
+   agent's own second read of its diff is worth more than the import graph the
+   change rests on. There is exactly ONE source of truth -
+   `DEFAULT_CONFIDENCE_WEIGHTS` in `confidence/schema.ts`, re-exported as
+   `DEFAULT_COMPOSITE_WEIGHTS` in `confidence/scoring.ts` - so the score can
+   never depend on which door you came in.
+3. **The per-weight rationale is machine-readable** in
+   `COMPOSITE_WEIGHT_RATIONALE` (the spec's step 3), and mirrored here:
+   - `sandbox_pass` 30% - the outcome proxy: a proposal that does not build
+     is not a proposal.
+   - `self_confidence` 25% - the agent's own second read of its diff.
+   - `resolver_confidence` 20% - the technical correctness of the imports the
+     change rests on.
+   - `license_risk` 15% - the compliance exposure, scored as its complement
+     (less risk scores higher).
+   - `test_coverage` 10% - the regression safety the change carries with it.
+4. **`computeComposite` validates, then delegates.** It refuses a weight set
+   that is non-finite, negative, or does not sum to 1 within 1e-6
+   (CONFIG_ERROR, field `confidence.weights`) rather than computing a number
+   nobody can reproduce, and then calls the P-346 `compositeScore` so the two
+   can never disagree about the formula.
+5. **`explain` takes the inputs, not the score.** The spec's literal
+   `explain(score)` cannot decompose a bare number, so the function takes
+   `(components, weights?)` and returns one line per factor (raw value,
+   weighted value, weight, contribution, rationale), the weighted sum, the
+   composite, and the P-325 rubric band. Determinism is by construction: no
+   clock, no randomness.
+6. **The config surface is `confidence.weights` in `~/.stitch/config.json`**
+   (a required `confidence` section in `ConfigSchema` + `defaultConfig`).
+   Because the section is required, two existing tests that enumerate the
+   config shape broke and were updated rather than suppressed: the P-039
+   `config/jsonSchema.test.ts` key list and the P-015
+   `config/zod.smoke.test.ts` typed literal.
+7. **The P-348 expectations were re-derived 75 -> 77** against the finalized
+   weights (`1, 82, 60, 40, 50` -> 76.5 -> 77): the mirror, the python id and
+   the rationale string. The P-346 mirror's 89 stands (only its stale
+   arithmetic comment was corrected) because that fixture's numbers are
+   unaffected by the swap.
+8. **Both test layers ship**: the four mandated python ids
+   (`test_scoring_model.py`: default weights, custom weights, explain output,
+   determinism) drive the real module through the bun harness, and an 8-case
+   vitest mirror keeps the contract enforced in the bun-only CI.
+9. **Nothing else moved**: no new StitchError code, no frozen file, and the
+   conventional commit for this phase changes no contract.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

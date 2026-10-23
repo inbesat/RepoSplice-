@@ -47,16 +47,21 @@ export interface ConfidenceComponentScores {
 export type ConfidenceWeights = Readonly<Record<ConfidenceComponent, number>>;
 
 /**
- * The default weights, documented in ADR-155.
+ * The default weights, FINALIZED by P-349 (documented in ADR-158; P-346 had
+ * shipped them as a provisional set and P-349 is the phase that finalizes the
+ * model, so the two swapped factors below are the final values).
  *
  * The sandbox build carries the most weight (a component that does not build
- * is not a component), then the resolver's own confidence, then the agent's
- * self rating, then the license risk and the test coverage.
+ * is not a component), then the agent's own self rating, then the resolver's
+ * confidence, then the license risk and the test coverage. The per-weight
+ * rationale lives in COMPOSITE_WEIGHT_RATIONALE in ./scoring.js, and this
+ * constant stays the ONE default: ./scoring.js re-exports it rather than
+ * declaring a second set.
  */
 export const DEFAULT_CONFIDENCE_WEIGHTS: ConfidenceWeights = {
   sandbox_pass: 0.3,
-  self_confidence: 0.2,
-  resolver_confidence: 0.25,
+  self_confidence: 0.25,
+  resolver_confidence: 0.2,
   license_risk: 0.15,
   test_coverage: 0.1,
 };

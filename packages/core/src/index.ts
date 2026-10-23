@@ -1609,4 +1609,13 @@ export type {
   ConfidenceProposal,
   ConfidenceRecord,
 } from './tools/assess-confidence.js';
+export {
+  COMPOSITE_FACTOR_ORDER,
+  COMPOSITE_WEIGHT_RATIONALE,
+  COMPOSITE_WEIGHT_SUM_TOLERANCE,
+  computeComposite,
+  DEFAULT_COMPOSITE_WEIGHTS,
+  explain,
+  normalizeCompositeWeights,
+} from './confidence/scoring.js';
 export { runPipeline } from './pipeline/runPipeline.js';

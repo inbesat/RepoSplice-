@@ -54,7 +54,7 @@ describe('SemanticConfidence schema (P-346)', () => {
     const score = compositeScore(STRONG);
     expect(score.isOk()).toBe(true);
     if (score.isOk()) {
-      // .30*100 + .20*80 + .25*90 + .15*(100-10) + .10*70 = 89
+      // .30*100 + .25*80 + .20*90 + .15*(100-10) + .10*70 = 88.5 -> 89
       expect(score.value).toBe(89);
     }
   });

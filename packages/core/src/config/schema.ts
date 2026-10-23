@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DEFAULT_COMPOSITE_WEIGHTS } from '../confidence/scoring.js';
+
 export const GitHubAuthTypeSchema = z.enum(['pat', 'app']);
 export type GitHubAuthType = z.infer<typeof GitHubAuthTypeSchema>;
 
@@ -150,6 +152,32 @@ export const AgentConfigSchema = z.object({
 });
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 
+/**
+ * P-349: the composite confidence weights. The five factors must be
+ * non-negative and sum to one, so a half-edited config file cannot silently
+ * reweight the model into a number nobody can reproduce.
+ */
+export const ConfidenceWeightsSchema = z
+  .object({
+    sandbox_pass: z.number().nonnegative(),
+    self_confidence: z.number().nonnegative(),
+    resolver_confidence: z.number().nonnegative(),
+    license_risk: z.number().nonnegative(),
+    test_coverage: z.number().nonnegative(),
+  })
+  .refine(
+    weights =>
+      Math.abs(Object.values(weights).reduce((total, weight) => total + weight, 0) - 1) <= 1e-6,
+    { message: 'the confidence weights must sum to 1' }
+  );
+
+export type ConfidenceWeightsConfig = z.infer<typeof ConfidenceWeightsSchema>;
+
+export const ConfidenceConfigSchema = z.object({
+  weights: ConfidenceWeightsSchema.default(DEFAULT_COMPOSITE_WEIGHTS),
+});
+export type ConfidenceConfig = z.infer<typeof ConfidenceConfigSchema>;
+
 export const ConfigSchema = z.object({
   github: GitHubConfigSchema,
   openrouter: OpenRouterConfigSchema,
@@ -170,6 +198,7 @@ export const ConfigSchema = z.object({
   paths: PathsConfigSchema,
   licensePolicy: LicensePolicySchema,
   autonomy: AutonomySchema,
+  confidence: ConfidenceConfigSchema.default({ weights: DEFAULT_COMPOSITE_WEIGHTS }),
   agent: AgentConfigSchema.default({
     maxToolResultBytes: 1_000_000,
     maxToolArgsDepth: 16,
@@ -195,6 +224,7 @@ export const defaultConfig: Config = {
   },
   licensePolicy: { allow: [], warn: [], deny: [] },
   autonomy: { auto: [], gated: [] },
+  confidence: { weights: DEFAULT_COMPOSITE_WEIGHTS },
   agent: {
     maxToolResultBytes: 1_000_000,
     maxToolArgsDepth: 16,

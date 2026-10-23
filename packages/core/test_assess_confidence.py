@@ -70,10 +70,10 @@ def test_all_components_populated() -> None:
 
 def test_composite_calculation() -> None:
     report = run_harness()
-    # .30*100 + .20*82 + .25*60 + .15*60 + .10*50 = 75.4 -> 75
-    assert report["composite"] == 75, report
+    # .30*100 + .25*82 + .20*60 + .15*60 + .10*50 = 76.5 -> 77
+    assert report["composite"] == 77, report
     assert report["flags"] == [], report
-    assert "75/100" in report["rationale"], report
+    assert "77/100" in report["rationale"], report
     weights = report["weights"]
     assert abs(sum(weights.values()) - 1.0) < 1e-6, report
     mapping = report["tagMapping"]
@@ -88,7 +88,7 @@ def test_event_bus_emission() -> None:
     emitted = report["emitted"]
     assert len(emitted) >= 1, report
     assert emitted[0]["tool"] == "assess_confidence", report
-    assert emitted[0]["percent"] == 75, report
+    assert emitted[0]["percent"] == 77, report
     assert emitted[0]["hasDetail"] is True, report
     stored = report["stored"]
     assert len(stored) >= 1, report
