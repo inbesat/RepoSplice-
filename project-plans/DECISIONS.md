@@ -6086,4 +6086,46 @@ Date: 2026-10-24. Phase: P-345 (Wave 1.5). Owner: inbesat lane.
    against the hermetic stub (cold < 3 s, warm < 200 ms, warm <= cold).
 10. **Nothing else moved.** No new StitchError code, no frozen file, the eval
     tooling / corpus / CLI untouched.
+
+---
+
+## ADR-155: SemanticConfidence schema with documented default weights (P-346)
+
+Date: 2026-10-24. Phase: P-346 (Wave 1.5, Epic 18). Owner: inbesat lane.
+
+1. **The schema ships although the P-334 gate is closed.** Epic 18 starts
+   here; a scoring schema changes no baseline number, and the cross-language
+   epic's own deferral is recorded in ADR-143/152.
+2. **A new leaf module.** `packages/core/src/confidence/schema.ts` imports
+   only zod, neverthrow and the StitchError type. The P-325 rubric module
+   stays read-only: the compatibility is a DOCUMENTED CONSTANT
+   (`RUBRIC_COMPATIBILITY`), not an import.
+3. **The five components and their sources.** sandbox_pass (0/1, P-176),
+   self_confidence (0-100, P-347), resolver_confidence (0-100, P-342),
+   license_risk (0-100, P-127), test_coverage (0-100).
+4. **The default weights** are .30 sandbox / .25 resolver / .20 self /
+   .15 license / .10 tests. They sum to 1.00. A component that does not
+   build is not a component, so the sandbox run carries the largest share.
+5. **Two semantic decisions the formula's literal reading would get wrong.**
+   `license_risk` is RISK, so the weighting uses its COMPLEMENT
+   (100 - license_risk) - a confidence score must rise when risk falls.
+   `sandbox_pass` is stored 0/1 and normalised x100 in the sum.
+6. **The formula** is `round(weighted sum)` clamped to 0-100. The inputs are
+   each validated to their own range, and the clamp guarantees the OUTPUT
+   never leaves the bounds.
+7. **Weights are overridable but validated** (non-negative, summing to 1
+   within 1e-6); an unusable set is a CONFIG_ERROR with the field
+   'confidence.weights' rather than a silently wrong number.
+8. **Every score is explainable.** The flags and the rationale are DERIVED
+   from the components, and `compositeToRubricScore` maps the 0-100 score
+   onto the P-325 1-5 scale (>=80 -> 5, >=60 -> 4, >=40 -> 3, >=20 -> 2,
+   else 1) with the three rubric dimensions named in the compatibility map.
+9. **The module never throws** (`safeParse` only, never `.parse`); both
+   test layers exist (the 3 mandated python ids over the bun harness plus
+   an 11-case vitest mirror, because the CI is bun-only).
+10. **The barrel exports `compositeScore as confidenceCompositeScore`.**
+    The P-328 `eval/ci_gate.ts` already owns `compositeScore`; exporting
+    the same name twice is a hard rolldown parse error that broke the whole
+    barrel and the CLI suite. The fix is an alias on the NEW export - the
+    eval gate keeps its public name. Nothing else moved.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

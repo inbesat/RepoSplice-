@@ -1556,4 +1556,24 @@ export type {
   LspPoolStats,
   LspServerSpec,
 } from './resolve/lsp-pool.js';
+export {
+  buildSemanticConfidence,
+  compositeScore as confidenceCompositeScore,
+  compositeToRubricScore,
+  CONFIDENCE_COMPONENTS,
+  confidenceComponentScoresSchema,
+  DEFAULT_CONFIDENCE_WEIGHTS,
+  deriveFlags,
+  deriveRationale,
+  RUBRIC_COMPATIBILITY,
+  semanticConfidenceSchema,
+} from './confidence/schema.js';
+export type {
+  ConfidenceComponent,
+  ConfidenceComponentScores,
+  ConfidenceWeights,
+  ContributingFactor,
+  SemanticConfidence,
+  SemanticConfidenceInput,
+} from './confidence/schema.js';
 export { runPipeline } from './pipeline/runPipeline.js';
