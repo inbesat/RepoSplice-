@@ -6043,4 +6043,47 @@ Date: 2026-10-23. Phase: P-344 (Wave 1.5). Owner: inbesat lane.
 11. **Nothing else moved.** The concurrent lane's three real
     `sandbox/capture` reds (confirmed in isolation) and its other reds are
     theirs.
+
+---
+
+## ADR-154: Fixture-based resolver accuracy suite (P-345)
+
+Date: 2026-10-24. Phase: P-345 (Wave 1.5). Owner: inbesat lane.
+
+1. **The suite ships although the P-334 gate is closed.** The cross-language
+   EPIC stays deferred - a test suite changes no baseline number. Epic 17
+   closes with this phase; the accuracy it measures is the resolver stack's
+   (P-335-P-344), not a corpus-level claim.
+2. **The four fixtures and their ground truths were REUSED, not recreated.**
+   The spec's steps 1-2 were already satisfied by P-336-P-339
+   (`packages/core/test-fixtures/{ts,python,go,rust}-resolver-repo`, each with
+   `ground-truth.json`). Recreating them would have produced a second,
+   divergent source of truth.
+3. **The shared helper is a test-only module OUTSIDE src**
+   (`packages/core/test-utils/resolve-fixtures.ts`) and is deliberately NOT
+   exported from the barrel: the barrel is the published build's entry, and
+   exporting a non-src file would pull it into the tsup bundle.
+4. **The mirror sits at the spec's own path**,
+   `packages/core/src/resolve/__tests__/accuracy.test.ts` - the core vitest
+   glob picks up nested `__tests__` directories.
+5. **Accuracy is measured at the RESOLVER level with the ground-truth
+   specifiers**, not through the P-343 closure walker. The walker feeds the
+   Rust resolver a full `use` path (`crate::a::helper`, which names an ITEM);
+   that is a walker-level extraction limitation, already recorded in ADR-152,
+   and it must not be conflated with the resolver's own accuracy.
+6. **The measured accuracy is 4/4 = 100% per ecosystem** (typescript,
+   python, go, rust) against the 95% bar. The numbers are measured, never
+   claimed.
+7. **The confidence tags are verified**: a heuristic-only registry can only
+   answer `heuristic-medium`, and the `unresolved` marker is excluded from
+   the tag summary. An `unresolved` marker means "nothing answered" - it is
+   never counted as a heuristic answer, and it never suppresses a
+   ground-truth case that legitimately expects no edges (the rust
+   `cfg_gated` case).
+8. **The fallback is verified by killing the server**: an auto-mode registry
+   with a dead client continues at `heuristic-medium` without a crash.
+9. **The performance targets are measured through the real P-344 pool**
+   against the hermetic stub (cold < 3 s, warm < 200 ms, warm <= cold).
+10. **Nothing else moved.** No new StitchError code, no frozen file, the eval
+    tooling / corpus / CLI untouched.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
