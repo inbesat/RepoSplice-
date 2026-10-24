@@ -1653,4 +1653,22 @@ export type {
   CalibrationSample,
   CalibrationScatterPoint,
 } from './confidence/calibration.js';
+export {
+  defaultRecalibrationBaseline,
+  measureCorrelation,
+  RECALIBRATION_ERROR_FIELD,
+  RECALIBRATION_MAX_ITERATIONS,
+  runRecalibration,
+} from './confidence/recalibration.js';
+export type {
+  RecalibrationAttempt,
+  RecalibrationBaseline,
+  RecalibrationBaselineMeasurement,
+  RecalibrationDecision,
+  RecalibrationFrozen,
+  RecalibrationOptions,
+  RecalibrationReport,
+  RecalibrationVariant,
+  SampleMeasurement,
+} from './confidence/recalibration.js';
 export { runPipeline } from './pipeline/runPipeline.js';

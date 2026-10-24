@@ -6544,4 +6544,43 @@ Date: 2026-10-24. Phase: P-354 (Wave 1.5). Owner: inbesat lane.
     three mandated python ids over the bun harness plus an eleven-case vitest
     mirror, because the CI is bun-only), and the concurrent lane's three
     `src/sandbox/capture.test.ts` reds are theirs.
+
+---
+
+## ADR-164: Prompt and weight recalibration (P-355)
+
+Date: 2026-10-24. Phase: P-355 (Wave 1.5). Owner: inbesat lane.
+
+1. **The phase ships although the P-334 gate is closed.** Epic 18 continues;
+   nothing here changes a corpus baseline number.
+2. **Step 1 applied: no change was needed.** P-354 measured Spearman 0.9848
+   over the recorded reference set against the 0.5 bar, so the self-critique
+   prompt file and `config/schema.ts` were deliberately NOT edited - the
+   spec's own file list is conditional ("if needed"). The recalibration log's
+   entry is therefore a single validated record, not a rewrite nobody asked
+   for.
+3. **The loop is nevertheless real machinery.** `runRecalibration` is a pure
+   leaf (neverthrow + the existing StitchError codes only: no fs, no provider,
+   no config) because the acceptance criteria require a working loop and the
+   live corpus may some day say otherwise. It measures, iterates candidate
+   variants up to the cap, and freezes the winner - or documents a limitation.
+4. **The freeze is justified by a measurement, not an assumption.** The frozen
+   record carries the prompt's content hash (`promptVersion('self-critique')`),
+   the finalized P-349 weight set, and the measured coefficient. A version
+   someone bumped by hand would be a second source of truth.
+5. **Honest arithmetic.** A coefficient that cannot be computed is `null`,
+   never 0, and the `limited` outcome names the P-350 human-review fallback
+   instead of pretending to a fix. Both axes the spec names (the prompt and
+   the weights) are representable as variants, while only the
+   weight/transform axis is measurable without an AI provider key - recorded
+   as the honest limit of the local measurement.
+6. **One defect found and fixed at the source.** The root typecheck caught
+   `ConfidenceWeights` imported from `./scoring.js`, which does not export it
+   (it is declared in `./schema.js`). The import was corrected rather than the
+   type re-declared.
+7. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
+   `web/src/lib/ws.ts` change), and both test layers are present: the two
+   mandated python ids over the bun harness plus a nine-case vitest mirror,
+   because the CI is bun-only.
+8. **Nothing else moved.**
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

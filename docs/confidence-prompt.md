@@ -84,3 +84,16 @@ critiques and human raters to score them. So the shipped evidence is a
 
 A correlation that has not been measured is not a passing correlation; the
 artifact states which one it is.
+
+### Frozen version (P-355)
+
+P-354 measured the recorded set at Spearman 0.9848, which clears the 0.5 bar, so
+P-355's step 1 applied: the prompt and the weights are validated and unchanged.
+
+- Prompt version: the `promptVersion('self-critique')` content hash above.
+- Weights: the finalized P-349 set (`DEFAULT_COMPOSITE_WEIGHTS`), frozen.
+- Recalibration loop: `packages/core/src/confidence/recalibration.ts` measures a
+  baseline, walks candidate variants (a prompt version, a weight set, or a
+  self-score transform), and either validates, recalibrates, or records the
+  limitation. It is one call away the day the live corpus says the correlation is
+  weak.
