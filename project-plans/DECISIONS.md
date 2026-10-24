@@ -6723,4 +6723,63 @@ Date: 2026-10-24. Phase: P-358. Owner: aradhy lane (packages/mcp).
     documentation; the deferral is recorded here so it stays visible.
 12. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or `web/src/lib/ws.ts` change).
 
+## ADR-168: The `stitch_merge` job tools, their port seam and the honest no-job-API refusal (P-359)
+
+Date: 2026-10-24. Phase: P-359. Owner: aradhy lane (packages/mcp).
+
+1. **The phase ships three tools, not one.** `stitch_merge` takes the standard
+   merge config (`repo_a`, `repo_b`, `paths_a[]`, `paths_b[]`, `options?`) and
+   returns `{ job_id }` immediately; `stitch_job_status` takes `{ job_id,
+   progress_token? }` and returns `{ status, progress, result? }`;
+   `stitch_cancel_job` takes `{ job_id }` and returns the same shape. The
+   phase's own steps 3 and 5 put the status and cancel tools here, so all three
+   are registered together.
+2. **The job capability is an injected port, because core does not expose
+   one.** The only orchestration symbol the barrel exports is `runPipeline`
+   (`packages/core/src/index.ts:1674`), and its own header states that the stage
+   handlers are supplied by the caller: "the drivers that exist — the merge
+   command (P-192), the web server (P-216) and the job queue (P-239) — are where
+   the business choice of WHICH modules to wire belongs". The job queue (P-239)
+   is NOT re-exported, nor are `jobs/cancel.ts`, `jobs/types.ts`,
+   `pipeline/stateMachine.ts` or `pipeline/states.ts`, and
+   `packages/core/src/orchestration/` does not exist. The merge handler map is
+   the already-recorded deferral "P-192/P-252 real merge handler map".
+3. **This repo already proves the pattern.** `packages/cli/src/commands/merge.ts`
+   (the same lane) takes its pipeline by dependency injection
+   (`MergeDeps.runPipeline`) and is tested "with a fake pipeline — no git, no
+   Docker, no AI, no network". The MCP tools take a `MergePorts` port
+   (`createJob`, `getJob`, `cancelJob`, `subscribe`, `notify`) and are tested
+   the same way.
+4. **The default provider refuses plainly instead of faking a merge.**
+   `loadMergePorts()` returns a provider whose four async methods answer
+   `CONFIG_ERROR` on field `mcp.core`, naming the missing core job API and this
+   ADR. It never throws and never breaks server startup, so all three tools stay
+   discoverable in `tools/list` and every call reports the honest reason. A
+   missing capability is never a zero.
+5. **Progress streaming maps the job stream onto MCP progress notifications.**
+   When `stitch_job_status` is called with a `progress_token` and the job is not
+   already terminal, the handler subscribes and emits `notifications/progress`
+   frames carrying the token, the job id, the status and the progress. The
+   subscription is released on the first terminal snapshot
+   (succeeded/failed/cancelled), including when that snapshot arrives before the
+   subscription hands back its release function.
+6. **Only `CONFIG_ERROR` is constructed** — fields `stitch_merge.repo_a`,
+   `.repo_b`, `.paths_a`, `.paths_b`, `.options`, `stitch_job_status.job_id`,
+   `stitch_cancel_job.job_id` and `mcp.core`. No new code, no duplicate; a
+   throwing port is mapped to `INTERNAL` by the P-357 registry.
+7. **An unknown job is a configuration error, not an empty result.** `getJob`
+   and `cancelJob` resolve `undefined` for an unknown id, and the handlers turn
+   that into `CONFIG_ERROR` on the calling tool's own job-id field.
+8. **The mandated ids pass without a real merge.** The four ids in
+   `packages/mcp/test_merge.py` (`test_merge_returns_job`,
+   `test_progress_notifications`, `test_job_status`, `test_cancel`) drive the
+   real tool handlers and the real server through a bun harness that injects the
+   job provider, exactly as P-358's harness injected `materialize`.
+9. **No real merge runs yet, and that is the recorded blocker.** An end-to-end
+   merge from a host needs the core job API (P-239) plus the deferred
+   P-192/P-252 handler map. Until a core (inbesat lane) driver exists, the tools
+   are protocol-complete and honestly unavailable.
+10. **`MCP_QUICKSTART.md` documentation remains P-365's.**
+11. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
+    `web/src/lib/ws.ts` change).
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

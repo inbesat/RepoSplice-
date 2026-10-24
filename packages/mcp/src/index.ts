@@ -16,12 +16,16 @@ import {
 import { createToolRegistry, ToolRegistry } from './tools/registry.js';
 import { loadCoreToolPorts, registerCoreTools } from './tools/core-tools.js';
 import { loadSelectFilesPorts, registerSelectFilesTool } from './tools/select-files.js';
+import { registerJobStatusTools } from './tools/job-status.js';
+import { loadMergePorts, registerMergeTool } from './tools/merge.js';
 
 export * from './server.js';
 export * from './transport.js';
 export * from './tools/registry.js';
 export * from './tools/core-tools.js';
 export * from './tools/select-files.js';
+export * from './tools/job-status.js';
+export * from './tools/merge.js';
 
 export interface StartMcpServerOptions {
   readonly transport?: 'stdio' | 'http';
@@ -56,6 +60,11 @@ export async function startMcpServer(
     if (selectPorts.isErr()) return err(selectPorts.error);
     const selectRegistered = registerSelectFilesTool(registry, selectPorts.value);
     if (selectRegistered.isErr()) return err(selectRegistered.error);
+    const mergePorts = await loadMergePorts();
+    const mergeRegistered = registerMergeTool(registry, mergePorts);
+    if (mergeRegistered.isErr()) return err(mergeRegistered.error);
+    const jobRegistered = registerJobStatusTools(registry, mergePorts);
+    if (jobRegistered.isErr()) return err(jobRegistered.error);
   }
   const server = createMCPServer({ registry });
   const handler = async (payload: string): Promise<JsonRpcResponse | undefined> =>
