@@ -5,6 +5,7 @@
 
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
+import { loadMCPConfig, logMCPConfig, logMCPConfigProblem } from './config.js';
 import { createMCPServer, MCPServer, type JsonRpcResponse } from './server.js';
 import {
   createHttpTransport,
@@ -20,6 +21,7 @@ import { registerJobStatusTools } from './tools/job-status.js';
 import { loadMergePorts, registerMergeTool } from './tools/merge.js';
 import { loadCheckLicensePorts, registerCheckLicenseTool } from './tools/check-license.js';
 
+export * from './config.js';
 export * from './server.js';
 export * from './transport.js';
 export * from './tools/registry.js';
@@ -54,6 +56,15 @@ export async function startMcpServer(
   options: StartMcpServerOptions = {}
 ): Promise<Result<StartedMcpServer, StitchError>> {
   const registry = options.registry ?? createToolRegistry();
+  // Read the SAME `~/.stitch/config.json` the CLI (P-200) uses, so a host needs
+  // no second credential flow. A broken or incomplete config is reported, never
+  // fatal: the tools must stay discoverable so the host can see why.
+  const config = loadMCPConfig();
+  if (config.isErr()) {
+    logMCPConfigProblem(config.error);
+  } else {
+    logMCPConfig(config.value);
+  }
   if (registry.names().length === 0) {
     const ports = await loadCoreToolPorts();
     if (ports.isErr()) return err(ports.error);
