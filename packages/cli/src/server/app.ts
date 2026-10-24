@@ -21,6 +21,7 @@
 //     jobs, no settings — an empty list for a list route, `null` elsewhere.
 
 import { Elysia } from 'elysia';
+import { createApiDocsApp, createApiValidationPlugin } from '../api/openapi.serve.js';
 import { STITCH_VERSION } from '../program.js';
 import { FALLBACK_HTML, mountStatic } from './static.js';
 import { createWsHub, echoMessage, type WsHub } from './ws.js';
@@ -90,6 +91,9 @@ export function createApp(options: CreateAppOptions = {}) {
     .get('/api/provenance', () => data.provenance?.() ?? null)
     .get('/api/jobs', () => data.jobs?.() ?? [])
     .get('/api/settings', () => data.settings?.() ?? null)
+    // P-252: the contract's own routes and the inbound-body gate (ADR-176).
+    .use(createApiValidationPlugin())
+    .use(createApiDocsApp())
     // Preflight for the Vite dev origin: the web client posts approvals and
     // settings with a JSON content type, which browsers probe first.
     .options('/*', () => {
@@ -122,10 +126,15 @@ export function createApp(options: CreateAppOptions = {}) {
   // route. Without a build, the friendly page answers instead (P-193).
   const webDist = options.webDist;
   if (webDist === undefined) {
-    app.get(
-      '/*',
-      () => new Response(FALLBACK_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } })
-    );
+    app.get('/*', ({ params }) => {
+      const path = params['*'] ?? '';
+      if (path === 'api' || path.startsWith('api/')) {
+        return Response.json({ message: 'not found' }, { status: 404 });
+      }
+      return new Response(FALLBACK_HTML, {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      });
+    });
   } else {
     mountStatic(
       {

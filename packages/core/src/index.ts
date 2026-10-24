@@ -1672,3 +1672,51 @@ export type {
   SampleMeasurement,
 } from './confidence/recalibration.js';
 export { runPipeline } from './pipeline/runPipeline.js';
+
+// P-252's CLI↔Web API contract: one zod source for every `/api/*` endpoint,
+// plus the OpenAPI document generated from it (ADR-176).
+export {
+  API_CONTRACT_VERSION,
+  API_DOCS_PATH,
+  API_DOCS_UI_PATH,
+  API_ROUTES,
+  describeIssues,
+  findApiRoute,
+  findApiRouteById,
+  jobDetailSchema,
+  jobKindSchema,
+  jobListResponseSchema,
+  jobStatusSchema,
+  jobSummarySchema,
+  healthSchema,
+  listApiRoutes,
+  mergeApproveRequestSchema,
+  mergeRejectRequestSchema,
+  mergeRunRequestSchema,
+  mergeSummarySchema,
+  pathMatches,
+  pathParams,
+  placeholderRoutes,
+  sessionBundleSchema,
+  sessionImportResponseSchema,
+  settingsDataSchema,
+  settingsPatchSchema,
+  sourceKindSchema,
+  sourceRecordSchema,
+  sourceStatusSchema,
+  treeEntrySchema,
+  treePageSchema,
+  treeResponseSchema,
+  validateApiRequest,
+  validateApiResponse,
+} from './api/contract.js';
+export type { ApiMethod, ApiRoute } from './api/contract.js';
+export {
+  buildOpenApiDocument,
+  documentedRouteIds,
+  methodsFor,
+  openApiPath,
+  statusForContractError,
+  tagFor,
+} from './api/openapi.js';
+export type { OpenApiDocument, OpenApiOperation } from './api/openapi.js';
