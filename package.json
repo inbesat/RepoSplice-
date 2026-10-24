@@ -27,6 +27,7 @@
     "build:web": "bun run --filter @repo-stitcher/web build",
     "build:all": "bun run build:core && bun run build:cli && bun run build:web",
     "dev:cli": "bun --watch packages/cli/src/index.ts",
+    "mcp:server": "bun run --filter @repo-stitcher/mcp server",
     "dev:web": "bun run --filter @repo-stitcher/web dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

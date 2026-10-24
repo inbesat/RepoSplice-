@@ -6624,4 +6624,56 @@ Date: 2026-10-24. Phase: P-356. Owner: inbesat lane (packages/core).
 10. **Both test layers** (the four mandated python ids over the bun harness plus
     the extended vitest mirrors, because the CI is bun-only).
 11. **Nothing else moved.**
+## ADR-166: The MCP server scaffold, its transport shape and its deliberately deferred tools (P-357)
+
+Date: 2026-10-24. Phase: P-357. Owner: aradhy lane (packages/mcp).
+
+1. **The MCP server is a new package that binds core only through the public
+   barrel.** `@repo-stitcher/mcp` imports `@repo-stitcher/core` and never
+   `core/src/*`, so the P-252 contract stays the single seam; the package
+   carries no business logic of its own.
+2. **The server is a protocol adapter, so dispatch cannot throw.** Every
+   outcome — including a tool failure — leaves as a well-formed JSON-RPC
+   message. A failed tool returns a result with `isError: true`; that is NOT a
+   protocol error. An unknown method returns `methodNotFound`, a non-JSON frame
+   returns `parseError` with a null id, and a notification (no id) returns
+   nothing.
+3. **Six spec-named tools, five wired and one pair deferred — never faked.**
+   `merge_manifests`→`unionManifests`, `scan_licenses`→`scanDeclared`,
+   `run_sandbox_build`→`runVerification`, `subscribe_job_events`→`bus` and
+   `run_pipeline`→`runPipeline` all bind real barrel exports.
+   `create_stitch_job` and `get_job_status` are recorded as DEFERRED
+   (`DEFERRED_CORE_TOOLS`) because the public barrel exports no job-creation or
+   job-status API (only `jobs/jobConfig.js` types). Faking them would be a
+   hollow stub, and a missing capability is never a zero.
+4. **Both transports ship.** stdio uses LSP-style `Content-Length` framing for
+   local clients. HTTP uses the existing Elysia server (P-043) with
+   `GET <path>/health` and `POST <path>`, default port 3435
+   (`DEFAULT_MCP_HTTP_PORT`), configurable via `--port` or the `MCP_PORT`
+   environment variable, host `127.0.0.1` and path `/mcp`. A notification POST
+   returns 202 with no body.
+5. **The registry is the extension point.**
+   `ToolRegistry.register(definition, handler)`; a duplicate name is refused
+   (CONFIG_ERROR field `mcp.tool`), an unknown tool is CONFIG_ERROR, non-object
+   arguments are CONFIG_ERROR field `mcp.arguments`, and a handler that throws
+   is mapped to INTERNAL — the registry never propagates a throw.
+6. **Errors reuse the existing StitchError contract.** Only `CONFIG_ERROR` and
+   `INTERNAL` are used, with the distinct fields `mcp.tool`, `mcp.arguments`
+   and `mcp.core`; no new error code was invented and no code is duplicated.
+7. **Tool ports are injectable.** `registerCoreTools(registry, ports)` takes the
+   five callables as ports (the P-348 precedent), so the tools are testable
+   without a live core, Docker or network; `loadCoreToolPorts()` is the real
+   wiring and reports a missing barrel export as CONFIG_ERROR field `mcp.core`.
+8. **The protocol version is `2024-11-05` and the server identifies as
+   `repo-stitcher`**, so a real client's `initialize` handshake is answered
+   with a stable identity.
+9. **The package build is deferred to P-062** (`tsup`), matching cli and web;
+   `bun src/index.ts` runs the server today.
+10. **The mandated test file is TS and is wired explicitly.**
+    `vitest.config.ts` lists `test_server.ts` because the mandated path is not
+    `*.test.ts`; the three mandated ids (`test_initialize`, `test_tools_list`,
+    `test_stdio_transport`) run verbatim.
+11. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
+    `web/src/lib/ws.ts` change).
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
