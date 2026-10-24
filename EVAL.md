@@ -55,7 +55,7 @@ The mean of the three dimensions is the pair's rubric score; a pair resolves whe
 
 ## Baseline Results
 
-Measured at 2026-10-20T20:54:43.746Z on commit `75b6645`.
+Measured at 2026-10-20T20:54:43.746Z on commit `8c46127`.
 
 | metric | value |
 | --- | --- |
@@ -74,7 +74,7 @@ Measured at 2026-10-20T20:54:43.746Z on commit `75b6645`.
 {
   "build_pass_count": 2,
   "build_pass_rate": 0.6667,
-  "commit": "75b6645",
+  "commit": "8c46127",
   "corpus_pairs": 20,
   "decision": "pending",
   "generated_at": "2026-10-20T20:54:43.746Z",
@@ -155,3 +155,5 @@ New pairs come from outside. [eval/corpus/CONTRIBUTING.md](eval/corpus/CONTRIBUT
 This document is regenerated on every `v*` tag by the release workflow and committed back to `main`, so the published numbers always describe the tagged tree. The schema of the corpus, the rubric and the taxonomy are frozen contracts: changing one needs an ADR and a refreshed `eval/corpus/schema.json` (or `eval/rubric/schema.json`) in the same commit.
 
 The confidence score that sits alongside these numbers is documented separately in [CONFIDENCE.md](CONFIDENCE.md): it is a heuristic signal about a proposed merge, not a correctness guarantee.
+
+Driving the same engine from an MCP host instead of the CLI is covered by [MCP_QUICKSTART.md](MCP_QUICKSTART.md): installation, the shared `~/.stitch/config.json`, an example session, the progress stream and the per-host notes.

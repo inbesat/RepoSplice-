@@ -22,9 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - uses: oven-sh/setup-bun@v1
       - run: bun install --frozen-lockfile
-      - run: bun test --coverage
+      - run: bun run test:coverage
       - uses: codecov/codecov-action@v4
 
   web-test:
@@ -72,6 +75,18 @@ jobs:
       - run: bunx vitest run --config scripts/vitest.config.ts
       - run: bunx tsc --noEmit -p scripts/tsconfig.json
       - run: bun scripts/contract-freeze.ts
+
+  docs:
+    name: Documentation Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python docs/test_eval_md.py
+      - run: python docs/test_confidence_md.py
+      - run: python docs/test_mcp_quickstart.py
   build:
     name: Build All Packages
     runs-on: ubuntu-latest

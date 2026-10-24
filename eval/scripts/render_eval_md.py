@@ -365,6 +365,13 @@ def render() -> str:
         "about a proposed merge, not a correctness guarantee."
     )
     lines.append("")
+    lines.append(
+        "Driving the same engine from an MCP host instead of the CLI is covered "
+        "by [MCP_QUICKSTART.md](MCP_QUICKSTART.md): installation, the shared "
+        "`~/.stitch/config.json`, an example session, the progress stream and "
+        "the per-host notes."
+    )
+    lines.append("")
     return "\n".join(lines)
 
 

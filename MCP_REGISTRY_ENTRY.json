@@ -21,5 +21,6 @@
     "stdio": "claude mcp add repo-stitcher -- bun run --filter @repo-stitcher/mcp server",
     "http": "opencode mcp add repo-stitcher -- bun run --filter @repo-stitcher/mcp server --http"
   },
+  "documentation": "https://github.com/inbesat/RepoSplice-/blob/main/MCP_QUICKSTART.md",
   "status": "not submitted"
 }

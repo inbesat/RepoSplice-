@@ -244,6 +244,7 @@ RepoSplice is built across **4 waves** with **366 phases** grouped into **19 epi
 | [CONTRACTS.md](CONTRACTS.md) | Frozen core/web wire contracts and how to change them |
 | [EVAL.md](EVAL.md) | Evaluation methodology, the baseline numbers and how to reproduce them |
 | [CONFIDENCE.md](CONFIDENCE.md) | What the confidence score means, the factors and weights, the threshold policy and its limits |
+| [MCP_QUICKSTART.md](MCP_QUICKSTART.md) | Zero-to-merge quickstart for the MCP server: install, shared config, example session, progress streaming, troubleshooting |
 
 ---
 

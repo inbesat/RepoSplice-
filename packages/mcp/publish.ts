@@ -90,6 +90,7 @@ export interface RegistryEntry {
   readonly license: string;
   readonly tools: readonly string[];
   readonly installation: RegistryEntryInstallation;
+  readonly documentation: string;
   readonly status: string;
 }
 
@@ -229,6 +230,20 @@ export function toRepositoryUrl(remote: string): Result<string, StitchError> {
   );
 }
 
+/**
+ * Where a registry points a reader for the zero-to-merge walkthrough (P-365).
+ *
+ * Derived from the repository URL rather than stored, so the entry cannot carry
+ * a link that disagrees with the remote it was built from.
+ */
+export const REGISTRY_DOC_PATH = 'MCP_QUICKSTART.md';
+const REGISTRY_DOC_BRANCH = 'main';
+
+export function documentationUrl(repository: string): string {
+  const base = repository.endsWith('.git') ? repository.slice(0, -4) : repository;
+  return `${base}/blob/${REGISTRY_DOC_BRANCH}/${REGISTRY_DOC_PATH}`;
+}
+
 /** The entry, assembled from the package, the remote and the live tool list. */
 export async function buildRegistryEntry(
   ports: RegistryPorts
@@ -253,6 +268,7 @@ export async function buildRegistryEntry(
       stdio: REGISTRY_STDIO_INSTALL,
       http: REGISTRY_HTTP_INSTALL,
     },
+    documentation: documentationUrl(repository.value),
     status: REGISTRY_STATUS,
   });
 }
