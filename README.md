@@ -8,6 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-1.1+-fbf0df?logo=bun&logoColor=000)](https://bun.sh)
 [![Status](https://img.shields.io/badge/Status-In%20Development-orange)]()
+[![MCP server](https://img.shields.io/badge/MCP-repo--stitcher%20(entry%20prepared%2C%20not%20published)-lightgrey)](MCP_COMPAT.md)
 
 *Take two (or more) Git repositories and produce a **new, runnable, history-preserving** child repository — intelligently, not by naive file copying.*
 

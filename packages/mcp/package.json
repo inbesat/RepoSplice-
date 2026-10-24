@@ -25,7 +25,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "registry:print": "bun publish.ts --print --out ../../MCP_REGISTRY_ENTRY.json",
+    "registry:check": "bun publish.ts --check",
+    "registry:publish": "bun publish.ts --publish"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

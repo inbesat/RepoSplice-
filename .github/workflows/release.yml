@@ -59,3 +59,32 @@ jobs:
           git add EVAL.md
           git commit -m 'chore(eval): regenerate EVAL.md for the release tag'
           git push origin HEAD:main
+
+  # P-364 - the registry entry is submitted on a release tag. The entry is
+  # generated from the checkout, so a stale file fails this job; the submission
+  # reports an explicit skip when the registry credential is not configured,
+  # because a missing secret must never read as a successful publish (ADR-173).
+  registry:
+    name: Publish to the MCP registry
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - name: Check the registry entry is current
+        run: bun run --filter @repo-stitcher/mcp registry:check
+      - name: Submit to the MCP registry
+        env:
+          MCP_REGISTRY_URL: ${{ vars.MCP_REGISTRY_URL }}
+          MCP_REGISTRY_TOKEN: ${{ secrets.MCP_REGISTRY_TOKEN }}
+        run: |
+          if [ -z "$MCP_REGISTRY_URL" ] || [ -z "$MCP_REGISTRY_TOKEN" ]; then
+            echo "::notice title=MCP registry::skipped - MCP_REGISTRY_URL and MCP_REGISTRY_TOKEN are not configured, so nothing was submitted"
+            exit 0
+          fi
+          bun run --filter @repo-stitcher/mcp registry:publish

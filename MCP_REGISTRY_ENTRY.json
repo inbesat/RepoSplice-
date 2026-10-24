@@ -1,0 +1,25 @@
+{
+  "name": "repo-stitcher",
+  "description": "MCP server exposing the RepoSplice public core API to AI clients over stdio and HTTP.",
+  "version": "0.0.0",
+  "repository": "https://github.com/inbesat/RepoSplice-.git",
+  "homepage": "https://github.com/inbesat/RepoSplice-.git#readme",
+  "license": "UNLICENSED",
+  "tools": [
+    "merge_manifests",
+    "run_pipeline",
+    "run_sandbox_build",
+    "scan_licenses",
+    "stitch_cancel_job",
+    "stitch_check_license",
+    "stitch_job_status",
+    "stitch_merge",
+    "stitch_select_files",
+    "subscribe_job_events"
+  ],
+  "installation": {
+    "stdio": "claude mcp add repo-stitcher -- bun run --filter @repo-stitcher/mcp server",
+    "http": "opencode mcp add repo-stitcher -- bun run --filter @repo-stitcher/mcp server --http"
+  },
+  "status": "not submitted"
+}
