@@ -235,6 +235,24 @@ fallback), schema strictness (fixed — all ten schemas are closed), MCP client
 version, and the launch command (`bun run --filter @repo-stitcher/mcp server`,
 or `packages/mcp/src/index.ts` for a host that resolves the package itself).
 
+## Privacy and telemetry
+
+Telemetry is **off by default** and only the MCP server has a switch for it. Set
+it in the same store the CLI uses:
+
+```json
+{ "telemetry": { "enabled": true } }
+```
+
+When it is on, three events are recorded with fixed fields only —
+`session_start {host}`, `tool_called {tool, duration_ms, success}` and
+`session_end {duration_s, tools_used}`. An event is rebuilt from that list
+before it is written, so a repository URL, path, file content, prompt or
+credential has no field to travel in. The default sink is the append-only local
+file `~/.stitch/telemetry.log`; nothing is sent anywhere unless you also set
+`"endpoint": "https://…"`. Turning the flag off again stops new events and leaves
+the existing log in place (ADR-175).
+
 ## Links
 
 - [MCP_COMPAT.md](MCP_COMPAT.md) — the protocol contract, the measured results

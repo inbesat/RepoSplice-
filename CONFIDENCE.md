@@ -174,3 +174,26 @@ The self-critique prompt's version is its content hash
 (`promptVersion('self-critique')`), so editing the prompt changes the version
 without anyone bumping a constant; the weights' version is the `DEFAULT_COMPOSITE_WEIGHTS`
 set recorded alongside each assessment.
+
+## Privacy and telemetry
+
+The confidence numbers above are computed locally and are never sent anywhere.
+The MCP server (P-366) is the only component with a telemetry switch, it is
+**off unless you opt in** by setting `telemetry.enabled: true` in
+`~/.stitch/config.json`, and even then it records three events with fixed
+fields only:
+
+| Event | Fields |
+|---|---|
+| `session_start` | `host` (the MCP client's name) |
+| `tool_called` | `tool`, `duration_ms`, `success` |
+| `session_end` | `duration_s`, `tools_used` |
+
+No repository URL, file path, file content, prompt, dependency name or
+credential has a field to travel in: an event is rebuilt from that whitelist
+before it is written, so extra keys are dropped rather than stored. The default
+sink is the append-only local file `~/.stitch/telemetry.log` — nothing leaves
+the machine unless you set `telemetry.endpoint` yourself. A telemetry failure
+never fails a tool call, and a usage report (`summarizeTelemetry`) can compare
+MCP, CLI and Web volumes only once the CLI and Web engines emit events of their
+own, which they do not yet (ADR-175).

@@ -4,8 +4,9 @@
 // is what `bun run mcp:server` executes (stdio by default, HTTP on request).
 
 import { err, ok, type Result } from 'neverthrow';
-import type { StitchError } from '@repo-stitcher/core';
+import { logger, type StitchError } from '@repo-stitcher/core';
 import { loadMCPConfig, logMCPConfig, logMCPConfigProblem } from './config.js';
+import { loadTelemetryClient, logTelemetryState } from './telemetry.js';
 import { createMCPServer, MCPServer, type JsonRpcResponse } from './server.js';
 import {
   createHttpTransport,
@@ -22,6 +23,7 @@ import { loadMergePorts, registerMergeTool } from './tools/merge.js';
 import { loadCheckLicensePorts, registerCheckLicenseTool } from './tools/check-license.js';
 
 export * from './config.js';
+export * from './telemetry.js';
 export * from './server.js';
 export * from './transport.js';
 export * from './tools/registry.js';
@@ -65,6 +67,41 @@ export async function startMcpServer(
   } else {
     logMCPConfig(config.value);
   }
+  // Opt-in telemetry (P-366). Off unless the same store enables it, and never
+  // fatal: a telemetry problem must not stop a tool from running.
+  const startedAt = Date.now();
+  const usedTools = new Set<string>();
+  const loaded = loadTelemetryClient();
+  const telemetry = loaded.isOk() && loaded.value.enabled ? loaded.value : undefined;
+  if (loaded.isErr()) {
+    logger.warn({ code: loaded.error.code }, 'mcp: telemetry is unavailable');
+  } else {
+    logTelemetryState(loaded.value);
+  }
+  if (telemetry !== undefined) {
+    registry.watch(observation => {
+      usedTools.add(observation.tool);
+      telemetry.record({
+        event: 'tool_called',
+        tool: observation.tool,
+        duration_ms: observation.durationMs,
+        success: observation.success,
+      });
+      // Keep the local log current instead of waiting for the session to end.
+      void telemetry.flush();
+    });
+    // A host stops a stdio server with a signal, so the session ends there.
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+      process.once(signal, () => {
+        telemetry.record({
+          event: 'session_end',
+          duration_s: Math.round((Date.now() - startedAt) / 1000),
+          tools_used: [...usedTools].sort((left, right) => left.localeCompare(right)),
+        });
+        void telemetry.flush();
+      });
+    }
+  }
   if (registry.names().length === 0) {
     const ports = await loadCoreToolPorts();
     if (ports.isErr()) return err(ports.error);
@@ -83,7 +120,16 @@ export async function startMcpServer(
     const licenseRegistered = registerCheckLicenseTool(registry, licensePorts);
     if (licenseRegistered.isErr()) return err(licenseRegistered.error);
   }
-  const server = createMCPServer({ registry });
+  const server = createMCPServer({
+    registry,
+    ...(telemetry !== undefined
+      ? {
+          onClient: (name: string) => {
+            telemetry.record({ event: 'session_start', host: name });
+          },
+        }
+      : {}),
+  });
   const handler = async (payload: string): Promise<JsonRpcResponse | undefined> =>
     server.handleFrame(payload);
   if (options.transport === 'http') {

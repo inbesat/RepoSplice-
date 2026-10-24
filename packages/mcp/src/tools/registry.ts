@@ -61,6 +61,15 @@ function toResult(value: ToolOutcome): Result<unknown, StitchError> {
   return isResultLike(value) ? value : ok(value);
 }
 
+/** One tool invocation, as an observer sees it. No arguments, no results. */
+export interface ToolObservation {
+  readonly tool: string;
+  readonly durationMs: number;
+  readonly success: boolean;
+}
+
+export type ToolObserver = (observation: ToolObservation) => void;
+
 /** Tool arguments arrive as JSON, so anything object-shaped is accepted. */
 function normalizeArgs(args: unknown): Result<Readonly<Record<string, unknown>>, StitchError> {
   if (args === undefined || args === null) return ok({});
@@ -82,6 +91,25 @@ function normalizeArgs(args: unknown): Result<Readonly<Record<string, unknown>>,
  */
 export class ToolRegistry {
   private readonly entries = new Map<string, RegisteredTool>();
+  private readonly observers: ToolObserver[] = [];
+
+  /**
+   * Observe every invocation. Diagnostics only: an observer that throws is
+   * swallowed, so it can never break a tool call (the telemetry client, P-366).
+   */
+  watch(observer: ToolObserver): void {
+    this.observers.push(observer);
+  }
+
+  private notify(observation: ToolObservation): void {
+    for (const observer of this.observers) {
+      try {
+        observer(observation);
+      } catch {
+        // Diagnostics must never fail a call.
+      }
+    }
+  }
 
   /** Register a tool. A duplicate name is refused, never overwritten. */
   register(definition: ToolDefinition, handler: ToolHandler): Result<void, StitchError> {
@@ -128,9 +156,13 @@ export class ToolRegistry {
     }
     const normalized = normalizeArgs(args);
     if (normalized.isErr()) return err(normalized.error);
+    const startedAt = Date.now();
     try {
-      return toResult(await entry.handler(normalized.value));
+      const outcome = toResult(await entry.handler(normalized.value));
+      this.notify({ tool: name, durationMs: Date.now() - startedAt, success: outcome.isOk() });
+      return outcome;
     } catch (cause) {
+      this.notify({ tool: name, durationMs: Date.now() - startedAt, success: false });
       return err({
         code: 'INTERNAL',
         message: `the tool ${name} failed: ${messageOf(cause)}`,

@@ -74,6 +74,8 @@ export interface MCPServerOptions {
   readonly version?: string;
   readonly protocolVersion?: string;
   readonly instructions?: string;
+  /** Called with the client's name when it initializes (telemetry's host, P-366). */
+  readonly onClient?: (name: string) => void;
 }
 
 function messageOf(cause: unknown): string {
@@ -129,6 +131,7 @@ export class MCPServer {
   private readonly version: string;
   private readonly protocolVersion: string;
   private readonly instructions: string | undefined;
+  private readonly onClient: ((name: string) => void) | undefined;
 
   constructor(options: MCPServerOptions) {
     this.registry = options.registry;
@@ -136,6 +139,24 @@ export class MCPServer {
     this.version = options.version ?? MCP_SERVER_VERSION;
     this.protocolVersion = options.protocolVersion ?? MCP_PROTOCOL_VERSION;
     this.instructions = options.instructions;
+    this.onClient = options.onClient;
+  }
+
+  /** Report which client connected. A hook that throws cannot fail the handshake. */
+  private notifyClient(params: unknown): void {
+    if (this.onClient === undefined) return;
+    const record =
+      params !== null && typeof params === 'object' ? (params as Record<string, unknown>) : {};
+    const client = record['clientInfo'];
+    const info =
+      client !== null && typeof client === 'object' ? (client as Record<string, unknown>) : {};
+    const name = info['name'];
+    if (typeof name !== 'string' || name === '') return;
+    try {
+      this.onClient(name);
+    } catch {
+      // Diagnostics must never fail a request.
+    }
   }
 
   /** The `initialize` result. */
@@ -186,6 +207,7 @@ export class MCPServer {
     const id = request.id;
     switch (request.method) {
       case 'initialize':
+        this.notifyClient(request.params);
         return { jsonrpc: '2.0', id, result: this.initialize() };
       case 'ping':
         return { jsonrpc: '2.0', id, result: {} };
