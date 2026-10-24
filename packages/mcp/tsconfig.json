@@ -5,6 +5,6 @@
     "outDir": "dist",
     "lib": ["ES2022"]
   },
-  "include": ["src/**/*", "test_server.ts"],
+  "include": ["src/**/*", "test/**/*", "test_server.ts"],
   "exclude": ["node_modules", "dist"]
 }

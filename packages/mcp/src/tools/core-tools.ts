@@ -70,6 +70,7 @@ const TOOL_DEFINITIONS: Readonly<Record<CoreToolName, ToolDefinition>> = {
       type: 'object',
       properties: { manifests: { type: 'array', items: { type: 'object' } } },
       required: ['manifests'],
+      additionalProperties: false,
     },
   },
   scan_licenses: {
@@ -78,6 +79,7 @@ const TOOL_DEFINITIONS: Readonly<Record<CoreToolName, ToolDefinition>> = {
     inputSchema: {
       type: 'object',
       properties: { manifests: { type: 'array', items: { type: 'object' } } },
+      additionalProperties: false,
     },
   },
   run_sandbox_build: {
@@ -87,6 +89,7 @@ const TOOL_DEFINITIONS: Readonly<Record<CoreToolName, ToolDefinition>> = {
       type: 'object',
       properties: { rootDir: { type: 'string' }, ecosystem: { type: 'string' } },
       required: ['rootDir'],
+      additionalProperties: false,
     },
   },
   subscribe_job_events: {
@@ -95,6 +98,7 @@ const TOOL_DEFINITIONS: Readonly<Record<CoreToolName, ToolDefinition>> = {
     inputSchema: {
       type: 'object',
       properties: { topics: { type: 'array', items: { type: 'string' } } },
+      additionalProperties: false,
     },
   },
   run_pipeline: {
@@ -103,6 +107,7 @@ const TOOL_DEFINITIONS: Readonly<Record<CoreToolName, ToolDefinition>> = {
     inputSchema: {
       type: 'object',
       properties: { selection: { type: 'array', items: { type: 'object' } } },
+      additionalProperties: false,
     },
   },
 };
