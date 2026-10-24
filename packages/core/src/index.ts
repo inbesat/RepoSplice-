@@ -1636,4 +1636,21 @@ export type {
   ThresholdDecision,
   ThresholdSources,
 } from './confidence/threshold.js';
+export {
+  buildCalibrationReport,
+  CALIBRATION_CORRELATION_THRESHOLD,
+  CALIBRATION_ERROR_FIELD,
+  pearson,
+  ranks,
+  rubricToConfidence,
+  spearman,
+} from './confidence/calibration.js';
+export type {
+  CalibrationEcosystemStats,
+  CalibrationPrimary,
+  CalibrationReport,
+  CalibrationReportOptions,
+  CalibrationSample,
+  CalibrationScatterPoint,
+} from './confidence/calibration.js';
 export { runPipeline } from './pipeline/runPipeline.js';

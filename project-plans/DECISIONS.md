@@ -6493,4 +6493,55 @@ Date: 2026-10-24. Phase: P-353 (Wave 1.5). Owner: aradhy lane.
 11. **Nothing frozen moved** (no events/*, jobs/types.ts or web/src/lib/ws.ts
     change, so no contract ADR and no `check:contracts:update`), both test
     layers are present, and nothing else moved.
+
+---
+
+## ADR-163: The calibration check over the recorded reference set (P-354)
+
+Date: 2026-10-24. Phase: P-354 (Wave 1.5). Owner: inbesat lane.
+
+1. **The calibration check ships although the P-334 gate is closed.** Epic 18
+   continues; the check measures the confidence signal the previous phases
+   produce and changes no baseline number by itself.
+2. **The maths is a pure leaf.** `core/src/confidence/calibration.ts` imports
+   neverthrow and the `StitchError` type only - no fs, no logger, no zod - so
+   the correlations are testable without a fixture on disk. The rank and
+   Spearman implementation was PROMOTED from the P-347 harness so the product
+   owns ONE implementation instead of two that can drift.
+3. **A coefficient that cannot be computed is NULL, never 0.** `pearson` and
+   `spearman` return `undefined` for fewer than two samples, a length mismatch
+   or a zero-variance series, and the report carries `number | null`. Likewise
+   `critical` is `boolean | null`, so "we could not tell" is never reported as
+   "not critical".
+4. **The critical branch is real and proven to flip.** `critical` is
+   `spearman < 0.5`; the mandated `test_critical_flag` shows the recorded set
+   at `critical false` and a deliberately inverted fixture at `spearman -1`,
+   `critical true`, `requiresRecalibration true`. The flag is a computed
+   branch, not a stored constant.
+5. **The measurement is over the RECORDED reference set, and the live Epic 16
+   check is DEFERRED.** `eval/self_critique/calibration.json` (10 cases) is the
+   evidence base, because the live run needs Docker plus an AI provider key and
+   the human rubric ratings need raters; the shipped baseline
+   (`eval/results/baseline-dryrun-20261021.json`) is a labelled dry run. The
+   report's provenance says so, and a missing measurement is never a zero.
+6. **The measured numbers.** Over the 10 recorded cases: pearson
+   0.97105352380313, spearman 0.9848069807617046, threshold 0.5,
+   `critical false`, `requiresRecalibration false`.
+7. **The artifact is GENERATED, never hand-authored.**
+   `eval/calibration/report.json` is written by the harness and re-read to
+   prove the write; it carries the coefficients, the scatter pairs, the
+   per-ecosystem breakdown and the provenance.
+8. **The per-ecosystem breakdown degrades honestly.** The recorded set carries
+   no ecosystem labels, so the breakdown is a single `unassigned` bucket; the
+   live run will populate the real buckets. An empty breakdown is not printed
+   as if it were measured.
+9. **The P-350 provisional threshold note is now informed, not resolved.**
+   `THRESHOLD_RATIONALE` still reads PROVISIONAL pending P-354: this phase
+   measured the recorded set only, so the default 75 stays provisional until
+   the live corpus is run.
+10. **Nothing else moved.** No frozen file changed (no `events/*`,
+    `jobs/types.ts` or `web/src/lib/ws.ts`), both test layers are present (the
+    three mandated python ids over the bun harness plus an eleven-case vitest
+    mirror, because the CI is bun-only), and the concurrent lane's three
+    `src/sandbox/capture.test.ts` reds are theirs.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "kind": "calibration-report",
+  "generatedAt": "2026-10-24T00:00:00.000Z",
+  "source": "eval\\self_critique\\calibration.json",
+  "set": "recorded-reference-set",
+  "samples": 10,
+  "threshold": 0.5,
+  "primary": "spearman",
+  "pearson": 0.97105352380313,
+  "spearman": 0.9848069807617046,
+  "critical": false,
+  "requiresRecalibration": false,
+  "scatter": [
+    {
+      "id": "case-01",
+      "selfConfidence": 20,
+      "humanRubric": 1,
+      "humanConfidence": 0
+    },
+    {
+      "id": "case-02",
+      "selfConfidence": 35,
+      "humanRubric": 1.6666666666666667,
+      "humanConfidence": 17
+    },
+    {
+      "id": "case-03",
+      "selfConfidence": 30,
+      "humanRubric": 2.3333333333333335,
+      "humanConfidence": 33
+    },
+    {
+      "id": "case-04",
+      "selfConfidence": 48,
+      "humanRubric": 3,
+      "humanConfidence": 50
+    },
+    {
+      "id": "case-05",
+      "selfConfidence": 55,
+      "humanRubric": 3.3333333333333335,
+      "humanConfidence": 58
+    },
+    {
+      "id": "case-06",
+      "selfConfidence": 62,
+      "humanRubric": 4,
+      "humanConfidence": 75
+    },
+    {
+      "id": "case-07",
+      "selfConfidence": 70,
+      "humanRubric": 4,
+      "humanConfidence": 75
+    },
+    {
+      "id": "case-08",
+      "selfConfidence": 78,
+      "humanRubric": 4.333333333333333,
+      "humanConfidence": 83
+    },
+    {
+      "id": "case-09",
+      "selfConfidence": 85,
+      "humanRubric": 4.666666666666667,
+      "humanConfidence": 92
+    },
+    {
+      "id": "case-10",
+      "selfConfidence": 95,
+      "humanRubric": 5,
+      "humanConfidence": 100
+    }
+  ],
+  "perEcosystem": [
+    {
+      "ecosystem": "unassigned",
+      "samples": 10,
+      "pearson": 0.97105352380313,
+      "spearman": 0.9848069807617046
+    }
+  ],
+  "provenance": "Measured over the recorded reference set, because the live Epic 16 run needs Docker plus an AI provider key and the human rubric ratings need raters. This is calibration evidence for the METHOD, not a claim that the live corpus was inspected."
+}
