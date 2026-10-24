@@ -6676,4 +6676,51 @@ Date: 2026-10-24. Phase: P-357. Owner: aradhy lane (packages/mcp).
 11. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
     `web/src/lib/ws.ts` change).
 
+## ADR-167: The `stitch_select_files` browsing tool and its two platform fixes (P-358)
+
+Date: 2026-10-24. Phase: P-358. Owner: aradhy lane (packages/mcp).
+
+1. **The tool is a browsing adapter, not a second selection engine.** `stitch_select_files`
+   lists what a repository contains so a host can choose from it; which files are *eligible*
+   for a merge stays the P-149 core decision. The MCP tool owns no selection policy.
+2. **Every core capability arrives as an injectable port.** `SelectFilesPorts`
+   (`materialize`, `list`, `inspect`, `ecosystems`, `language`) is the seam; the real ports are
+   assembled from the core PUBLIC BARREL by `loadSelectFilesPorts()`, which refuses with
+   `CONFIG_ERROR` field `mcp.core` when a barrel name is missing. A missing capability is
+   never a zero.
+3. **Only two error codes are constructed.** `CONFIG_ERROR` (fields
+   `stitch_select_files.source`, `stitch_select_files.local_path`, `stitch_select_files.page`,
+   `stitch_select_files.page_size`, `mcp.core`) and `INTERNAL`. No new code, no duplicate.
+4. **Exactly one source is required**, `repo_url` or `local_path`. `page` and `page_size` must
+   be positive integers and `page_size` is bounded by the declared schema `maximum` (1000): an
+   out-of-schema value is REFUSED, not silently clamped, because the schema is the contract.
+   The output is `{tree, repo_meta, page, page_size, total, has_more, path_filter?}`, where
+   `total` and `repo_meta.fileCount` are both the FILTERED count.
+5. **`path_filter` is a repository-relative directory prefix.** Recorded as a `shortcut:` in
+   the source: add glob support when a host needs it.
+6. **Enumeration ignores `node_modules` and `.git`, and lists files only.** Each node carries
+   `size`, a `language` from the P-341 `languageForFile` heuristic (the field is OMITTED when
+   the heuristic has no answer, so an unknown language is never fabricated) and `lastCommit`
+   from ONE bounded `git log -n300 --name-only` pass (newest-first wins; a file untouched
+   within the bound simply has no `lastCommit`).
+7. **`repo_meta` reports `source`, `url?`, `commit?`, `branch?`, `remote?`, `fileCount` and the
+   sorted, deduped `ecosystems` from the P-103 `detectEcosystems`.** Fields that could not be
+   measured are omitted rather than defaulted.
+8. **Two platform fixes came out of the mandated driver.** (a) Core's `listFiles` with `**/*`
+   still yields DIRECTORIES — its `nodir` does not exclude them — so `createList` now keeps
+   only regular files, and an un-stat-able entry is omitted from the listing instead of being
+   reported as a zero-size file. (b) The materialised root is normalised with `toPosixPath`
+   before it reaches `list`/`inspect`/`ecosystems`, so a native Windows clone path cannot
+   silently produce an empty listing.
+9. **The tool set grows only on the real server path.** `startMcpServer` registers
+   `stitch_select_files` alongside the five P-357 core tools only when the caller injects no
+   registry, so the three P-357 mandated ids are untouched.
+10. **The remote case is exercised with no network.** The mandated python driver drives a bun
+    harness that runs the REAL ports for the local and pagination cases and swaps only
+    `materialize` for the remote case — the shape a real clone presents, without needing
+    GitHub credentials in CI.
+11. **`MCP_QUICKSTART.md` documentation is deferred to P-365**, the phase that owns the MCP
+    documentation; the deferral is recorded here so it stays visible.
+12. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or `web/src/lib/ws.ts` change).
+
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

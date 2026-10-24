@@ -15,11 +15,13 @@ import {
 } from './transport.js';
 import { createToolRegistry, ToolRegistry } from './tools/registry.js';
 import { loadCoreToolPorts, registerCoreTools } from './tools/core-tools.js';
+import { loadSelectFilesPorts, registerSelectFilesTool } from './tools/select-files.js';
 
 export * from './server.js';
 export * from './transport.js';
 export * from './tools/registry.js';
 export * from './tools/core-tools.js';
+export * from './tools/select-files.js';
 
 export interface StartMcpServerOptions {
   readonly transport?: 'stdio' | 'http';
@@ -50,6 +52,10 @@ export async function startMcpServer(
     if (ports.isErr()) return err(ports.error);
     const registered = registerCoreTools(registry, ports.value);
     if (registered.isErr()) return err(registered.error);
+    const selectPorts = await loadSelectFilesPorts();
+    if (selectPorts.isErr()) return err(selectPorts.error);
+    const selectRegistered = registerSelectFilesTool(registry, selectPorts.value);
+    if (selectRegistered.isErr()) return err(selectRegistered.error);
   }
   const server = createMCPServer({ registry });
   const handler = async (payload: string): Promise<JsonRpcResponse | undefined> =>
