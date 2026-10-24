@@ -121,4 +121,19 @@ describe('confidence threshold (P-350)', () => {
     expect(THRESHOLD_RATIONALE).toContain('PROVISIONAL');
     expect(THRESHOLD_RATIONALE).toContain('P-354');
   });
+
+  it('separates 74 from 75 at the boundary', () => {
+    const below = thresholdDecision(74);
+    const at = thresholdDecision(75);
+    expect(below.isOk() && at.isOk()).toBe(true);
+    if (below.isOk() && at.isOk()) {
+      expect(below.value.autoApprove).toBe(false);
+      expect(below.value.requiresHumanReview).toBe(true);
+      expect(at.value.autoApprove).toBe(true);
+      expect(at.value.requiresHumanReview).toBe(false);
+      expect(at.value.composite - below.value.composite).toBe(1);
+      expect(below.value.threshold).toBe(75);
+      expect(at.value.threshold).toBe(75);
+    }
+  });
 });

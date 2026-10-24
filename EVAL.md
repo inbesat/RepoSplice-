@@ -55,7 +55,7 @@ The mean of the three dimensions is the pair's rubric score; a pair resolves whe
 
 ## Baseline Results
 
-Measured at 2026-10-20T20:54:43.746Z on commit `abc9c44`.
+Measured at 2026-10-20T20:54:43.746Z on commit `75b6645`.
 
 | metric | value |
 | --- | --- |
@@ -74,7 +74,7 @@ Measured at 2026-10-20T20:54:43.746Z on commit `abc9c44`.
 {
   "build_pass_count": 2,
   "build_pass_rate": 0.6667,
-  "commit": "abc9c44",
+  "commit": "75b6645",
   "corpus_pairs": 20,
   "decision": "pending",
   "generated_at": "2026-10-20T20:54:43.746Z",
@@ -153,3 +153,5 @@ New pairs come from outside. [eval/corpus/CONTRIBUTING.md](eval/corpus/CONTRIBUT
 ## Versioning & Updates
 
 This document is regenerated on every `v*` tag by the release workflow and committed back to `main`, so the published numbers always describe the tagged tree. The schema of the corpus, the rubric and the taxonomy are frozen contracts: changing one needs an ADR and a refreshed `eval/corpus/schema.json` (or `eval/rubric/schema.json`) in the same commit.
+
+The confidence score that sits alongside these numbers is documented separately in [CONFIDENCE.md](CONFIDENCE.md): it is a heuristic signal about a proposed merge, not a correctness guarantee.

@@ -6583,4 +6583,45 @@ Date: 2026-10-24. Phase: P-355 (Wave 1.5). Owner: inbesat lane.
    mandated python ids over the bun harness plus a nine-case vitest mirror,
    because the CI is bun-only.
 8. **Nothing else moved.**
+
+---
+
+## ADR-165: Confidence tests and the CONFIDENCE.md document (P-356)
+
+Date: 2026-10-24. Phase: P-356. Owner: inbesat lane (packages/core).
+
+1. **The phase ships although the P-334 gate is closed.** Epic 18 (Confidence
+   Scoring) CLOSES here. Nothing in this phase changes a corpus baseline
+   number; the confidence epic is complete on its own terms.
+2. **The two named test files already existed** (P-349's `scoring.test.ts` and
+   P-350's `threshold.test.ts`), so this phase EXTENDED them with the
+   documented edge cases instead of creating a third mirror. The spec's step 1
+   is satisfied additively and the existing cases are untouched.
+3. **The two semantic edge cases are the point of the tests.** The LICENSE
+   COMPLEMENT makes an all-zero input score 15 and the maximal-risk input
+   score 85, so a reader cannot assume zero-means-zero. Both are recorded in
+   the document AND asserted.
+4. **A component set missing a factor is REFUSED** (`CONFIG_ERROR` field
+   `confidence.components`), never scored. A missing measurement is never a
+   zero.
+5. **CONFIDENCE.md is hand-written but constrained.** Its section headings,
+   its two literal disclaimer phrases and the live-corpus disclosure are a
+   CONTRACT asserted by `docs/test_confidence_md.py`. The sections are the
+   eight the spec names; the disclaimer must stay literal.
+6. **The EVAL.md link lives in the generator.** `eval/scripts/render_eval_md.py`
+   emits the CONFIDENCE.md pointer, so a future regeneration keeps the link.
+   EVAL.md was regenerated and `docs/test_eval_md.py` still passes.
+7. **The CI check the spec asks for is the two python suites**
+   (`packages/core/test_confidence_docs.py` + `docs/test_confidence_md.py`).
+   The repo's CI is bun-only, so a workflow change would be a separate lane's
+   concern and is recorded as the deferral.
+8. **The document states its limits plainly**: the score is a heuristic, not a
+   correctness guarantee; a high score is never proof that a merge is correct;
+   the weights are documented judgements; the calibration is over a recorded
+   reference set rather than a live corpus.
+9. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
+   `web/src/lib/ws.ts` change).
+10. **Both test layers** (the four mandated python ids over the bun harness plus
+    the extended vitest mirrors, because the CI is bun-only).
+11. **Nothing else moved.**
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

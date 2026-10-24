@@ -359,6 +359,12 @@ def render() -> str:
         "commit."
     )
     lines.append("")
+    lines.append(
+        "The confidence score that sits alongside these numbers is documented "
+        "separately in [CONFIDENCE.md](CONFIDENCE.md): it is a heuristic signal "
+        "about a proposed merge, not a correctness guarantee."
+    )
+    lines.append("")
     return "\n".join(lines)
 
 
