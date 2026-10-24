@@ -6449,4 +6449,48 @@ Date: 2026-10-24. Phase: P-352 (Wave 1.5). Owner: aradhy lane.
     `confidence` prop needed an explicit `| undefined` under
     `exactOptionalPropertyTypes`. Both test layers pass (the 4 mandated cases
     plus the fuller web suites).
+
+
+---
+
+## ADR-162: The CLI confidence summary in merge and status output (P-353)
+
+Date: 2026-10-24. Phase: P-353 (Wave 1.5). Owner: aradhy lane.
+
+1. **The summary ships although the P-334 gate is closed.** Epic 18 continues;
+   this phase only surfaces what P-346/P-349/P-348 already compute.
+2. **The CLI keeps its own colour helper.** The spec names picocolors (P-044);
+   the sanctioned entry point is the CLI's `theme(level, text)` wrapper, which
+   already encodes NO_COLOR, the off-TTY case and the per-command `--no-color`.
+   Adding a second colour path would give two sources of truth for the same
+   decision.
+3. **The score is DISPLAYED, never recomputed.** `parseConfidenceSummary` is a
+   defensive reader that accepts either the local `score` or core's
+   `composite_score` and returns undefined when neither is usable; nothing in
+   the CLI re-derives a composite.
+4. **The bands mirror P-352 exactly**: green >= 80, yellow 60-79, red < 60,
+   with the upper bound inclusive (80 is green, 60 is yellow). The web, the
+   CREDITS table and the CLI therefore agree.
+5. **The summary is a line array**, so the callers keep their existing `write`
+   loops and `--verbose` stays consistent; the DEFAULT (non-verbose) output
+   carries the one-liner, so confidence is visible without any flag.
+6. **A run with no recorded assessment prints the honest N/A.** The job state
+   does not persist a confidence record yet; the documented seams are
+   `StatusDeps.confidence` and a stage's `meta.confidence`. A missing number is
+   never a zero, so the CLI says so instead of printing 0.
+7. **The `--no-color` path is proven by the harness**, which renders the same
+   input through a plain paint and a wrapping paint; the tests assert the plain
+   line exactly and the themed line tolerantly.
+8. **Two defects this phase's own runs found were fixed in the TESTS, never by
+   dropping the glyph or the colour**: the themed-output assertion had to be
+   paint-tolerant (the theme wraps the percent in ANSI), and the python runner
+   needed a UTF-8 stdout reconfiguration on Windows.
+9. **The lane boundary was already delegated by the user** for P-352 ("do whats
+   best") and the same aradhy lane owns packages/cli, which was clean.
+10. **The harness defect the ROOT TYPECHECK found was fixed at the source** -
+    the MergeStageRecord/MergePipelineResult literals gained the required
+    `status`/`outcome` fields rather than the types being loosened.
+11. **Nothing frozen moved** (no events/*, jobs/types.ts or web/src/lib/ws.ts
+    change, so no contract ADR and no `check:contracts:update`), both test
+    layers are present, and nothing else moved.
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*

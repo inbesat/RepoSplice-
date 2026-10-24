@@ -18,6 +18,11 @@ import { stat } from 'node:fs/promises';
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import type { GlobalOptions } from '../globals.js';
+import {
+  formatConfidenceSummary,
+  parseConfidenceSummary,
+  type ConfidenceSummaryOptions,
+} from '../ui/confidence-summary.js';
 import type { SourceSelection } from './add.js';
 import {
   checkCaps,
@@ -130,13 +135,26 @@ function artifactsOf(result: MergePipelineResult): string[] {
     .map(([, key]) => String(provenance[key]));
 }
 
+/** The first confidence assessment the pipeline recorded in a stage's meta, if any. */
+function confidenceOf(result: MergePipelineResult): unknown {
+  for (const record of result.records) {
+    const confidence = record.meta?.['confidence'];
+    if (confidence !== undefined) return confidence;
+  }
+  return undefined;
+}
+
 /**
  * The success summary: where C landed and what it contains.
  *
  * Counts come from the STAGES' OWN reports, so the summary cannot claim something the
  * run did not do; a stage that never ran simply contributes no line.
  */
-export function mergeSummary(outcome: MergeOutcome, result: MergePipelineResult): string[] {
+export function mergeSummary(
+  outcome: MergeOutcome,
+  result: MergePipelineResult,
+  options: ConfidenceSummaryOptions = {}
+): string[] {
   const lines: string[] = [];
   if (outcome.dryRun) {
     lines.push('Dry run — no child repo written.');
@@ -152,6 +170,7 @@ export function mergeSummary(outcome: MergeOutcome, result: MergePipelineResult)
   if (deps !== undefined) lines.push(`  deps:     ${deps}`);
   if (licences !== undefined) lines.push(`  licenses: ${licences}`);
   for (const artifact of artifactsOf(result)) lines.push(`  artifact: ${artifact}`);
+  lines.push(...formatConfidenceSummary(parseConfidenceSummary(confidenceOf(result)), options));
   return lines;
 }
 
@@ -264,9 +283,14 @@ export async function merge(
     });
   }
 
+  const summaryOptions: ConfidenceSummaryOptions = {
+    ...(opts.color === false ? { paint: (_level, text) => text } : {}),
+    ...(opts.verbose ? { verbose: true } : {}),
+  };
   for (const line of mergeSummary(
     { outDir, outcome: 'completed', dryRun: pipelineOptions.dryRun },
-    result
+    result,
+    summaryOptions
   )) {
     write(line);
   }

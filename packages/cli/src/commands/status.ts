@@ -75,6 +75,11 @@ import {
   type StitchStore,
 } from '../config.js';
 import { theme, type ThemeLevel } from '../theme.js';
+import {
+  formatConfidenceSummary,
+  parseConfidenceSummary,
+  type ConfidenceSummary,
+} from '../ui/confidence-summary.js';
 
 /** How many audit actions count as "recent activity" (the phase's `last N`). */
 export const RECENT_AUDIT_LIMIT = 5;
@@ -131,6 +136,13 @@ export interface StatusReport {
     detail?: string;
   };
   checksums: ChecksumVerdict;
+  /**
+   * The recorded confidence assessment for the current job (P-353).
+   *
+   * Absent or null when the job has no persisted assessment; the renderer
+   * prints the honest `N/A` line rather than inventing a number.
+   */
+  readonly confidence?: ConfidenceSummary | null;
 }
 
 /** Everything environmental, injected. Defaults are the real edges. */
@@ -143,6 +155,11 @@ export interface StatusDeps {
   openStoreDb?: (path: string) => Promise<Result<DbLike, StitchError>>;
   /** Default: a real probe through `SandboxClient` (never throws, per its contract). */
   probeSandbox?: () => Promise<boolean>;
+  /**
+   * The recorded confidence assessment for the current job, when one exists
+   * (P-353's seam: a later phase threads the job store's record here).
+   */
+  confidence?: unknown;
   /** Default: one line at a time to stdout. */
   write?: (line: string) => void;
 }
@@ -522,6 +539,11 @@ function renderChecksumsLine(report: StatusReport, paint: Paint): string {
 }
 
 /** The text render. One string per line; the caller writes them. */
+/** The confidence summary (always one line; the honest N/A when none is recorded). */
+function renderConfidenceLines(report: StatusReport, paint: Paint): string[] {
+  return formatConfidenceSummary(report.confidence ?? undefined, { paint });
+}
+
 export function renderStatusReport(report: StatusReport, paint: Paint): string[] {
   const config = report.config;
   const sources = report.sources.length === 0 ? 'none' : String(report.sources.length);
@@ -549,6 +571,7 @@ export function renderStatusReport(report: StatusReport, paint: Paint): string[]
   }
   lines.push(renderHilLine(report));
   lines.push(...renderJobsLines(report));
+  lines.push(...renderConfidenceLines(report, paint));
   lines.push(renderSandboxLine(report, paint));
   lines.push(renderChecksumsLine(report, paint));
   return lines;
@@ -680,6 +703,7 @@ export async function status(
     ...(sections.jobsError !== undefined ? { jobsError: sections.jobsError } : {}),
     sandbox,
     checksums,
+    confidence: parseConfidenceSummary(deps.confidence) ?? null,
   };
 
   if (opts.json === true) {
