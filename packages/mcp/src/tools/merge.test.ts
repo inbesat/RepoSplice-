@@ -8,6 +8,7 @@ import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 import { describe, expect, it } from 'vitest';
 
+import { toProgressNotification } from '../progress.js';
 import { createMCPServer } from '../server.js';
 import {
   configError,
@@ -29,7 +30,6 @@ import {
   registerJobStatusTools,
   STITCH_CANCEL_JOB_TOOL_NAME,
   STITCH_JOB_STATUS_TOOL_NAME,
-  toProgressNotification,
 } from './job-status.js';
 import { createToolRegistry, type ToolHandler } from './registry.js';
 
@@ -175,11 +175,7 @@ describe('stitch_merge (P-359)', () => {
       field: 'mcp.core',
       message: expect.stringContaining('no job API'),
     });
-    expect(() =>
-      ports.notify(
-        toProgressNotification({ jobId: 'job-1', status: 'running', progress: PROGRESS }, 'tok-1')
-      )
-    ).not.toThrow();
+    expect(() => ports.notify(toProgressNotification('tok-1', 1, 3))).not.toThrow();
   });
 });
 
@@ -225,7 +221,8 @@ describe('stitch_job_status (P-359)', () => {
     jobs.push({ jobId: 'job-1', status: 'succeeded', progress: { completed: 3, total: 3 } });
     jobs.push({ jobId: 'job-1', status: 'failed', progress: { completed: 3, total: 3 } });
 
-    expect(jobs.notifications.map(entry => entry.params.status)).toEqual(['running', 'succeeded']);
+    expect(jobs.notifications.map(entry => entry.params.progress)).toEqual([1, 3]);
+    expect(jobs.notifications.map(entry => entry.params.total)).toEqual([3, 3]);
     expect(jobs.notifications.map(entry => entry.params.progressToken)).toEqual(['tok-1', 'tok-1']);
     expect(jobs.releaseCount()).toBe(1);
   });
@@ -275,20 +272,10 @@ describe('merge tool helpers (P-359)', () => {
   });
 
   it('shapes an MCP progress notification', () => {
-    expect(
-      toProgressNotification(
-        { jobId: 'job-1', status: 'running', progress: { completed: 2, total: 3 } },
-        42
-      )
-    ).toEqual({
+    expect(toProgressNotification(42, 2, 3, 'deps')).toEqual({
       jsonrpc: '2.0',
       method: 'notifications/progress',
-      params: {
-        progressToken: 42,
-        jobId: 'job-1',
-        status: 'running',
-        progress: { completed: 2, total: 3 },
-      },
+      params: { progressToken: 42, progress: 2, total: 3, message: 'deps' },
     });
   });
 

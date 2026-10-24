@@ -2,81 +2,21 @@
 //
 // `stitch_job_status` reports where a merge job got to; `stitch_cancel_job`
 // asks for it to stop. Both read the job through the same injected `MergePorts`
-// as `stitch_merge`, and the progress bridge turns the port's snapshots into
-// MCP `notifications/progress` frames so a host sees a long merge live.
+// as `stitch_merge`. The MCP `notifications/progress` payload and its bridge
+// live in `progress.ts` (P-361), so the merge tool and the status tool cannot
+// drift apart.
 
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 
+import { createJobProgressBridge, isTerminalStatus } from '../progress.js';
 import type { ToolDefinition, ToolHandler, ToolInputSchema, ToolRegistry } from './registry.js';
-import {
-  configError,
-  type MergeJobListener,
-  type MergeJobSnapshot,
-  type MergeJobStatus,
-  type MergePorts,
-  type ProgressNotification,
-} from './merge.js';
+import { configError, type MergeJobSnapshot, type MergePorts } from './merge.js';
+
+export { isTerminalStatus };
 
 export const STITCH_JOB_STATUS_TOOL_NAME = 'stitch_job_status';
 export const STITCH_CANCEL_JOB_TOOL_NAME = 'stitch_cancel_job';
-
-const TERMINAL_STATUSES: readonly MergeJobStatus[] = ['succeeded', 'failed', 'cancelled'];
-
-/** A settled job never changes again, so its subscription can be released. */
-export function isTerminalStatus(status: MergeJobStatus): boolean {
-  return TERMINAL_STATUSES.includes(status);
-}
-
-/** The MCP progress frame a snapshot maps to. */
-export function toProgressNotification(
-  snapshot: MergeJobSnapshot,
-  progressToken: string | number
-): ProgressNotification {
-  return {
-    jsonrpc: '2.0',
-    method: 'notifications/progress',
-    params: {
-      progressToken,
-      jobId: snapshot.jobId,
-      status: snapshot.status,
-      progress: snapshot.progress,
-    },
-  };
-}
-
-export interface ProgressBridge {
-  readonly listener: MergeJobListener;
-  readonly attach: (release: () => void) => void;
-}
-
-/**
- * Forward every snapshot of a job to the MCP notification sink until it settles.
- *
- * `attach` is separate from the listener because `subscribe` can deliver a
- * snapshot before it hands back its release function: when that snapshot is
- * already terminal the release runs as soon as it arrives.
- */
-export function createProgressBridge(
-  ports: MergePorts,
-  progressToken: string | number
-): ProgressBridge {
-  let release: (() => void) | undefined;
-  let settled = false;
-  const listener: MergeJobListener = snapshot => {
-    ports.notify(toProgressNotification(snapshot, progressToken));
-    if (!isTerminalStatus(snapshot.status)) return;
-    settled = true;
-    if (release !== undefined) release();
-  };
-  return {
-    listener,
-    attach: stop => {
-      release = stop;
-      if (settled) stop();
-    },
-  };
-}
 
 function readJobId(
   args: Readonly<Record<string, unknown>>,
@@ -161,7 +101,7 @@ export function createJobStatusHandler(ports: MergePorts): ToolHandler {
       return err(configError('stitch_job_status.job_id', `no job is known under ${jobId.value}`));
     }
     if (token.value !== undefined && !isTerminalStatus(snapshot.status)) {
-      const bridge = createProgressBridge(ports, token.value);
+      const bridge = createJobProgressBridge(ports, jobId.value, token.value);
       const subscribed = await ports.subscribe(jobId.value, bridge.listener);
       if (subscribed.isErr()) return err(subscribed.error);
       bridge.attach(subscribed.value);

@@ -28,6 +28,7 @@ export * from './tools/select-files.js';
 export * from './tools/job-status.js';
 export * from './tools/merge.js';
 export * from './tools/check-license.js';
+export * from './progress.js';
 
 export interface StartMcpServerOptions {
   readonly transport?: 'stdio' | 'http';

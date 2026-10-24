@@ -11,6 +11,7 @@
 import { err, ok, type Result } from 'neverthrow';
 import type { StitchError } from '@repo-stitcher/core';
 
+import { createJobProgressBridge, type ProgressNotification } from '../progress.js';
 import type { ToolDefinition, ToolHandler, ToolInputSchema, ToolRegistry } from './registry.js';
 
 export const STITCH_MERGE_TOOL_NAME = 'stitch_merge';
@@ -50,17 +51,7 @@ export interface MergeJobHandle {
   readonly jobId: string;
 }
 
-/** A progress notification, in the MCP `notifications/progress` shape. */
-export interface ProgressNotification {
-  readonly jsonrpc: '2.0';
-  readonly method: 'notifications/progress';
-  readonly params: {
-    readonly progressToken: string | number;
-    readonly jobId: string;
-    readonly status: MergeJobStatus;
-    readonly progress: MergeJobProgress;
-  };
-}
+export type { ProgressNotification } from '../progress.js';
 
 /**
  * Everything the merge tools need from the outside world.
@@ -105,6 +96,11 @@ export const STITCH_MERGE_INPUT_SCHEMA: ToolInputSchema = {
     options: {
       type: 'object',
       description: 'Merge options (output directory, dry run, policy overrides). Passed through.',
+    },
+    progress_token: {
+      type: ['string', 'number'],
+      description:
+        'MCP progress token. When given, live progress is streamed while the merge runs.',
     },
   },
   required: ['repo_a', 'repo_b'],
@@ -160,6 +156,17 @@ function readOptions(value: unknown): Result<Readonly<Record<string, unknown>>, 
   return ok(value as Readonly<Record<string, unknown>>);
 }
 
+/** Validate the optional MCP progress token; when present, progress is streamed. */
+export function parseProgressToken(
+  value: unknown
+): Result<string | number | undefined, StitchError> {
+  if (value === undefined || value === null) return ok(undefined);
+  if (typeof value === 'string' || typeof value === 'number') return ok(value);
+  return err(
+    configError('stitch_merge.progress_token', 'the progress token must be a string or a number')
+  );
+}
+
 /** Validate the `stitch_merge` arguments into the standard merge config. */
 export function parseMergeInput(
   args: Readonly<Record<string, unknown>>
@@ -188,9 +195,18 @@ export function createMergeToolHandler(ports: MergePorts): ToolHandler {
   return async args => {
     const parsed = parseMergeInput(args);
     if (parsed.isErr()) return err(parsed.error);
+    const token = parseProgressToken(args['progress_token']);
+    if (token.isErr()) return err(token.error);
     const started = await ports.createJob(parsed.value);
     if (started.isErr()) return err(started.error);
-    return ok({ job_id: started.value.jobId });
+    const jobId = started.value.jobId;
+    if (token.value !== undefined) {
+      const bridge = createJobProgressBridge(ports, jobId, token.value);
+      const subscription = await ports.subscribe(jobId, bridge.listener);
+      if (subscription.isErr()) return err(subscription.error);
+      bridge.attach(subscription.value);
+    }
+    return ok({ job_id: jobId });
   };
 }
 

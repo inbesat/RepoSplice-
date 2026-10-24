@@ -94,9 +94,9 @@ def test_progress_notifications() -> None:
         "notifications/progress",
         "notifications/progress",
     ], progress
-    assert progress["statuses"] == ["running", "succeeded"], progress
+    assert progress["progresses"] == [1, 3], progress
+    assert progress["totals"] == [3, 3], progress
     assert progress["tokens"] == [TOKEN, TOKEN], progress
-    assert progress["completed"] == [1, 3], progress
 
 
 def test_cancel() -> None:
