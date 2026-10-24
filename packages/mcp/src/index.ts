@@ -18,6 +18,7 @@ import { loadCoreToolPorts, registerCoreTools } from './tools/core-tools.js';
 import { loadSelectFilesPorts, registerSelectFilesTool } from './tools/select-files.js';
 import { registerJobStatusTools } from './tools/job-status.js';
 import { loadMergePorts, registerMergeTool } from './tools/merge.js';
+import { loadCheckLicensePorts, registerCheckLicenseTool } from './tools/check-license.js';
 
 export * from './server.js';
 export * from './transport.js';
@@ -26,6 +27,7 @@ export * from './tools/core-tools.js';
 export * from './tools/select-files.js';
 export * from './tools/job-status.js';
 export * from './tools/merge.js';
+export * from './tools/check-license.js';
 
 export interface StartMcpServerOptions {
   readonly transport?: 'stdio' | 'http';
@@ -65,6 +67,9 @@ export async function startMcpServer(
     if (mergeRegistered.isErr()) return err(mergeRegistered.error);
     const jobRegistered = registerJobStatusTools(registry, mergePorts);
     if (jobRegistered.isErr()) return err(jobRegistered.error);
+    const licensePorts = await loadCheckLicensePorts();
+    const licenseRegistered = registerCheckLicenseTool(registry, licensePorts);
+    if (licenseRegistered.isErr()) return err(licenseRegistered.error);
   }
   const server = createMCPServer({ registry });
   const handler = async (payload: string): Promise<JsonRpcResponse | undefined> =>

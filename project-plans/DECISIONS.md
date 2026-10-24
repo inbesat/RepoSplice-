@@ -6782,4 +6782,58 @@ Date: 2026-10-24. Phase: P-359. Owner: aradhy lane (packages/mcp).
 10. **`MCP_QUICKSTART.md` documentation remains P-365's.**
 11. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
     `web/src/lib/ws.ts` change).
+## ADR-169: The `stitch_check_license` tool, its two ports and the licence-cache deferral (P-360)
+
+Date: 2026-10-24. Phase: P-360. Owner: aradhy lane (packages/mcp).
+
+1. **A pre-merge due-diligence tool that needs no merge.** `stitch_check_license`
+   takes `{ repo_a, repo_b }` and returns `{ verdict, spdx_ids, details }` with
+   the verdict `compatible` | `conditional` | `incompatible`, so a host can ask
+   whether two repositories may be combined without starting a job.
+2. **The licence capability stays in core.** The scan is P-118's `scanDeclared`
+   and the matrix is P-120's `checkCompatibility`; the tool owns the pairing, the
+   verdict vocabulary and the SPDX detail listing, and it binds only through the
+   public barrel.
+3. **Both capabilities arrive as ports.** `CheckLicensePorts` is `scan(ref)` and
+   `compatibility(leftIds, rightIds)`, each returning a `Result`; the default
+   loader assembles the real ones from the barrel, and a barrel missing a
+   required name yields refusing ports that answer `CONFIG_ERROR` field
+   `mcp.core` rather than pretending the check ran.
+4. **The verdict is the matrix decision.** `checkCompatibility` over the combined
+   normalized ids maps `allow` -> `compatible`, `review` -> `conditional` with the
+   matrix reasons as `requirements`, and `deny` -> `incompatible` with the reasons
+   as `blockers`; `failing_categories` is carried through unchanged.
+5. **A GPL pair is `conditional`, not `incompatible`, and that is the matrix, not
+   a bug.** `DEFAULT_LICENSE_POLICY` allows `permissive` and `weak-copyleft` and
+   denies unknown; the matrix treats any allowed copyleft tier as allowing the
+   others, so strong copyleft lands on `review`. Only an undeterminable licence
+   (an `unknown` category, e.g. a manifest declaring `Proprietary`) is denied. The
+   tool therefore reports `incompatible` only where the matrix denies, and the
+   tests pin both outcomes rather than asserting a wish.
+6. **Both repositories are scanned in parallel.** The handler issues the two scans
+   with `Promise.all` and the unit suite asserts the interleaving, so a sequential
+   regression fails instead of merely being slower.
+7. **Only `CONFIG_ERROR` is constructed** (fields `stitch_check_license.repo_a`,
+   `.repo_b`, `mcp.core`); a throwing port maps to `INTERNAL` through the P-357
+   registry. An empty or non-string repository reference is a configuration error
+   that names its own field.
+8. **The P-303 repo-metadata cache is not reachable from the barrel.** `cached` is
+   therefore a PORT-REPORTED flag rather than a cache the tool owns: the default
+   ports always report `false`, the mandated cache id proves the contract through
+   an injected caching port, and the missing core cache is recorded here as the
+   deferral.
+9. **A local path is scanned in place; a remote reference is cloned and removed.**
+   Anything matching a `scheme://`, an scp-like `git@host:path` or a `.git` suffix
+   is treated as remote: a temporary directory is created, P-069's `cloneRepo`
+   fills it, the scan runs, and the directory is removed in a `finally`.
+10. **`spdx_ids` is the sorted union of both repositories' normalized ids**, and
+    each `details.repo_a` / `details.repo_b` carries the source, the ids, the
+    licence refs (id, human name from the SPDX registry, category), the warnings
+    and the cached flag, so the answer is auditable rather than a single word.
+11. **The four mandated ids run through a bun harness** that drives the REAL ports
+    for the compatible, conditional and incompatible pairs and injects only the
+    caching scan, exactly as P-358 injected `materialize` and P-359 injected the
+    job provider.
+12. **Nothing frozen moved** (no `events/*`, `jobs/types.ts` or
+    `web/src/lib/ws.ts` change).
 *End of DECISIONS.md. Append new ADRs as decisions are made. Format: `ADR-XXX: Title` with same sections.*
