@@ -23,3 +23,6 @@ shell = "system"
 # Use bun's built-in test runner as a fallback if vitest is not yet installed
 # (vitest is added in P-004 and will supersede this)
 preload = []
+# The unit-test conventions (layout, determinism, isolation, the guard) live in
+# TESTING.md; the real runner is vitest via the root vitest.config.ts projects.
+

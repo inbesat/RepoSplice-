@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:deps": "depcruise packages/core/src --config packages/core/dependency-cruiser.config.cjs",
+    "test:unit": "vitest run --project @repo-stitcher/core --project @repo-stitcher/cli --project @repo-stitcher/web",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",

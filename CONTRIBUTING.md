@@ -281,6 +281,15 @@ The core/web wire contracts are frozen as well (packages/core/src/events/*, pack
 
 ---
 
+### 5.6 Unit-test conventions (P-253)
+
+`TESTING.md` carries the layout, naming, determinism, isolation and shared-helper
+rules, and `packages/core/src/test/test.guard.test.ts` enforces them: no focused
+test, no `.skip` without a linked issue on the same or previous line
+(`// skip-ok: #123`), and no network or wall clock in a shared helper. Mocks and
+fixtures live in `src/test/helpers.ts` per package — never a root `test-utils`
+package, so each package can diverge when it needs to.
+
 ## 6. Release Process
 
 ### 6.1 Changesets

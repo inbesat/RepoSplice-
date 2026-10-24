@@ -48,6 +48,22 @@ export default tseslint.config(
             "CallExpression[callee.type='MemberExpression'][callee.object.name='console'][callee.property.name='error']",
           message: 'Do not call console.error in tests — assert on it instead (see P-236).',
         },
+        {
+          // P-253 — a focused test must never be committed: it silently hides
+          // every other case in the file from the run.
+          selector:
+            "MemberExpression[object.name='it'][property.name='only'], MemberExpression[object.name='test'][property.name='only'], MemberExpression[object.name='describe'][property.name='only']",
+          message:
+            'Do not commit a focused test (it.only / test.only / describe.only) — see TESTING.md.',
+        },
+        {
+          // P-253 — a skipped test needs a reason that outlives the author:
+          // `// skip-ok: <issue URL or #123>` beside it, plus an eslint-disable.
+          selector:
+            "MemberExpression[object.name='it'][property.name='skip'], MemberExpression[object.name='test'][property.name='skip'], MemberExpression[object.name='describe'][property.name='skip']",
+          message:
+            'A skipped test needs a linked issue: add `// skip-ok: <issue URL or #123>` and an eslint-disable-next-line — see TESTING.md.',
+        },
       ],
     },
   },
